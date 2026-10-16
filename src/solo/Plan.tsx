@@ -1,63 +1,73 @@
-// Act II strategy huddle: the player picks a pump direction for each sensor reading. The crewmate always pumps
-// clockwise.
-import { Rule } from "../components/Rule.tsx";
-import { SensorLight } from "../components/SensorLight.tsx";
-import { pct } from "../components/StabilityMeter.tsx";
+// Act II strategy huddle (comms open): the player sets the whole joint plan, their own and the crewmate's, by name.
+// They can test the pair over 1,000 rounds without live play; every test lands on the plan board.
+import { PlanBoard } from "../components/PlanBoard.tsx";
 import { PumpIcon } from "../components/PumpIcon.tsx";
-import { winRate, type Light } from "../shared/chsh.ts";
-import { ANTICLOCKWISE, CLOCKWISE, COOL, HOT } from "../shared/fiction.ts";
+import { Rule } from "../components/Rule.tsx";
+import { LightIcon } from "../components/SensorLight.tsx";
+import { pct } from "../components/StabilityMeter.tsx";
+import { winRate, type ClassicalStrategy } from "../shared/chsh.ts";
+import { COOL, HOT } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
+import { CrewRadio } from "./CrewRadio.tsx";
+import { PLAN_IDS, planId, planOf } from "./plans.ts";
 import { useSolo } from "./soloStore.ts";
 
 export function Plan() {
-  const plan = useSolo((s) => s.plan);
-  const setPlan = useSolo((s) => s.setPlan);
-  const beginBatch = useSolo((s) => s.beginBatch);
-  const batches = useSolo((s) => s.act2Batches);
-  const lastBatch = useSolo((s) => s.batch);
-
-  const row = (light: Light, label: string) => {
-    const current = light === COOL ? plan.onGreen : plan.onRed;
-    return (
-      <div className="stack">
-        <div className="dial__label">
-          <SensorLight light={light} small />
-          <span>{label}</span>
-        </div>
-        <div className="row" role="radiogroup" aria-label={label}>
-          {[ANTICLOCKWISE, CLOCKWISE].map((v) => (
-            <button
-              key={v}
-              role="radio"
-              aria-checked={current === v}
-              className={`btn btn--pump ${current === v ? "btn--selected" : ""}`}
-              onClick={() => setPlan(light, v)}
-            >
-              <PumpIcon pump={v} />
-              {S.pump[v]}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
+  const s = useSolo((st) => st);
+  const batches = s.act2Batches;
   return (
     <main className="screen">
       <p className="kicker">{S.plan.kicker}</p>
       <h1>{S.plan.title}</h1>
-      <p>{S.plan.crewmate}</p>
+      <CrewRadio />
+      <PlanChooser label={S.plan.you} value={s.plan} onChange={(p) => s.choosePlan("player", p)} />
+      <PlanChooser label={S.plan.crew(S.crew.name)} value={s.crewPlan} onChange={(p) => s.choosePlan("crew", p)} />
+      <button className="btn" onClick={s.runSimulation}>
+        {S.plan.test}
+        <small>{S.plan.testSub}</small>
+      </button>
+      {s.lastSim && <p className="panel" role="status">{S.plan.tested(pct(s.lastSim.winRate))}</p>}
+      <PlanBoard board={s.board} plan={s.plan} crewPlan={s.crewPlan} />
+      {batches > 0 && <p className="muted">{S.plan.last(pct(winRate(s.batch)))}</p>}
       <Rule diagram />
-      <div className="panel stack">
-        {row(COOL, S.plan.whenCool)}
-        {row(HOT, S.plan.whenHot)}
-      </div>
       <p className="muted small">{S.plan.blind}</p>
-      {batches > 0 && <p className="muted">{S.plan.last(pct(winRate(lastBatch)))}</p>}
       <div className="spacer" />
-      <button className="btn btn--primary" onClick={beginBatch}>
+      <button className="btn btn--primary" onClick={s.beginBatch}>
         {S.plan.start(batches + 1)}
       </button>
     </main>
+  );
+}
+
+/** The four plans by name, each with what it does on COOL and on HOT. */
+function PlanChooser({ label, value, onChange }: { label: string; value: ClassicalStrategy; onChange: (p: ClassicalStrategy) => void }) {
+  const current = planId(value);
+  return (
+    <div className="panel stack">
+      <p className="kicker">{label}</p>
+      <div className="plans" role="radiogroup" aria-label={label}>
+        {PLAN_IDS.map((id) => {
+          const p = planOf(id);
+          return (
+            <button
+              key={id}
+              role="radio"
+              aria-checked={current === id}
+              aria-label={`${S.plans.name[id]}: ${S.plans.detail[id]}`}
+              className={`btn plan-option ${current === id ? "btn--selected" : ""}`}
+              onClick={() => onChange(p)}
+            >
+              <span>{S.plans.name[id]}</span>
+              <span className="plan-option__detail" aria-hidden="true">
+                <LightIcon light={COOL} />
+                <PumpIcon pump={p.onGreen} />
+                <LightIcon light={HOT} />
+                <PumpIcon pump={p.onRed} />
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

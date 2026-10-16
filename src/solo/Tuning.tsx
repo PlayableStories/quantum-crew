@@ -1,11 +1,13 @@
-// Act III strategy phase: one dial per light. The crewmate's dials are hidden until the debrief.
+// Act III strategy phase (comms open): one dial per sensor reading. The crewmate's dials are shown, locked at their
+// setting (the optimal Table B one); the player tunes only their own.
 import { Dial } from "../components/Dial.tsx";
 import { Rule } from "../components/Rule.tsx";
 import { SensorLight } from "../components/SensorLight.tsx";
 import { StabilityMeter } from "../components/StabilityMeter.tsx";
-import { winRate } from "../shared/chsh.ts";
+import { OPTIMAL_TUNING, winRate } from "../shared/chsh.ts";
 import { COOL, HOT } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
+import { CrewRadio } from "./CrewRadio.tsx";
 import { hintAvailable, useSolo } from "./soloStore.ts";
 
 export function Tuning() {
@@ -14,8 +16,16 @@ export function Tuning() {
     <main className="screen">
       <p className="kicker">{S.tuning.kicker}</p>
       <h1>{S.tuning.title}</h1>
-      <p>{S.tuning.crewmate}</p>
+      <CrewRadio />
+      <div className="panel stack dials--locked">
+        <p className="kicker">{S.crew.dialsHead(S.crew.name)}</p>
+        <div className="row">
+          <Dial value={OPTIMAL_TUNING.B.greenDeg} small label={<SensorLight light={COOL} small />} />
+          <Dial value={OPTIMAL_TUNING.B.redDeg} small label={<SensorLight light={HOT} small />} />
+        </div>
+      </div>
       <Rule />
+      <p className="kicker">{S.tuning.yours}</p>
       <div className="row panel">
         <Dial
           value={s.tuning.greenDeg}

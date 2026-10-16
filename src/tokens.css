@@ -30,6 +30,11 @@
   --hot-glow: rgba(255, 138, 31, 0.45);
   --on-hot: #1f0b00; /* text and icon on the HOT bulb */
 
+  /* The crewmate's radio and the Act II plan board */
+  --radio: #7fd1c7;
+  --board-high: #24402f; /* a 75% cell */
+  --board-low: #3a1c22; /* a 25% cell */
+
   /* Round outcomes and meters (results also carry ✓ / ✗ and words) */
   --green: #39e58c;
   --green-deep: #0f6b3d;
