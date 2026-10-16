@@ -1,0 +1,45 @@
+{
+  "name": "quantum-crew",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A co-op party game where two tables of players hit the 75% classical limit of the CHSH game, then beat it with an entanglement tool.",
+  "packageManager": "pnpm@11.11.0",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "vite",
+    "dev:phone": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "sim": "tsx scripts/sim.ts",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.app.json && tsc -p packages/atlas-client/tsconfig.json",
+    "start": "node server/index.ts",
+    "smoke": "node scripts/smoke.ts",
+    "assets": "node scripts/assets.ts",
+    "bake-shader": "node scripts/bake-shader.ts",
+    "gen-assets": "tsx scripts/gen-assets.ts"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "ws": "^8.22.0",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@moth-hack/atlas-client": "workspace:*",
+    "@types/node": "^24.19.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/ws": "^8.18.2",
+    "@vitejs/plugin-react": "^6.1.1",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.3"
+  }
+}

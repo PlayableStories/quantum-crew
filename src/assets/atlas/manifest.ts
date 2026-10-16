@@ -1,0 +1,43 @@
+// Resolves the Atlas asset list (list.ts) to the files that exist next to this module. Missing files resolve to
+// undefined and the app renders a placeholder, so it never breaks.
+import { ATLAS_ASSETS, type AtlasAsset } from "./list.ts";
+
+export { ATLAS_ASSETS, type AtlasAsset };
+
+// Vite resolves whatever files exist at build time; missing ones are simply absent.
+const files = import.meta.glob("./*.{png,jpg,jpeg,webp,gif,svg,mp4,webm,mp3,ogg,wav,m4a}", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
+
+const byKey = new Map<string, string>();
+for (const [path, url] of Object.entries(files)) {
+  const name = path.slice(2).replace(/\.[^.]+$/, "");
+  byKey.set(name, url);
+}
+
+/** What produced an asset (written by `pnpm gen-assets` next to the file): shown in the credits. */
+export type AssetProvenance = { engineId: string; jobId: string; params: Record<string, unknown> | null };
+const provenance = import.meta.glob<AssetProvenance>("./*.provenance.json", { eager: true, import: "default" });
+
+export function assetProvenance(key: string): AssetProvenance | undefined {
+  return Object.entries(provenance).find(([path]) => path.slice(2).replace(/\.[^.]+\.provenance\.json$/, "") === key)?.[1];
+}
+
+// The Entanglement Shader asset is data (lookup tables), not a media file.
+const shaderLut = import.meta.glob("./entanglement-lut.json");
+
+/** Whether an asset is in place (a media file, or the baked shader for entanglement-reveal). */
+export function assetPresent(key: string): boolean {
+  return byKey.has(key) || (key === "entanglement-reveal" && Object.keys(shaderLut).length > 0);
+}
+
+/** URL of the asset for this key, or undefined if William hasn't added it yet. */
+export function atlasUrl(key: string): string | undefined {
+  return byKey.get(key);
+}
+
+export function isVideo(url: string): boolean {
+  return /\.(mp4|webm)(\?|$)/.test(url);
+}
