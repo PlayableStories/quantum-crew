@@ -5,7 +5,8 @@ This repo is a Playable Stories example of a game built with an AI coding agent.
 
 ## Workflow
 - One branch + PR per feature or milestone; the user reviews before merge. Never push to `main` directly.
-- Before a PR: `pnpm typecheck && pnpm test && pnpm build` (and `pnpm smoke` when touching event mode).
+- Before a PR: `pnpm typecheck && pnpm test && pnpm build` (and `pnpm smoke` when touching event mode). CI
+  (`.github/workflows/ci.yml`) runs all of these on every PR and push to `main`.
 - All copy goes in `src/strings.ts`; game tuning in `src/config.ts`.
 
 ## Atlas API (Moth Quantum) rules
