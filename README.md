@@ -16,6 +16,79 @@ only then learn what it is.
 **Learning arc:** collaborate → keep the station stable → hit a wall at 75% → experiment → get a quantum tool →
 beat the wall.
 
+## Story and player flow
+*Station log · shift 1.* The station's coolant runs through two sections. In solo mode you are at **Table A** and an
+AI crewmate is at **Table B**. Each round, each section's sensor lights **GREEN** or **RED**, and each of you sets a
+valve: **OPEN** or **CLOSED**. You see only your own light, you can't talk during a round, and you have 5 seconds.
+The station rule is always on screen: *valves must MATCH, unless BOTH sensors are RED, then they must DIFFER.*
+The station needs **80%** of rounds to hold.
+
+```mermaid
+flowchart TD
+  intro["Intro: station log, the rule, 80% to survive"] --> plan
+  subgraph act2 ["Act II: plans"]
+    plan["Agree a plan<br/>crewmate: 'I always OPEN'"] --> batch2["Batch: 12 live rounds"]
+    batch2 --> read2["Readout + Run 1,000 rounds"]
+    read2 -- "Back to the huddle" --> plan
+  end
+  read2 -- "Call engineering<br/>(after 1 batch)" --> ceiling["Engineering report: 75%"]
+  ceiling --> tool["The Entanglement Tool arrives"]
+  tool --> tune
+  subgraph act3 ["Act III: the tool"]
+    tune["Tune your dials<br/>(hint after 1 batch under 80%)"] --> batch3["Batch: 12 rounds, tap MEASURE"]
+    batch3 --> read3["Readout + Run 1,000 rounds"]
+    read3 -- "Retune and go again" --> tune
+  end
+  read3 -- "Debrief: a 1,000-round test ≥ 80%<br/>or after 2 batches" --> debrief["Debrief: 4 steps"]
+  debrief --> credits["Credits → Play again / Home"]
+```
+
+1. **Agree a plan (Act II).** In the strategy huddle your crewmate radios in: *"I always OPEN, whatever my light."*
+   You choose a valve for GREEN and one for RED. Against a crewmate who always opens, the best any plan can do is 75%:
+
+   | Your plan (GREEN / RED) | Win rate |
+   |---|---|
+   | OPEN / OPEN | 75% |
+   | OPEN / CLOSED | 75% |
+   | CLOSED / CLOSED | 25% |
+   | CLOSED / OPEN | 25% |
+
+2. **Play a batch.** Twelve live rounds. Your plan's valve is tagged "Plan", but you tap the valve yourself and can
+   go against it. Each result shows both lights and both valves: ✓ Stable or ✗ Leak. Running out of time counts as
+   a loss.
+3. **Run 1,000 rounds.** After each batch, the readout shows how many rounds held, and the station art degrades as
+   stability drops. Twelve rounds are noisy, so **Run 1,000 rounds** tests your *plan* (not your taps) against
+   1,000 fresh pairs of lights. Whatever you try, it never beats 75%.
+4. **Call engineering.** After the first batch you can call engineering (or go back and try more plans).
+   *"We tried every plan your crew could make. Every single one. None of them holds more than 75%."*
+   The station needs 80%. *"Then we need something that isn't a plan."*
+5. **Receive the tool.** The game changes look (a live Entanglement Shader, two synced crystals). *Two linked
+   crystals have arrived: one in your tool, one in your crewmate's at Table B.* You turn a dial and tap
+   **MEASURE**, and the crystal decides your valve.
+6. **Tune your dials (Act III).** One dial for GREEN and one for RED, 8 stops each (0° to 157.5° in 22.5° steps),
+   starting at 0°/0°. Your crewmate's tool is already tuned (hidden: 22.5° for GREEN, 157.5° for RED). In each round
+   your dial turns to the angle for your light and you tap MEASURE. You choose *how* the crystal is read, not the
+   valve. After a batch under 80%, you can ask engineering for a hint: *"Try making your two dials 45° apart, and
+   your partner's offset by half that."*
+
+   | Your dials (GREEN / RED) | Win rate |
+   |---|---|
+   | **0° / 45°** | **85.4%**, the only best setting of the 64 |
+   | 0°/22.5°, 0°/67.5°, 22.5°/45°, 157.5°/45° | 80.2%, which passes a 1,000-round test about half the time |
+   | 0° / 0° (the start) | 67.7% |
+
+7. **Result.** The debrief unlocks when a 1,000-round test reaches **80%** or more, or after **2** Act III batches,
+   so every player reaches the end.
+8. **Debrief.** The physics words appear only here, in four steps:
+   - **No plan beats 75%:** the wall was a Bell inequality (the CHSH game), with your Act II rate.
+   - **Entanglement broke through:** the crystals agree with probability cos²(θA − θB), up to 85.4% (the Tsirelson
+     bound), with your best test and the optimal dials for both tables.
+   - **But no messages:** over 10,000 rounds your valve is OPEN about half the time whatever your crewmate saw, so
+     no message gets through (no-signalling).
+   - **Credits**, then *Play again* or *Home*.
+
+All player-facing text is in `src/strings.ts`; pacing and unlock rules are in `src/config.ts`.
+
 ## How to play (solo)
 Open the app and choose **Solo demo**. It takes about 6 minutes on a phone or a laptop.
 
