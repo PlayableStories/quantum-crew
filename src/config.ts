@@ -16,8 +16,10 @@ export const SIM_ROUNDS = 1000;
 /** Rounds behind the no-signalling panel in the debrief (enough that 50/50 is visible). */
 export const DEBRIEF_SIM_ROUNDS = 10_000;
 
-/** Solo: the AI crewmate's Act II plan, which the player is told. */
+/** Event mode: what an AI crewmate in an empty seat plays in Act II. */
 export const BOT_ACT2_PLAN: ClassicalStrategy = { onGreen: CLOCKWISE, onRed: CLOCKWISE };
+/** Solo: the crewmate's starting Act II plan ("standard procedure"); the player can change it in the huddle. */
+export const DEFAULT_CREW_PLAN: ClassicalStrategy = BOT_ACT2_PLAN;
 /** Solo: the player's starting Act II plan (the same as the crewmate's). */
 export const DEFAULT_PLAN: ClassicalStrategy = { onGreen: CLOCKWISE, onRed: CLOCKWISE };
 // DECISION: the player's dials start at 0°/0°. Against the bot's 22.5°/157.5° that scores ≈ 68%, below the

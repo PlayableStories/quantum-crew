@@ -161,7 +161,7 @@ function CeilingPanel() {
   return (
     <div className="panel stack tv__ceiling">
       <div className="huge">{S.ceiling.big}</div>
-      {S.ceiling.lines.map((l) => (
+      {[S.ceiling.lead, ...S.ceiling.lines].map((l) => (
         <p key={l} className="tv__line">
           {l}
         </p>

@@ -1,11 +1,14 @@
-// After each batch: how it went, the station, and a 1,000-round test to see past small-sample luck.
+// After each batch (comms open): how it went, the crewmate's reaction, the station, and a 1,000-round test to see past
+// small-sample luck. In Act II the test lands on the plan board.
 import { useEffect } from "react";
 import { playSfx } from "../audio/sfx.ts";
+import { PlanBoard } from "../components/PlanBoard.tsx";
 import { StabilityMeter } from "../components/StabilityMeter.tsx";
 import { StationVisual } from "../components/StationVisual.tsx";
 import { BATCH_SIZE } from "../config.ts";
 import { SURVIVAL_THRESHOLD } from "../shared/chsh.ts";
 import { S } from "../strings.ts";
+import { CrewRadio } from "./CrewRadio.tsx";
 import { actOf, canReportCeiling, debriefAvailable, displayedStability, useSolo } from "./soloStore.ts";
 
 export function Readout() {
@@ -26,6 +29,7 @@ export function Readout() {
     <main className="screen">
       <p className="kicker">{S.readout.kicker(batchNo)}</p>
       <h1>{S.readout.held(wins, BATCH_SIZE)}</h1>
+      <CrewRadio />
       <StationVisual rate={value} />
       <div className="panel">
         <StabilityMeter
@@ -39,6 +43,7 @@ export function Readout() {
         {S.readout.simulate}
         <small>{act === 2 ? S.readout.simulateSub2 : S.readout.simulateSub3}</small>
       </button>
+      {act === 2 && <PlanBoard board={s.board} plan={s.plan} crewPlan={s.crewPlan} />}
       <div className="spacer" />
       {act === 2 ? (
         <>

@@ -1532,3 +1532,192 @@ p {
   border-top: 2px solid var(--edge);
   padding-top: 16px;
 }
+
+/* ---------- Crewmate radio (comms open) ---------- */
+
+.radio-line {
+  border-color: var(--radio);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.radio-line__who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--radio);
+}
+.radio-line__icon {
+  width: 18px;
+  height: 18px;
+}
+.radio-line__text {
+  margin: 0;
+  font-style: italic;
+}
+
+/* ---------- Comms dark (during a batch): a muted radio full of static ---------- */
+
+.comms-dark {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px dashed var(--edge-bright);
+  border-radius: var(--radius);
+  color: var(--ink-muted);
+  font-size: var(--fs-s);
+  overflow: hidden;
+}
+.comms-dark strong {
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.comms-dark__static {
+  flex: none;
+  width: 44px;
+  height: 22px;
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.18) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.1) 0 2px, transparent 2px 5px), var(--panel-raised);
+  animation: static-hiss 180ms steps(3) infinite;
+}
+@keyframes static-hiss {
+  0% {
+    background-position: 0 0, 0 0, 0 0;
+  }
+  50% {
+    background-position: 0 2px, 3px 0, 0 0;
+  }
+  100% {
+    background-position: 0 1px, 1px 0, 0 0;
+  }
+}
+
+/* ---------- Station telemetry (after each round) ---------- */
+
+.telemetry {
+  margin: 0;
+  max-width: 36ch;
+  padding: 6px 10px;
+  border-left: 3px solid var(--edge-bright);
+  background: var(--panel);
+  color: var(--ink-muted);
+  font-size: var(--fs-s);
+  text-align: left;
+}
+.telemetry__head {
+  display: block;
+  color: var(--amber);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ---------- Plan choosers (huddle) ---------- */
+
+.plans {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.plan-option {
+  min-height: 64px;
+  padding: 8px 6px;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  gap: 6px;
+}
+.plan-option__detail {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.plan-option__detail svg {
+  width: 18px;
+  height: 18px;
+}
+.plan-option__detail .light__icon:first-child {
+  color: var(--cool);
+}
+.plan-option__detail .light__icon:nth-child(3) {
+  color: var(--hot);
+  margin-left: 6px;
+}
+
+/* ---------- Plan board (4 × 4) ---------- */
+
+.board__grid {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 3px;
+  table-layout: fixed;
+  font-size: 0.7rem;
+}
+.board__grid th {
+  color: var(--ink-muted);
+  font-weight: 700;
+  line-height: 1.15;
+  padding: 2px;
+  overflow-wrap: anywhere;
+}
+.board__grid thead th {
+  text-align: center;
+  vertical-align: bottom;
+}
+.board__grid tbody th {
+  text-align: right;
+}
+.board__corner {
+  font-size: 0.6rem;
+  text-align: left !important;
+}
+.board__corner span {
+  color: var(--ink);
+}
+.board__cell {
+  height: 38px;
+  border-radius: 4px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+  line-height: 1.1;
+}
+.board__cell small {
+  display: block;
+  font-size: 0.55rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+.board__cell--blank {
+  border: 1px dashed var(--edge);
+}
+.board__cell--high {
+  background: var(--board-high);
+  color: var(--ink);
+}
+.board__cell--low {
+  background: var(--board-low);
+  color: var(--ink-muted);
+}
+/* Engineering's runs: hatched, so the player's own tests stand out. */
+.board__cell--eng {
+  background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0 3px, transparent 3px 7px);
+  color: var(--ink-muted);
+}
+.board__cell--current {
+  outline: 2px solid var(--amber);
+  outline-offset: -2px;
+}
+
+/* ---------- Act III: the crewmate's locked dials ---------- */
+
+.dials--locked {
+  opacity: 0.85;
+}
+.dials--locked .dial button {
+  display: none;
+}

@@ -1,6 +1,11 @@
 // All player-facing text in one place. Edit freely.
 // In-world copy only, up to the debrief: physics words (qubit, Bell, CHSH…) appear only in `debrief`.
 import { ROUND_MS } from "./config.ts";
+import type { RoundResult } from "./shared/chsh.ts";
+import { HOT, roundCause } from "./shared/fiction.ts";
+
+/** The solo crewmate's name, used in every radio line. PLACEHOLDER: pick a name. */
+const CREW_NAME = "CREWMATE_NAME";
 
 export const S = {
   title: "Quantum Crew",
@@ -47,12 +52,111 @@ export const S = {
   plan: {
     kicker: "Strategy huddle",
     title: "Agree a plan",
-    crewmate: "Your crewmate radios in: “I always pump clockwise. Standard procedure.”",
-    blind: "You can't see their sensor. They can't see yours.",
-    whenCool: "When my sensor reads COOL",
-    whenHot: "When my sensor reads HOT",
+    you: "Your plan",
+    crew: (name: string) => `${name}'s plan`,
+    blind: "Once the batch starts, comms go dark: neither of you can see the other's sensor.",
+    test: "Test this plan",
+    testSub: "1,000 rounds, no live play",
+    tested: (pct: string) => `This plan: ${pct} over 1,000 rounds`,
     start: (n: number) => `Start batch ${n}`,
     last: (pct: string) => `Last batch: ${pct} stable`,
+  },
+
+  /** The four Act II plans, in chsh.ts's CLASSICAL_STRATEGIES order. */
+  plans: {
+    name: ["Always clockwise", "Reverse when HOT", "Reverse when COOL", "Always anticlockwise"],
+    short: ["Always CW", "Rev. HOT", "Rev. COOL", "Always ACW"],
+    detail: [
+      "COOL: clockwise · HOT: clockwise",
+      "COOL: clockwise · HOT: anticlockwise",
+      "COOL: anticlockwise · HOT: clockwise",
+      "COOL: anticlockwise · HOT: anticlockwise",
+    ],
+  },
+
+  board: {
+    head: "Plan board · 1,000-round tests",
+    rows: "You",
+    cols: "Crew",
+    eng: "ENG",
+    legend: "Blank = not tested yet. ENG = engineering's run.",
+    cell: (you: string, crew: string, value: string) => `You ${you}, crewmate ${crew}: ${value}`,
+    untested: "not tested",
+  },
+
+  /** Comms are open between batches, dark during one. */
+  comms: {
+    radio: "Radio",
+    dark: "Comms dark",
+    darkSub: "No talking until the batch ends.",
+  },
+
+  /** The station's automatic log after each round: impersonal, both sides, the outcome and its cause. */
+  telemetry: {
+    head: "Station telemetry",
+    line: (r: RoundResult) => {
+      const reading = (l: 0 | 1) => (l === HOT ? "HOT" : "COOL");
+      const sensors = r.x === r.y ? `Both sections ${reading(r.x)}.` : `A ${reading(r.x)} · B ${reading(r.y)}.`;
+      if (r.a === null || r.b === null) return `${sensors} Pump ${r.a === null ? "A" : "B"} not set. Round lost.`;
+      const pumps = r.a === r.b ? "Pumps agreed." : "Pumps fought.";
+      const cause = {
+        circulate: "Coolant circulating. Stable.",
+        carry: "Heat carried to the cool side. Stable.",
+        spike: "Vent locked. Pressure spike.",
+        overheat: "Vent unlocked, no purge. Overheat.",
+        purge: "Vent unlocked. Purge. Stable.",
+        slow: "Round lost.",
+      }[roundCause(r)];
+      return `${sensors} ${pumps} ${cause}`;
+    },
+  },
+
+  /** The solo crewmate: a steady veteran who trusts procedure. Speaks only while comms are open (see solo/crew.ts). */
+  crew: {
+    name: CREW_NAME,
+    opening:
+      "Standard procedure: I always pump clockwise. But it's your call. Set your plan and mine, and I'll fly whatever you pick.",
+    agreeCrew: [
+      "Clockwise every time. Standard procedure. Suits me.",
+      "Reverse when I'm hot. Understood. I'll keep an eye on my gauge.",
+      "Reverse when I'm cool? Not in the manual, but I'll fly it.",
+      "Anticlockwise every time. Backwards, but steady. Fine.",
+    ],
+    agreePlayer: [
+      "You go clockwise every time. Copy.",
+      "You reverse when you're hot. Copy.",
+      "You reverse when you're cool. Copy.",
+      "You go anticlockwise every time. Copy.",
+    ],
+    tested: (pct: string, rate: number) =>
+      rate >= 0.7
+        ? `${pct} over a thousand. Close, but the core wants 80.`
+        : rate <= 0.3
+          ? `${pct}. Let's not fly that one.`
+          : `${pct}. Middling. The core wants 80.`,
+    idea: [
+      "Want to go back to standard? Clockwise every time.",
+      "Same plan again? What if I reverse when I'm hot?",
+      "Same plan again? What if I reverse when I'm cool?",
+      "Same plan again? What if I go anticlockwise every time?",
+    ],
+    allTried: "We've tried every pair between us. Maybe it's time to call engineering.",
+    readout: {
+      overheat: (n: number) => `Round ${n}: we were both hot and pumped the same way. Neither of us could know.`,
+      youReversed: (n: number) => `Round ${n}, I was cool and you reversed. Hard to know from your side.`,
+      iReversed: (n: number) => `Round ${n}, I was hot and fought your pump while you were cool. That one's on me.`,
+      bothCool: (n: number) => `Round ${n}, both cool and we fought each other. That's the plan, not luck.`,
+      timeout: (n: number) => `Round ${n}, your pump never moved. Five seconds goes fast.`,
+      purge: (n: number) => `Round ${n}: both hot and we pumped against each other. Textbook purge.`,
+      perfect: "Twelve for twelve. Don't get used to it.",
+      steady: "Steady batch. Let's see what a thousand rounds say.",
+      act3Good: "Those crystals… that's the steadiest I've seen this ring. Run the thousand to be sure.",
+      act3Bad: "Twelve rounds is a coin toss. Run the thousand before you touch the dials.",
+    },
+    ceiling: "So it was never us. Every pair fails the same way.",
+    tool: "Engineering never sends anything this fancy. I'll set mine; your dials are your business.",
+    tuning: "Mine are locked at 22.5° for cool and 157.5° for hot. That's what engineering's sheet says, and I don't touch what works.",
+    dialsHead: (name: string) => `${name}'s dials (locked)`,
   },
 
   batch: {
@@ -69,18 +173,14 @@ export const S = {
     crewmate: "Crewmate",
   },
 
-  /** Solo round results: what physically happened (see roundCause in shared/fiction.ts). */
+  /** Solo round result titles: what physically happened (see roundCause in shared/fiction.ts). */
   outcome: {
-    circulate: { title: "Circulating", line: "Both sections COOL and the pumps agree: coolant flows round the ring." },
-    carry: { title: "Heat carried off", line: "One section HOT and the pumps agree: circulation carries the heat to the cool side." },
-    spike: {
-      title: "Pressure spike",
-      line: "Both sections COOL and the pumps fought: the vent is locked, so pressure spiked.",
-      lineHot: "One section HOT and the pumps fought: the vent stays locked unless BOTH sections are HOT, so pressure spiked.",
-    },
-    overheat: { title: "Overheat", line: "Both sections HOT and the pumps agree: hot coolant just goes round in circles and the core cooks." },
-    purge: { title: "Purge", line: "Both sections HOT, so the vent unlocked, and the opposed pumps forced the hot coolant out." },
-    slow: { title: "Too slow", line: "Your pump wasn't set in time, so the round is lost." },
+    circulate: { title: "Circulating" },
+    carry: { title: "Heat carried off" },
+    spike: { title: "Pressure spike" },
+    overheat: { title: "Overheat" },
+    purge: { title: "Purge" },
+    slow: { title: "Too slow" },
   },
 
   readout: {
@@ -109,8 +209,15 @@ export const S = {
   ceiling: {
     kicker: "Engineering report",
     big: "75%",
+    /** Event mode (TV): engineering's summary. Solo shows the plan board and `engineering` instead. */
+    lead: "We tried every plan your crew could make. Every single one.",
+    engineering: (tested: number, ran: number) =>
+      tested === 0
+        ? `You didn't test any plans. We ran all ${ran}.`
+        : ran === 0
+          ? `You tested all ${tested}. We checked your numbers.`
+          : `You tested ${tested}. We ran the other ${ran}.`,
     lines: [
-      "We tried every plan your crew could make. Every single one.",
       "None of them holds more than 75% of rounds: the best plan loses one in four. Not on average, not ever.",
       "The core can take one bad round in five. The station needs 80%.",
     ],
@@ -131,7 +238,7 @@ export const S = {
   tuning: {
     kicker: "Tool tuning",
     title: "Tune your dials",
-    crewmate: "Your crewmate's tool is tuned. You can't see their dials.",
+    yours: "Your dials",
     hintButton: "Ask engineering for a hint",
     hint: "Try making your two dials 45° apart, and your partner's offset by half that.",
     start: (n: number) => `Start batch ${n}`,
@@ -152,6 +259,7 @@ export const S = {
         body: [
           "Under the station is the CHSH game (Clauser, Horne, Shimony and Holt, 1969). The sensors are its random input bits x, y (COOL = 0, HOT = 1), the pumps its output bits a, b (CLOCKWISE = 0, ANTICLOCKWISE = 1), and “match unless both HOT” is its rule: a ⊕ b = x ∧ y. The vent is the story for the flipped case.",
           "The wall you hit in Act II is a Bell inequality. Two players who can't talk, with any plan agreed in advance (even a random one), win at most 75% of rounds.",
+          "Mixing plans at random doesn't help: a random mix only averages cells on the plan board, so it can never beat the best cell.",
         ],
         stat: (pct: string) => `Your Act II rounds: ${pct}`,
       },

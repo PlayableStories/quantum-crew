@@ -40,6 +40,18 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   `--hot` tokens), never colour alone; win/loss keeps green/red. Solo results name the cause; event phones and TV
   only get win/timeout from the server, so they show Stable / Leak. `RingDiagram` sits in the rule on the solo intro
   and plan screens. Keys: A / ← = ANTICLOCKWISE (left button), C / → = CLOCKWISE.
+- **Solo crewmate (2026-10-16):** the player sets the whole Act II joint plan: their own `plan` and the store's
+  `crewPlan` (default `DEFAULT_CREW_PLAN`, always clockwise), chosen by name from `src/solo/plans.ts` (the four
+  `CLASSICAL_STRATEGIES`, same order). `runSimulation` in the huddle or the Act II readout tests the pair and records
+  a cell on the 4×4 **plan board** (`board`, `by: "player"`); `reportCeiling` runs every untested cell
+  (`by: "engineering"`, count in `engineeringRan`). **Comms rule:** the crewmate speaks only while comms are open
+  (huddle, readout, ceiling, tool reveal, tuning). Every line is picked in `src/solo/crew.ts` `crewLines()`, which
+  returns nothing in `act2Batch` / `act3Batch`; screens render it through `CrewRadio` → `RadioLine`. Batches show
+  `CommsDark` and per-round **station telemetry** (`S.telemetry.line`), never crewmate text (`crew.test.ts`,
+  `comms.test.tsx` enforce this). The store only records `crewCue`; readout reactions are derived from the batch.
+  The crewmate's name is the `CREW_NAME` constant in `strings.ts` (placeholder until the user picks one). Act III
+  tuning shows the crewmate's dials locked at `OPTIMAL_TUNING.B`. Event mode is unchanged: empty seats still play
+  `BOT_ACT2_PLAN`, and the TV's ceiling text uses `S.ceiling.lead`.
 - **Engines used:** Atlas assets made by William on platform.mothquantum.com (tessa-image-v1 station art, blur-v1
   degradation levels, entanglement-shader-v1 tool reveal, a sound engine for sfx). The in-game entanglement is a
   classical simulation of |Φ+⟩ in `src/shared/chsh.ts`; say so honestly in the README and credits.

@@ -35,15 +35,22 @@ the core can take one bad round in five, and no more.
 | One HOT | ✓ **Heat carried off** to the cool side | ✗ **Pressure spike**: the vent is still locked |
 | Both HOT | ✗ **Overheat**: hot coolant goes round in circles | ✓ **Purge**: the vent is unlocked and the hot coolant goes out |
 
+**Comms.** The rule only forbids talking *during* a round, and solo mode shows that with three states:
+- **Comms open** (the huddle, the readout, the engineering report, the tool reveal, tuning): the crewmate talks on the
+  radio. They're a steady veteran who trusts procedure.
+- **Comms dark** (during a batch): the radio shows static and the crewmate says nothing.
+- **Station telemetry** (after each round): an impersonal log of both sensors, both pumps and the outcome, e.g.
+  *"Both sections HOT. Pumps agreed. Vent unlocked, no purge. Overheat."*
+
 ```mermaid
 flowchart TD
   intro["Intro: station log, the rule, 80% to survive"] --> plan
   subgraph act2 ["Act II: plans"]
-    plan["Agree a plan<br/>crewmate: 'I always pump clockwise'"] --> batch2["Batch: 12 live rounds"]
-    batch2 --> read2["Readout + Run 1,000 rounds"]
+    plan["Huddle: set both plans<br/>test any pair, plan board"] --> batch2["Batch: 12 live rounds<br/>comms dark, telemetry"]
+    batch2 --> read2["Readout: crewmate reacts<br/>+ Run 1,000 rounds"]
     read2 -- "Back to the huddle" --> plan
   end
-  read2 -- "Call engineering<br/>(after 1 batch)" --> ceiling["Engineering report: 75%"]
+  read2 -- "Call engineering<br/>(after 1 batch)" --> ceiling["Engineering report: 75%<br/>fills the rest of the board"]
   ceiling --> tool["The Entanglement Tool arrives"]
   tool --> tune
   subgraph act3 ["Act III: the tool"]
@@ -55,32 +62,37 @@ flowchart TD
   debrief --> credits["Credits → Play again / Home"]
 ```
 
-1. **Agree a plan (Act II).** In the strategy huddle your crewmate radios in: *"I always pump clockwise. Standard
-   procedure."* You choose a pump direction for COOL and one for HOT. Against a crewmate who always pumps clockwise,
-   the best any plan can do is 75%, so the best plan loses one round in four:
+1. **Agree a plan (Act II).** The crewmate opens with *"Standard procedure: I always pump clockwise."* but leaves the
+   call to you: you set the **whole joint plan**, yours and theirs, from four named plans (always clockwise,
+   reverse when HOT, reverse when COOL, always anticlockwise). The crewmate agrees with a short comment. **Test this
+   plan (1,000 rounds)** tries the pair without live play, and every test fills a cell on the **plan board**: your
+   four plans against theirs. The board's shape is the wall: 8 pairs reach 75%, 8 reach 25%, and none beats 75%.
 
-   | Your plan (COOL / HOT) | Win rate |
-   |---|---|
-   | CLOCKWISE / CLOCKWISE | 75% |
-   | CLOCKWISE / ANTICLOCKWISE | 75% |
-   | ANTICLOCKWISE / ANTICLOCKWISE | 25% |
-   | ANTICLOCKWISE / CLOCKWISE | 25% |
+   | You ↓ · Crewmate → | Always clockwise | Reverse when HOT | Reverse when COOL | Always anticlockwise |
+   |---|---|---|---|---|
+   | **Always clockwise** | 75% | 75% | 25% | 25% |
+   | **Reverse when HOT** | 75% | 25% | 75% | 25% |
+   | **Reverse when COOL** | 25% | 75% | 25% | 75% |
+   | **Always anticlockwise** | 25% | 25% | 75% | 75% |
 
-2. **Play a batch.** Twelve live rounds. Your plan's direction is tagged "Plan", but you set the pump yourself and
-   can go against it. Each result names what happened (Circulating, Heat carried off, Purge, Pressure spike, Overheat
-   or Too slow) and shows both sensors and both pumps. A pressure spike with only one side HOT says why: the vent
-   stays locked unless BOTH are HOT. Running out of time counts as a loss.
-3. **Run 1,000 rounds.** After each batch, the readout shows how many rounds held, and the station art degrades as
-   stability drops. Twelve rounds are noisy, so **Run 1,000 rounds** tests your *plan* (not your taps) against
-   1,000 fresh pairs of sensor readings. Whatever you try, it never beats 75%.
-4. **Call engineering.** After the first batch you can call engineering (or go back and try more plans).
-   *"We tried every plan your crew could make. Every single one. None of them holds more than 75%: the best plan
-   loses one in four."* The core can take one in five. *"Then we need something that isn't a plan."*
+2. **Play a batch.** Twelve live rounds with **comms dark**. The crewmate plays the plan you set for them. Your
+   plan's direction is tagged "Plan", but you set the pump yourself and can go against it. After each round, the
+   **station telemetry** reports both sensors, both pumps and the outcome (Circulating, Heat carried off, Purge,
+   Pressure spike, Overheat or Too slow). Running out of time counts as a loss.
+3. **Readout.** Comms are back on: the crewmate reacts to the batch (e.g. *"Round 7, I was cool and you reversed.
+   Hard to know from your side."*). Twelve rounds are noisy, so **Run 1,000 rounds** tests the joint *plan* (not your
+   taps) and adds it to the board. Back in the huddle with the same plan, the crewmate suggests an idea for a pair
+   you haven't tried.
+4. **Call engineering.** After the first batch you can call engineering (or go back and try more plans). Engineering
+   runs every pair you didn't test and fills in the board (marked ENG): *"You tested 5. We ran the other 11."*
+   *"None of them holds more than 75%: the best plan loses one in four."* The core can take one in five. The
+   crewmate: *"So it was never us."* Then: *"Then we need something that isn't a plan."*
 5. **Receive the tool.** The game changes look (a live Entanglement Shader, two synced crystals). *Two linked
    crystals have arrived: one in your tool, one in your crewmate's at Table B.* You turn a dial and tap
    **MEASURE**, and the crystal decides your pump direction.
 6. **Tune your dials (Act III).** One dial for COOL and one for HOT, 8 stops each (0° to 157.5° in 22.5° steps),
-   starting at 0°/0°. Your crewmate's tool is already tuned (hidden: 22.5° for COOL, 157.5° for HOT). In each round
+   starting at 0°/0°. Your crewmate's dials are shown, locked at 22.5° for COOL and 157.5° for HOT ("that's what
+   engineering's sheet says"); you tune only your own. In each round
    your dial turns to the angle for your sensor and you tap MEASURE. You choose *how* the crystal is read, not the
    pump direction. After a batch under 80%, you can ask engineering for a hint: *"Try making your two dials 45° apart, and
    your partner's offset by half that."*
@@ -95,7 +107,8 @@ flowchart TD
    so every player reaches the end.
 8. **Debrief.** The physics words appear only here, in four steps:
    - **No plan beats 75%:** the fiction mapped back to the game (sensors = input bits, pumps = output bits, "match
-     unless both HOT" = the CHSH rule), and the wall was a Bell inequality, with your Act II rate.
+     unless both HOT" = the CHSH rule), and the wall was a Bell inequality, with your Act II rate. Mixing plans at
+     random only averages cells on the plan board, so it can never beat the best cell.
    - **Entanglement broke through:** the crystals agree with probability cos²(θA − θB), up to 85.4% (the Tsirelson
      bound), with your best test and the optimal dials for both tables.
    - **But no messages:** over 10,000 rounds your pump runs clockwise about half the time whatever your crewmate's
@@ -111,11 +124,13 @@ Open the app and choose **Solo demo**. It takes about 6 minutes on a phone or a 
    you set your pump **CLOCKWISE** or **ANTICLOCKWISE** within 5 seconds. The station rule is always on screen:
    *pumps MATCH, unless both sensors are HOT, then they must DIFFER* (the vent only unlocks on a double HOT).
    The station needs **80%**.
-2. **Act II: plans.** Your crewmate tells you their plan ("I always pump clockwise"). Pick yours, then play batches of 12
-   rounds. After each batch, **Run 1,000 rounds** tests your plan without small-sample luck. Whatever you try,
-   it never beats 75%.
-3. **Engineering report.** After the first batch you can call engineering (or try more plans first): no plan beats 75%.
-4. **Act III: the Entanglement Tool.** You get two dials, one for COOL and one for HOT. In each round, tap
+2. **Act II: plans.** In the huddle, set your plan *and* your crewmate's, and test any pair over 1,000 rounds on the
+   plan board. Then play batches of 12 rounds (comms dark; the station's telemetry reports each round). Between
+   batches the crewmate reacts on the radio. Whatever you try, no pair beats 75%.
+3. **Engineering report.** After the first batch you can call engineering (or try more plans first): they fill in
+   every pair you didn't test, and none beats 75%.
+4. **Act III: the Entanglement Tool.** You get two dials, one for COOL and one for HOT; your crewmate's are locked
+   where they set them. In each round, tap
    **MEASURE** and the tool sets your pump. Experiment until the 1,000-round test passes 80%. After a batch under
    80%, a hint appears; after two batches the debrief opens either way.
 5. **Debrief.** You learn the physics and see your own numbers, then the credits.

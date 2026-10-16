@@ -1,14 +1,16 @@
 // Solo mode as a state machine: the player is Table A, an AI crewmate is Table B. No server, no I/O.
-// Act II: the crewmate always pumps clockwise, so no plan beats 75%. Act III: both share the Entanglement Tool, and the
-// crewmate's dials sit at the optimal Table B setting, so the player can reach ≈ 85% by finding their own.
+// Act II: the player sets the whole joint plan (their own and the crewmate's) and can test any pair on the plan
+// board; no pair beats 75%, and engineering fills in the untested cells. Act III: both share the Entanglement Tool,
+// and the crewmate's dials sit at the optimal Table B setting, so the player can reach ≈ 85% by finding their own.
+// What the crewmate says is chosen in crew.ts from this state; the store only records what they're reacting to.
 // Actions take `now` (ms) so tests can drive the clock; the Batch screen calls them from timers.
 import { createStore } from "zustand/vanilla";
 import { useStore } from "zustand";
 import {
   ACT2_BATCHES,
   BATCH_SIZE,
-  BOT_ACT2_PLAN,
   DEBRIEF_AFTER_BATCHES,
+  DEFAULT_CREW_PLAN,
   DEFAULT_PLAN,
   DEFAULT_TUNING,
   HINT_AFTER_FAILED_BATCHES,
@@ -36,6 +38,7 @@ import {
   type Valve,
 } from "../shared/chsh.ts";
 import { mulberry32, randomSeed, type Rng } from "../shared/rng.ts";
+import { ALL_CELLS, cellKey, planOf, type Board, type CellKey, type PlanId } from "./plans.ts";
 
 export type Phase =
   | "intro"
@@ -63,10 +66,20 @@ export type LiveRound = {
 
 export type SimRun = SimulationResult & { act: Act; rounds: number };
 
+/** What the crewmate is reacting to in the huddle (crew.ts turns it into words). */
+export type CrewCue = "opening" | "agreeCrew" | "agreePlayer" | "tested" | "idea";
+
 export type SoloData = {
   phase: Phase;
   debriefStep: number;
   plan: ClassicalStrategy;
+  /** Act II: the crewmate's half of the joint plan, set by the player in the huddle. */
+  crewPlan: ClassicalStrategy;
+  /** Act II plan board: 1,000-round results by (your plan, crewmate's plan). Blank until tested. */
+  board: Board;
+  /** How many cells engineering ran at the report (null before it). */
+  engineeringRan: number | null;
+  crewCue: CrewCue;
   tuning: TuningConfig;
   round: LiveRound | null;
   /** Rounds of the current (or last) batch. */
@@ -85,6 +98,8 @@ export type SoloData = {
 export type SoloActions = {
   start(): void;
   setPlan(light: Light, valve: Valve): void;
+  /** Act II: the player sets a whole plan for themselves or for the crewmate. */
+  choosePlan(who: "player" | "crew", plan: ClassicalStrategy): void;
   setDial(light: Light, deg: number): void;
   beginBatch(): void;
   /** Starts the next round, or ends the batch after the last one. */
@@ -111,6 +126,10 @@ const initialData = (): SoloData => ({
   phase: "intro",
   debriefStep: 0,
   plan: DEFAULT_PLAN,
+  crewPlan: DEFAULT_CREW_PLAN,
+  board: {},
+  engineeringRan: null,
+  crewCue: "opening",
   tuning: DEFAULT_TUNING,
   round: null,
   batch: [],
@@ -165,7 +184,13 @@ export function createSoloStore(seed: number = randomSeed()) {
       start: () => set({ phase: "act2Plan" }),
 
       setPlan: (light, valve) =>
-        set((s) => ({ plan: light === 0 ? { ...s.plan, onGreen: valve } : { ...s.plan, onRed: valve } })),
+        set((s) => ({
+          plan: light === 0 ? { ...s.plan, onGreen: valve } : { ...s.plan, onRed: valve },
+          crewCue: "agreePlayer",
+        })),
+
+      choosePlan: (who, plan) =>
+        set(who === "player" ? { plan, crewCue: "agreePlayer" } : { crewPlan: plan, crewCue: "agreeCrew" }),
 
       setDial: (light, deg) =>
         set((s) => ({ tuning: light === 0 ? { ...s.tuning, greenDeg: deg } : { ...s.tuning, redDeg: deg } })),
@@ -188,7 +213,7 @@ export function createSoloStore(seed: number = randomSeed()) {
       answer: (valve, now) => {
         const { phase, round } = get();
         if (phase !== "act2Batch" || !round || round.result || now > round.deadline) return;
-        resolve(scoreRound(round.x, round.y, valve, classicalValve(BOT_ACT2_PLAN, round.y)));
+        resolve(scoreRound(round.x, round.y, valve, classicalValve(get().crewPlan, round.y)));
       },
 
       measure: (now) => {
@@ -204,32 +229,45 @@ export function createSoloStore(seed: number = randomSeed()) {
         const { phase, round } = get();
         if (!round || round.result || now < round.deadline) return;
         // The crewmate still acts; the player's missing pump setting makes it a loss.
-        const b = phase === "act2Batch" ? classicalValve(BOT_ACT2_PLAN, round.y) : measureFirst(rng);
+        const b = phase === "act2Batch" ? classicalValve(get().crewPlan, round.y) : measureFirst(rng);
         resolve(scoreRound(round.x, round.y, null, b));
       },
 
       runSimulation: () => {
         const s = get();
-        const act = actOf(s.phase);
-        const strategy =
-          act === 2
-            ? classicalStrategyFn(s.plan, BOT_ACT2_PLAN)
-            : quantumStrategyFn(s.tuning, OPTIMAL_TUNING.B, "A");
-        const result = simulate(strategy, SIM_ROUNDS, rng);
-        set({
-          lastSim: { ...result, act, rounds: SIM_ROUNDS },
-          ...(act === 3 ? { bestAct3Sim: Math.max(s.bestAct3Sim, result.winRate) } : {}),
-        });
+        if (s.phase === "act2Plan" || s.phase === "act2Readout") {
+          // Tests the joint plan and records it on the board (a re-test replaces the cell).
+          const result = simulate(classicalStrategyFn(s.plan, s.crewPlan), SIM_ROUNDS, rng);
+          set({
+            lastSim: { ...result, act: 2, rounds: SIM_ROUNDS },
+            board: { ...s.board, [cellKey(s.plan, s.crewPlan)]: { rate: result.winRate, by: "player" } },
+            ...(s.phase === "act2Plan" ? { crewCue: "tested" as const } : {}),
+          });
+        } else if (s.phase === "act3Plan" || s.phase === "act3Readout") {
+          const result = simulate(quantumStrategyFn(s.tuning, OPTIMAL_TUNING.B, "A"), SIM_ROUNDS, rng);
+          set({ lastSim: { ...result, act: 3, rounds: SIM_ROUNDS }, bestAct3Sim: Math.max(s.bestAct3Sim, result.winRate) });
+        }
       },
 
       nextBatch: () => {
         const { phase } = get();
-        if (phase === "act2Readout") set({ phase: "act2Plan" });
+        // Back in the huddle with the plan that just played: the crewmate offers an idea.
+        if (phase === "act2Readout") set({ phase: "act2Plan", crewCue: "idea", lastSim: null });
         else if (phase === "act3Readout") set({ phase: "act3Plan" });
       },
 
       reportCeiling: () => {
-        if (get().phase === "act2Readout") set({ phase: "ceiling" });
+        const s = get();
+        if (s.phase !== "act2Readout") return;
+        // Engineering runs every cell the crew didn't test, 1,000 rounds each.
+        const untested = ALL_CELLS.filter((k) => !s.board[k]);
+        const board: Board = { ...s.board };
+        for (const k of untested) {
+          const [p, c] = k.split("-").map(Number) as [PlanId, PlanId];
+          const result = simulate(classicalStrategyFn(planOf(p), planOf(c)), SIM_ROUNDS, rng);
+          board[k] = { rate: result.winRate, by: "engineering" };
+        }
+        set({ phase: "ceiling", board, engineeringRan: untested.length });
       },
       revealTool: () => {
         if (get().phase === "ceiling") set({ phase: "toolReveal" });
@@ -253,6 +291,10 @@ export function createSoloStore(seed: number = randomSeed()) {
 // --- Derived ------------------------------------------------------------------------------------
 
 export const canReportCeiling = (s: SoloData) => s.act2Batches >= ACT2_BATCHES;
+
+/** Cells the player tested themselves (engineering's runs don't count). */
+export const playerTested = (s: Pick<SoloData, "board">): CellKey[] =>
+  ALL_CELLS.filter((k) => s.board[k]?.by === "player");
 
 export const hintAvailable = (s: SoloData) => s.act3FailedBatches >= HINT_AFTER_FAILED_BATCHES;
 

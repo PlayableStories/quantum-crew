@@ -5,6 +5,7 @@ import { atlasUrl, isVideo } from "../assets/atlas/manifest.ts";
 import { playSfx } from "../audio/sfx.ts";
 import { Crystals, EntanglementSurface, hasEntanglementShader } from "../components/EntanglementSurface.tsx";
 import { S } from "../strings.ts";
+import { CrewRadio } from "./CrewRadio.tsx";
 import { useSolo } from "./soloStore.ts";
 
 export function ToolReveal() {
@@ -22,6 +23,7 @@ export function ToolReveal() {
           <p key={l}>{l}</p>
         ))}
       </div>
+      <CrewRadio />
       <div className="spacer" />
       <button className="btn btn--primary" onClick={openTool}>
         {S.tool.go}

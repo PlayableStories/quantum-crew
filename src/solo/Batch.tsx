@@ -6,6 +6,7 @@ import { playSfx } from "../audio/sfx.ts";
 import { Countdown } from "../components/Countdown.tsx";
 import { Dial } from "../components/Dial.tsx";
 import { PumpIcon } from "../components/PumpIcon.tsx";
+import { CommsDark } from "../components/RadioLine.tsx";
 import { SensorLight } from "../components/SensorLight.tsx";
 import { StabilityMeter } from "../components/StabilityMeter.tsx";
 import { BATCH_SIZE, LEAD_MS, RESULT_MS, ROUND_MS } from "../config.ts";
@@ -59,6 +60,7 @@ export function Batch() {
       </div>
       <StabilityMeter value={displayedStability(s)} label={S.readout.stability} showCeiling={act === 3} showLimit={act === 3} />
       <Countdown id={round ? round.n : "lead"} ms={round ? ROUND_MS : LEAD_MS} paused={!live} />
+      <CommsDark />
 
       {!round && (
         <div className="stack screen--center spacer">
@@ -103,15 +105,15 @@ export function Batch() {
   );
 }
 
+/** The round's outcome, reported by the station's telemetry (not the crewmate: comms are dark). */
 function RoundOutcome({ result }: { result: RoundResult }) {
-  const cause = roundCause(result);
-  const text = S.outcome[cause];
-  // A fight with only one side HOT is the case players most often expect to purge: say why the vent stayed shut.
-  const line = cause === "spike" && result.x !== result.y ? S.outcome.spike.lineHot : text.line;
+  const title = S.outcome[roundCause(result)].title;
   return (
     <div className={`result spacer ${result.win ? "result--win" : "result--loss"}`} role="status">
-      <div className="result__verdict">{result.win ? "✓ " : "✗ "}{text.title}</div>
-      <p className="result__cause">{line}</p>
+      <div className="result__verdict">{result.win ? "✓ " : "✗ "}{title}</div>
+      <p className="telemetry">
+        <span className="telemetry__head">{S.telemetry.head}</span> {S.telemetry.line(result)}
+      </p>
       <div className="result__pair panel">
         <Side who={S.batch.you} light={result.x} pump={result.a} />
         <Side who={S.batch.crewmate} light={result.y} pump={result.b} />
