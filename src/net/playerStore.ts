@@ -1,4 +1,4 @@
-// A phone's connection: joins a room at a table, receives only its own light, and sends valve intents.
+// A phone's connection: joins a room at a table, receives only its own sensor reading, and sends pump intents (`player:valve` on the wire).
 import { create } from "zustand";
 import type { ClassicalStrategy, Light, Table, TuningConfig, Valve } from "../shared/chsh.ts";
 import type { Act, RoomState } from "../shared/protocol.ts";
@@ -11,7 +11,7 @@ const KEY = "qc-player";
 export type Seat = { room: string; name: string; table: Table };
 
 /**
- * `answered`: the valve this phone set (Act II) or got back from MEASURE (Act III). `measuring`: MEASURE was tapped
+ * `answered`: the pump direction this phone set (Act II) or got back from MEASURE (Act III). `measuring`: MEASURE was tapped
  * and the result hasn't arrived yet.
  */
 type LiveRound = {

@@ -28,6 +28,18 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
 - **Goal:** a Spaceteam-style co-op party game (two tables, phones + a shared TV) plus a solo mode for judges. Players
   feel the 75% classical ceiling of the CHSH game, then beat it (≈ 85.4%) with a shared "Entanglement Tool".
   Physics words appear only in the debrief.
+- **Fiction (2026-10-16, coolant ring):** coolant runs round a ring through both sections; each table runs its
+  section's pump CLOCKWISE or ANTICLOCKWISE; sensors read COOL or HOT (random reactor flares); a relief vent between
+  the sections unlocks only when BOTH are HOT. Outcomes: both COOL + agree = Circulating, one HOT + agree = Heat
+  carried off, both HOT + fight = Purge (wins); pumps fight with the vent locked = Pressure spike, both HOT + agree =
+  Overheat (losses). 80% = "the core can take one bad round in five"; 75% = "the best plan loses one in four".
+  **The code keeps the maths names:** `GREEN/RED/OPEN/CLOSED`, `Valve`, `onGreen/onRed`, `greenDeg/redDeg`,
+  `partnerGreen/partnerRed`, `player:valve`. `src/shared/fiction.ts` aliases them (COOL = GREEN = 0, HOT = RED = 1,
+  CLOCKWISE = OPEN = 0, ANTICLOCKWISE = CLOSED = 1) and has `roundCause()`; UI code uses the aliases. Never rename in
+  `chsh.ts`, protocol or tests for the story's sake. Lights are blue/orange with snowflake/flame icons (`--cool` /
+  `--hot` tokens), never colour alone; win/loss keeps green/red. Solo results name the cause; event phones and TV
+  only get win/timeout from the server, so they show Stable / Leak. `RingDiagram` sits in the rule on the solo intro
+  and plan screens. Keys: A / ← = ANTICLOCKWISE (left button), C / → = CLOCKWISE.
 - **Engines used:** Atlas assets made by William on platform.mothquantum.com (tessa-image-v1 station art, blur-v1
   degradation levels, entanglement-shader-v1 tool reveal, a sound engine for sfx). The in-game entanglement is a
   classical simulation of |Φ+⟩ in `src/shared/chsh.ts`; say so honestly in the README and credits.
@@ -63,14 +75,14 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
 - **Sound (M5):** `audio/sfx.ts` plays `sfx-*` files or a Web Audio stand-in; mute per context (solo/tv/phone) in
   localStorage, defaults on/on/off; audio unlocks on the first tap. Triggers: win chime (solo round won, TV when
   ≥ half the pairs held, phone flash), alarm (batch ends < 80%, TV rolling crosses below 80%), reveal (tool).
-- **Decisions:** marginals in `simulate` are the fraction of CLOSED valves. In simulation, who measures first is a coin
+- **Decisions:** marginals in `simulate` are the fraction of ANTICLOCKWISE pumps (bit 1). In simulation, who measures first is a coin
   flip per round unless `order` is given. Solo: the player always measures first; Act II plan pickers feed the
   1,000-round test (rounds are tapped live); solo pacing (2026-10-06, user request): 5 s rounds, 2.2 s result,
   1 Act II batch before the engineering report; the meter spans 50–100%; the 75 line appears from the ceiling reveal
   and 85.4 in Act III; debrief unlocks at a ≥ 80% 1,000-round test or after 2 Act III batches; hint after 1 Act III
   batch under 80% (both lowered 2026-10-06 at the user's request). No framer-motion yet (CSS animations suffice); sounds and mute toggle are M5.
   Event: rounds 3.5 s (MP_ROUND_MS); the huddle's end auto-starts the batch; a round resolves early once everyone
-  answered; joiners mid-batch are seated after it; max 4 per table; empty seat = bot (always OPEN in Act II);
+  answered; joiners mid-batch are seated after it; max 4 per table; empty seat = bot (always pumps clockwise in Act II);
   the TV QR uses the URL the TV was opened at. Act III: bots measure at round start (always first); tunings snap to
   the 8 dial stops; the tool unlocks only after the ceiling reveal; hint and debrief step are TV-local state;
   per-seat marginals are sent only in the debrief phase (plus a pooled "whole crew" row).

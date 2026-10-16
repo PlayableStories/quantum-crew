@@ -6,10 +6,21 @@ export const S = {
   title: "Quantum Crew",
   rule: {
     head: "Station rule",
-    body: "Valves must MATCH, unless BOTH sensors are RED. Then they must DIFFER.",
+    body: "Keep the coolant flowing one way round the ring. If BOTH sections run HOT, pump against each other to purge.",
+    vent: "The relief vent between the sections unlocks only when BOTH sensors read HOT. Nobody can see whether it's unlocked.",
+    quick: "Quick rule: pumps MATCH, unless both sensors are HOT. Then they must DIFFER.",
   },
-  light: { 0: "GREEN", 1: "RED" } as const,
-  valve: { 0: "OPEN", 1: "CLOSED" } as const,
+  light: { 0: "COOL", 1: "HOT" } as const,
+  pump: { 0: "CLOCKWISE", 1: "ANTICLOCKWISE" } as const,
+
+  ring: {
+    label:
+      "The coolant ring: Section A and Section B each have a pump that runs clockwise or anticlockwise. A relief vent between them unlocks only when both sections are HOT.",
+    a: "A · you",
+    b: "B · crewmate",
+    vent: "Vent",
+    ventNote: "unlocks only when BOTH are HOT",
+  },
 
   landing: {
     tagline: "Keep the station alive. Some problems no plan can solve.",
@@ -25,21 +36,21 @@ export const S = {
   intro: {
     kicker: "Station log · shift 1",
     lines: [
-      "The station's coolant runs through two sections. You are at Table A. Your crewmate, an AI, is at Table B.",
-      "Each round, your section's sensor lights GREEN or RED. You each set a valve: OPEN or CLOSED.",
-      `No talking between sections during a round. You have ${ROUND_MS / 1000} seconds.`,
+      "The station's coolant runs round a ring that passes through two sections. You are at Table A and run your section's pump. Your crewmate, an AI, runs the pump at Table B.",
+      "The reactor flares at random. Each round your sensor reads COOL or HOT: you can't predict it, and you can't see your crewmate's.",
+      `You each set your pump: CLOCKWISE or ANTICLOCKWISE. No talking between sections during a round. You have ${ROUND_MS / 1000} seconds.`,
     ],
-    survival: "The station needs 80% stability to survive.",
+    survival: "The station needs 80% stability. The core can take one bad round in five, and no more.",
     go: "Take your post",
   },
 
   plan: {
     kicker: "Strategy huddle",
     title: "Agree a plan",
-    crewmate: "Your crewmate radios in: “I always OPEN, whatever my light.”",
-    blind: "You can't see their light. They can't see yours.",
-    whenGreen: "When my light is GREEN",
-    whenRed: "When my light is RED",
+    crewmate: "Your crewmate radios in: “I always pump clockwise. Standard procedure.”",
+    blind: "You can't see their sensor. They can't see yours.",
+    whenCool: "When my sensor reads COOL",
+    whenHot: "When my sensor reads HOT",
     start: (n: number) => `Start batch ${n}`,
     last: (pct: string) => `Last batch: ${pct} stable`,
   },
@@ -47,7 +58,7 @@ export const S = {
   batch: {
     label: (n: number) => `Batch ${n}`,
     round: (n: number, total: number) => `Round ${n}/${total}`,
-    incoming: "Lights incoming…",
+    incoming: "Sensors warming up…",
     yourLight: "Your sensor",
     planTag: "Plan",
     measure: "Measure",
@@ -58,14 +69,28 @@ export const S = {
     crewmate: "Crewmate",
   },
 
+  /** Solo round results: what physically happened (see roundCause in shared/fiction.ts). */
+  outcome: {
+    circulate: { title: "Circulating", line: "Both sections COOL and the pumps agree: coolant flows round the ring." },
+    carry: { title: "Heat carried off", line: "One section HOT and the pumps agree: circulation carries the heat to the cool side." },
+    spike: {
+      title: "Pressure spike",
+      line: "Both sections COOL and the pumps fought: the vent is locked, so pressure spiked.",
+      lineHot: "One section HOT and the pumps fought: the vent stays locked unless BOTH sections are HOT, so pressure spiked.",
+    },
+    overheat: { title: "Overheat", line: "Both sections HOT and the pumps agree: hot coolant just goes round in circles and the core cooks." },
+    purge: { title: "Purge", line: "Both sections HOT, so the vent unlocked, and the opposed pumps forced the hot coolant out." },
+    slow: { title: "Too slow", line: "Your pump wasn't set in time, so the round is lost." },
+  },
+
   readout: {
     kicker: (n: number) => `Batch ${n} complete`,
     held: (wins: number, total: number) => `${wins} of ${total} rounds held`,
     stability: "Station stability",
     actSoFar: (n: number) => `All ${n} rounds this shift`,
     simulate: "Run 1,000 rounds",
-    simulateSub2: "Test your plan against 1,000 more lights",
-    simulateSub3: "Test your tool settings against 1,000 more lights",
+    simulateSub2: "Test your plan against 1,000 more sensor readings",
+    simulateSub3: "Test your tool settings against 1,000 more sensor readings",
     simLabel: "1,000-round test",
     simResult: (pct: string) => `1,000-round test: ${pct}`,
     again2: "Back to the huddle",
@@ -86,8 +111,8 @@ export const S = {
     big: "75%",
     lines: [
       "We tried every plan your crew could make. Every single one.",
-      "None of them holds more than 75% of rounds. Not on average, not ever.",
-      "The station needs 80%.",
+      "None of them holds more than 75% of rounds: the best plan loses one in four. Not on average, not ever.",
+      "The core can take one bad round in five. The station needs 80%.",
     ],
     go: "Then we need something that isn't a plan",
   },
@@ -97,8 +122,8 @@ export const S = {
     title: "The Entanglement Tool",
     lines: [
       "Two linked crystals have arrived. One sits in your tool. The other is in your crewmate's tool at Table B.",
-      "Turn the dial. Tap MEASURE. The crystal decides your valve: OPEN or CLOSED.",
-      "Your crewmate has already tuned theirs. Set one dial for GREEN and one for RED, and find what holds.",
+      "Turn the dial. Tap MEASURE. The crystal decides your pump: CLOCKWISE or ANTICLOCKWISE.",
+      "Your crewmate has already tuned theirs. Set one dial for COOL and one for HOT, and find what holds.",
     ],
     go: "Pick up the tool",
   },
@@ -125,15 +150,15 @@ export const S = {
       {
         title: "No plan beats 75%",
         body: [
-          "The wall you hit in Act II is a Bell inequality. This is the CHSH game (Clauser, Horne, Shimony and Holt, 1969).",
-          "Two players who can't talk, with any plan agreed in advance (even a random one), win at most 75% of rounds.",
+          "Under the station is the CHSH game (Clauser, Horne, Shimony and Holt, 1969). The sensors are its random input bits x, y (COOL = 0, HOT = 1), the pumps its output bits a, b (CLOCKWISE = 0, ANTICLOCKWISE = 1), and “match unless both HOT” is its rule: a ⊕ b = x ∧ y. The vent is the story for the flipped case.",
+          "The wall you hit in Act II is a Bell inequality. Two players who can't talk, with any plan agreed in advance (even a random one), win at most 75% of rounds.",
         ],
         stat: (pct: string) => `Your Act II rounds: ${pct}`,
       },
       {
         title: "Entanglement broke through",
         body: [
-          "The two crystals were a pair of entangled qubits. Measured at dial angles θA and θB, their results agree with probability cos²(θA − θB).",
+          "The two crystals were a pair of entangled qubits. Measured at dial angles θA and θB, your two pumps agree with probability cos²(θA − θB).",
           "With dials 45° apart and your partner's offset by half that (A: 0° and 45°; B: 22.5° and −22.5°, shown as 157.5°), a crew wins cos²(22.5°) ≈ 85.4% of rounds. No quantum strategy does better: this is the Tsirelson bound.",
           "Real experiments have broken the 75% wall with entangled photons; that work won the 2022 Nobel Prize in Physics.",
         ],
@@ -142,7 +167,7 @@ export const S = {
       {
         title: "But no messages",
         body: [
-          "Your own valve came out OPEN about half the time, whether your crewmate's light was GREEN or RED. So you can't read their light from your result, and the tool can't carry a message.",
+          "Your own pump ran clockwise about half the time, whether your crewmate's section was COOL or HOT. So you can't read their sensor from your result, and the tool can't carry a message.",
           "Only the correlation between your two results changed. That is what no-signalling means.",
         ],
       },
@@ -153,9 +178,9 @@ export const S = {
     ],
     panel: {
       head: (n: string) => `Your tool settings, ${n} test rounds`,
-      yourRounds: (n: number, green: string, red: string) =>
-        `In your ${n} real Act III rounds your valve came out OPEN ${green} of the time when your crewmate saw GREEN, and ${red} when they saw RED. Few rounds means more noise; the 10,000 above settle it.`,
-      row: (who: string, light: string) => `${who}: OPEN when partner saw ${light}`,
+      yourRounds: (n: number, cool: string, hot: string) =>
+        `In your ${n} real Act III rounds your pump ran clockwise ${cool} of the time when your crewmate's section was COOL, and ${hot} when it was HOT. Few rounds means more noise; the 10,000 above settle it.`,
+      row: (who: string, light: string) => `${who}: clockwise when partner's side was ${light}`,
       you: "You",
       crewmate: "Crewmate",
     },
@@ -228,18 +253,18 @@ export const S = {
     resetConfirm: "Reset the session? Scores are cleared; players stay.",
     toolLines: [
       "Two linked crystals for every pair: one in each partner's tool, one at each table.",
-      "Turn the dial. Tap MEASURE. The crystal decides your valve: OPEN or CLOSED.",
-      "Each of you sets one dial for GREEN and one for RED. Use the huddle to work out what holds.",
+      "Turn the dial. Tap MEASURE. The crystal decides your pump: CLOCKWISE or ANTICLOCKWISE.",
+      "Each of you sets one dial for COOL and one for HOT. Use the huddle to work out what holds.",
     ],
     showHint: "Show hint",
     hideHint: "Hide hint",
     crewAct: (act: number, pct: string, n: number) => `Your crew in Act ${act === 2 ? "II" : "III"}: ${pct} of ${n} rounds`,
     wholeCrew: "Whole crew",
-    wobble: "A few rounds each makes the numbers wobble. Over many rounds every row settles at 50%, whatever the partner saw.",
+    wobble: "A few rounds each makes the numbers wobble. Over many rounds every row settles at 50%, whatever the partner's sensor read.",
     marginalHead: {
       player: "Crew member",
-      green: "OPEN when partner saw GREEN",
-      red: "OPEN when partner saw RED",
+      cool: "Clockwise when partner's side was COOL",
+      hot: "Clockwise when partner's side was HOT",
       rounds: "Rounds",
     },
   },
@@ -257,10 +282,10 @@ export const S = {
     huddle: "Strategy huddle",
     huddleBody: "Talk to your partner now. Agree what you'll each do. When the clock runs out, comms go dark.",
     huddleBody3: "Talk to your partner now. Agree how you'll each set your dials. When the clock runs out, comms go dark.",
-    tuneNow: "Set one dial for GREEN and one for RED. Your partner sets theirs. Work out together what holds.",
+    tuneNow: "Set one dial for COOL and one for HOT. Your partner sets theirs. Work out together what holds.",
     retune: "Retune your dials",
     plan: "Your plan",
-    valveSet: (v: string) => `Valve set: ${v}. Hold…`,
+    pumpSet: (v: string) => `Pump set: ${v}. Hold…`,
     watch: "Eyes on the big screen.",
     leave: "Leave",
   },

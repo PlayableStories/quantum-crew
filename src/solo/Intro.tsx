@@ -15,7 +15,7 @@ export function Intro() {
           <p key={l}>{l}</p>
         ))}
       </div>
-      <Rule />
+      <Rule diagram />
       <p>
         <strong>{S.intro.survival}</strong>
       </p>

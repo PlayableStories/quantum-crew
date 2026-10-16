@@ -234,7 +234,7 @@ function TvDebrief({ state, step, setStep }: { state: RoomState; step: number; s
   );
 }
 
-/** Each seat's own valve: OPEN rate when the partner saw GREEN vs RED. Both ≈ 50%: no message got through. */
+/** Each seat's own pump: clockwise rate when the partner's sensor read COOL vs HOT. Both ≈ 50%: no message got through. */
 function MarginalTable({ rows, crew }: NonNullable<RoomState["marginals"]>) {
   const cell = (r: number | null) => (
     <td>
@@ -250,8 +250,8 @@ function MarginalTable({ rows, crew }: NonNullable<RoomState["marginals"]>) {
       <thead>
         <tr>
           <th>{S.tv.marginalHead.player}</th>
-          <th>{S.tv.marginalHead.green}</th>
-          <th>{S.tv.marginalHead.red}</th>
+          <th>{S.tv.marginalHead.cool}</th>
+          <th>{S.tv.marginalHead.hot}</th>
           <th>{S.tv.marginalHead.rounds}</th>
         </tr>
       </thead>

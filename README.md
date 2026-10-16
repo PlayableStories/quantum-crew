@@ -17,17 +17,29 @@ only then learn what it is.
 beat the wall.
 
 ## Story and player flow
-*Station log · shift 1.* The station's coolant runs through two sections. In solo mode you are at **Table A** and an
-AI crewmate is at **Table B**. Each round, each section's sensor lights **GREEN** or **RED**, and each of you sets a
-valve: **OPEN** or **CLOSED**. You see only your own light, you can't talk during a round, and you have 5 seconds.
-The station rule is always on screen: *valves must MATCH, unless BOTH sensors are RED, then they must DIFFER.*
-The station needs **80%** of rounds to hold.
+*Station log · shift 1.* The station's coolant runs round a **ring** that passes through two sections. In solo mode
+you are at **Table A** and an AI crewmate is at **Table B**, and each table runs the **pump** in its own section,
+**CLOCKWISE** or **ANTICLOCKWISE**. The reactor flares at random, so each round each section's sensor reads **COOL**
+(blue, snowflake) or **HOT** (orange, flame). You see only your own sensor, you can't talk during a round, and you
+have 5 seconds. A **relief vent** between the sections unlocks automatically only when **both** sections are HOT, and
+nobody can see whether it's unlocked.
+
+The rule follows from the plumbing, and it's always on screen next to a diagram of the ring:
+*keep the coolant flowing one way round the ring; if BOTH sections run HOT, pump against each other to purge*
+(quick rule: pumps MATCH, unless both sensors are HOT, then they must DIFFER). The station needs **80%**:
+the core can take one bad round in five, and no more.
+
+| Sensors | Pumps agree | Pumps fight |
+|---|---|---|
+| Both COOL | ✓ **Circulating**: coolant flows round the ring | ✗ **Pressure spike**: the vent is locked |
+| One HOT | ✓ **Heat carried off** to the cool side | ✗ **Pressure spike**: the vent is still locked |
+| Both HOT | ✗ **Overheat**: hot coolant goes round in circles | ✓ **Purge**: the vent is unlocked and the hot coolant goes out |
 
 ```mermaid
 flowchart TD
   intro["Intro: station log, the rule, 80% to survive"] --> plan
   subgraph act2 ["Act II: plans"]
-    plan["Agree a plan<br/>crewmate: 'I always OPEN'"] --> batch2["Batch: 12 live rounds"]
+    plan["Agree a plan<br/>crewmate: 'I always pump clockwise'"] --> batch2["Batch: 12 live rounds"]
     batch2 --> read2["Readout + Run 1,000 rounds"]
     read2 -- "Back to the huddle" --> plan
   end
@@ -43,35 +55,37 @@ flowchart TD
   debrief --> credits["Credits → Play again / Home"]
 ```
 
-1. **Agree a plan (Act II).** In the strategy huddle your crewmate radios in: *"I always OPEN, whatever my light."*
-   You choose a valve for GREEN and one for RED. Against a crewmate who always opens, the best any plan can do is 75%:
+1. **Agree a plan (Act II).** In the strategy huddle your crewmate radios in: *"I always pump clockwise. Standard
+   procedure."* You choose a pump direction for COOL and one for HOT. Against a crewmate who always pumps clockwise,
+   the best any plan can do is 75%, so the best plan loses one round in four:
 
-   | Your plan (GREEN / RED) | Win rate |
+   | Your plan (COOL / HOT) | Win rate |
    |---|---|
-   | OPEN / OPEN | 75% |
-   | OPEN / CLOSED | 75% |
-   | CLOSED / CLOSED | 25% |
-   | CLOSED / OPEN | 25% |
+   | CLOCKWISE / CLOCKWISE | 75% |
+   | CLOCKWISE / ANTICLOCKWISE | 75% |
+   | ANTICLOCKWISE / ANTICLOCKWISE | 25% |
+   | ANTICLOCKWISE / CLOCKWISE | 25% |
 
-2. **Play a batch.** Twelve live rounds. Your plan's valve is tagged "Plan", but you tap the valve yourself and can
-   go against it. Each result shows both lights and both valves: ✓ Stable or ✗ Leak. Running out of time counts as
-   a loss.
+2. **Play a batch.** Twelve live rounds. Your plan's direction is tagged "Plan", but you set the pump yourself and
+   can go against it. Each result names what happened (Circulating, Heat carried off, Purge, Pressure spike, Overheat
+   or Too slow) and shows both sensors and both pumps. A pressure spike with only one side HOT says why: the vent
+   stays locked unless BOTH are HOT. Running out of time counts as a loss.
 3. **Run 1,000 rounds.** After each batch, the readout shows how many rounds held, and the station art degrades as
    stability drops. Twelve rounds are noisy, so **Run 1,000 rounds** tests your *plan* (not your taps) against
-   1,000 fresh pairs of lights. Whatever you try, it never beats 75%.
+   1,000 fresh pairs of sensor readings. Whatever you try, it never beats 75%.
 4. **Call engineering.** After the first batch you can call engineering (or go back and try more plans).
-   *"We tried every plan your crew could make. Every single one. None of them holds more than 75%."*
-   The station needs 80%. *"Then we need something that isn't a plan."*
+   *"We tried every plan your crew could make. Every single one. None of them holds more than 75%: the best plan
+   loses one in four."* The core can take one in five. *"Then we need something that isn't a plan."*
 5. **Receive the tool.** The game changes look (a live Entanglement Shader, two synced crystals). *Two linked
    crystals have arrived: one in your tool, one in your crewmate's at Table B.* You turn a dial and tap
-   **MEASURE**, and the crystal decides your valve.
-6. **Tune your dials (Act III).** One dial for GREEN and one for RED, 8 stops each (0° to 157.5° in 22.5° steps),
-   starting at 0°/0°. Your crewmate's tool is already tuned (hidden: 22.5° for GREEN, 157.5° for RED). In each round
-   your dial turns to the angle for your light and you tap MEASURE. You choose *how* the crystal is read, not the
-   valve. After a batch under 80%, you can ask engineering for a hint: *"Try making your two dials 45° apart, and
+   **MEASURE**, and the crystal decides your pump direction.
+6. **Tune your dials (Act III).** One dial for COOL and one for HOT, 8 stops each (0° to 157.5° in 22.5° steps),
+   starting at 0°/0°. Your crewmate's tool is already tuned (hidden: 22.5° for COOL, 157.5° for HOT). In each round
+   your dial turns to the angle for your sensor and you tap MEASURE. You choose *how* the crystal is read, not the
+   pump direction. After a batch under 80%, you can ask engineering for a hint: *"Try making your two dials 45° apart, and
    your partner's offset by half that."*
 
-   | Your dials (GREEN / RED) | Win rate |
+   | Your dials (COOL / HOT) | Win rate |
    |---|---|
    | **0° / 45°** | **85.4%**, the only best setting of the 64 |
    | 0°/22.5°, 0°/67.5°, 22.5°/45°, 157.5°/45° | 80.2%, which passes a 1,000-round test about half the time |
@@ -80,11 +94,12 @@ flowchart TD
 7. **Result.** The debrief unlocks when a 1,000-round test reaches **80%** or more, or after **2** Act III batches,
    so every player reaches the end.
 8. **Debrief.** The physics words appear only here, in four steps:
-   - **No plan beats 75%:** the wall was a Bell inequality (the CHSH game), with your Act II rate.
+   - **No plan beats 75%:** the fiction mapped back to the game (sensors = input bits, pumps = output bits, "match
+     unless both HOT" = the CHSH rule), and the wall was a Bell inequality, with your Act II rate.
    - **Entanglement broke through:** the crystals agree with probability cos²(θA − θB), up to 85.4% (the Tsirelson
      bound), with your best test and the optimal dials for both tables.
-   - **But no messages:** over 10,000 rounds your valve is OPEN about half the time whatever your crewmate saw, so
-     no message gets through (no-signalling).
+   - **But no messages:** over 10,000 rounds your pump runs clockwise about half the time whatever your crewmate's
+     sensor read, so no message gets through (no-signalling).
    - **Credits**, then *Play again* or *Home*.
 
 All player-facing text is in `src/strings.ts`; pacing and unlock rules are in `src/config.ts`.
@@ -92,19 +107,20 @@ All player-facing text is in `src/strings.ts`; pacing and unlock rules are in `s
 ## How to play (solo)
 Open the app and choose **Solo demo**. It takes about 6 minutes on a phone or a laptop.
 
-1. **Briefing.** You are Table A. An AI crewmate is Table B. Each round your sensor lights **GREEN** or **RED**, and
-   you set your valve **OPEN** or **CLOSED** within 5 seconds. The station rule is always on screen:
-   *valves must MATCH, unless BOTH sensors are RED, then they must DIFFER.* The station needs **80%**.
-2. **Act II: plans.** Your crewmate tells you their plan ("I always OPEN"). Pick yours, then play batches of 12
+1. **Briefing.** You are Table A. An AI crewmate is Table B. Each round your sensor reads **COOL** or **HOT**, and
+   you set your pump **CLOCKWISE** or **ANTICLOCKWISE** within 5 seconds. The station rule is always on screen:
+   *pumps MATCH, unless both sensors are HOT, then they must DIFFER* (the vent only unlocks on a double HOT).
+   The station needs **80%**.
+2. **Act II: plans.** Your crewmate tells you their plan ("I always pump clockwise"). Pick yours, then play batches of 12
    rounds. After each batch, **Run 1,000 rounds** tests your plan without small-sample luck. Whatever you try,
    it never beats 75%.
 3. **Engineering report.** After the first batch you can call engineering (or try more plans first): no plan beats 75%.
-4. **Act III: the Entanglement Tool.** You get two dials, one for GREEN and one for RED. In each round, tap
-   **MEASURE** and the tool sets your valve. Experiment until the 1,000-round test passes 80%. After a batch under
+4. **Act III: the Entanglement Tool.** You get two dials, one for COOL and one for HOT. In each round, tap
+   **MEASURE** and the tool sets your pump. Experiment until the 1,000-round test passes 80%. After a batch under
    80%, a hint appears; after two batches the debrief opens either way.
 5. **Debrief.** You learn the physics and see your own numbers, then the credits.
 
-Keyboard: **O / ←** = OPEN, **C / →** = CLOSED, **Space / Enter** = MEASURE.
+Keyboard: **A / ←** = ANTICLOCKWISE, **C / →** = CLOCKWISE, **Space / Enter** = MEASURE.
 
 ## How to play (event)
 Two tables of players, one phone each, and a TV or projector. A facilitator runs the session from the TV.
@@ -114,30 +130,31 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    The server pairs A₁↔B₁, A₂↔B₂… (up to 4 pairs). An AI crewmate fills any empty seat.
 3. **Start strategy huddle (45 s):** partners may talk across tables and agree a plan. When the clock runs out, the
    comms blackout starts and so does the batch (or press **Start batch now**).
-4. Each round, every phone shows only its own light, two valve buttons and a countdown. The TV shows the round
-   timer, who has answered and each pair's result. Stability is pooled over the last 48 rounds across all pairs, and
+4. Each round, every phone shows only its own sensor, two pump buttons and a countdown. The TV shows the round
+   timer, who has answered and each pair's result (Stable or Leak). Stability is pooled over the last 48 rounds across all pairs, and
    each pair also has its own mini-meter.
 5. Play a few batches, then **Reveal ceiling**: the TV shows the engineering report (no plan beats 75%).
-6. **Unlock tool**: every pair gets the Entanglement Tool. Phones show two dials (one for GREEN, one for RED); use a
-   huddle to agree settings. In each round a phone shows its light, the dial angle in use and a **MEASURE** button.
+6. **Unlock tool**: every pair gets the Entanglement Tool. Phones show two dials (one for COOL, one for HOT); use a
+   huddle to agree settings. In each round a phone shows its sensor, the dial angle in use and a **MEASURE** button.
    The server decides who measured first: that result is a fair coin, and the partner's result is conditioned on it.
    The TV adds the 85.4% line. **Show hint** puts the engineering hint on the TV.
 7. **Debrief** on the TV (Back / Next): the Bell/CHSH wall with the crew's Act II score, the Tsirelson bound with
-   the best dial settings and the crew's Act III score, then **no-signalling**: every crew member's OPEN rate split
-   by what their partner saw (≈ 50/50 both ways, pooled for the whole crew), then credits.
+   the best dial settings and the crew's Act III score, then **no-signalling**: every crew member's clockwise rate
+   split by what their partner's sensor read (≈ 50/50 both ways, pooled for the whole crew), then credits.
 
 A phone that reloads or drops out rejoins its seat automatically (same name, same table).
 
 ## The physics
-This is the **CHSH game**, a Bell test. Two players who can't talk each get a random bit (the light) and output a
-bit (the valve). They win if `a XOR b == x AND y`.
+This is the **CHSH game**, a Bell test. Two players who can't talk each get a random bit (the sensor: COOL = 0,
+HOT = 1) and output a bit (the pump: CLOCKWISE = 0, ANTICLOCKWISE = 1). They win if `a XOR b == x AND y`, which is
+"pumps match unless both are HOT". The ring, the pumps and the vent are the story around that rule.
 
 - **Classical limit: 75%.** Every plan agreed in advance, random or not, is at best a mix of the 16 deterministic plan
-  pairs, and none of those wins more than 3 of the 4 light combinations.
+  pairs, and none of those wins more than 3 of the 4 sensor combinations.
 - **Quantum limit: cos²(π/8) ≈ 85.4%.** The players share an entangled pair of qubits (the Bell state |Φ+⟩). Each measures at
-  an angle chosen by their own light, and the results agree with probability cos²(θA − θB). The best angles are
+  an angle chosen by their own sensor, and the results agree with probability cos²(θA − θB). The best angles are
   A: 0°/45° and B: 22.5°/−22.5°. No quantum strategy beats this (the Tsirelson bound).
-- **No signalling.** Each player's own valve is a 50/50 coin whatever the partner's light or dial. Only the
+- **No signalling.** Each player's own pump direction is a 50/50 coin whatever the partner's sensor or dial. Only the
   *correlation* between the two players changes, so the tool can't carry a message. The debrief shows this with the
   player's own tool settings.
 

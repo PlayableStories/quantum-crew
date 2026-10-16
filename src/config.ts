@@ -1,7 +1,8 @@
 // Game tuning in one place: shared by the solo client and (from M3) the server.
-import { OPEN, type ClassicalStrategy, type TuningConfig } from "./shared/chsh.ts";
+import type { ClassicalStrategy, TuningConfig } from "./shared/chsh.ts";
+import { CLOCKWISE } from "./shared/fiction.ts";
 
-/** Time a player has to set their valve or tap MEASURE. */
+/** Time a player has to set their pump or tap MEASURE. */
 // DECISION: 5 s (was 2.5 s), so solo players have time to think about the rule before answering.
 export const ROUND_MS = 5000;
 /** Rounds per batch, followed by a stability readout. */
@@ -16,9 +17,9 @@ export const SIM_ROUNDS = 1000;
 export const DEBRIEF_SIM_ROUNDS = 10_000;
 
 /** Solo: the AI crewmate's Act II plan, which the player is told. */
-export const BOT_ACT2_PLAN: ClassicalStrategy = { onGreen: OPEN, onRed: OPEN };
+export const BOT_ACT2_PLAN: ClassicalStrategy = { onGreen: CLOCKWISE, onRed: CLOCKWISE };
 /** Solo: the player's starting Act II plan (the same as the crewmate's). */
-export const DEFAULT_PLAN: ClassicalStrategy = { onGreen: OPEN, onRed: OPEN };
+export const DEFAULT_PLAN: ClassicalStrategy = { onGreen: CLOCKWISE, onRed: CLOCKWISE };
 // DECISION: the player's dials start at 0°/0°. Against the bot's 22.5°/157.5° that scores ≈ 68%, below the
 // plan ceiling, so the tool only pays off once the player starts experimenting.
 export const DEFAULT_TUNING: TuningConfig = { greenDeg: 0, redDeg: 0 };

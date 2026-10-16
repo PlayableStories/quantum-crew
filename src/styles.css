@@ -121,6 +121,75 @@ p {
 .rule p {
   font-weight: 700;
 }
+.rule p.muted {
+  font-weight: 400;
+}
+.rule__quick {
+  border-top: 1px dashed var(--edge);
+  padding-top: 8px;
+}
+
+/* ---------- Coolant ring diagram ---------- */
+
+.ring {
+  display: block;
+  width: 100%;
+  max-width: 340px;
+  margin: 4px auto 10px;
+  font-family: var(--font);
+}
+.ring__pipe {
+  fill: none;
+  stroke: var(--cool);
+  stroke-width: 9;
+  opacity: 0.85;
+}
+.ring__flow,
+.ring__pump path,
+.ring__grate {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ring__pump circle {
+  fill: var(--panel-raised);
+  stroke: var(--ink);
+  stroke-width: 2.4;
+}
+.ring__bulkhead {
+  stroke: var(--edge-bright);
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
+}
+.ring__vent-pipe {
+  stroke: var(--ink-muted);
+  stroke-width: 6;
+}
+.ring__vent {
+  fill: var(--panel-raised);
+  stroke: var(--hot);
+  stroke-width: 2;
+}
+.ring__grate {
+  stroke: var(--ink-muted);
+  stroke-width: 1.6;
+}
+.ring__section {
+  fill: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.ring__note {
+  fill: var(--ink-muted);
+  font-size: 11px;
+}
+.ring__label {
+  fill: var(--hot);
+  font-weight: 700;
+}
 
 /* ---------- Buttons ---------- */
 
@@ -207,18 +276,26 @@ p {
   font-size: var(--fs-l);
   font-weight: 800;
   letter-spacing: 0.12em;
-  color: #06110b;
+  color: var(--on-cool);
+  align-content: center;
+  gap: 4px;
 }
 
+.light__icon {
+  width: 40%;
+  height: auto;
+}
+
+/* COOL = blue with a snowflake, HOT = orange with a flame (never colour alone). */
 .light--0 .light__bulb {
-  background: radial-gradient(circle at 35% 30%, #c9ffe2, var(--green) 45%, var(--green-deep));
-  box-shadow: 0 0 40px 6px rgba(57, 229, 140, 0.45);
+  background: radial-gradient(circle at 35% 30%, var(--cool-hi), var(--cool) 45%, var(--cool-deep));
+  box-shadow: 0 0 40px 6px var(--cool-glow);
 }
 
 .light--1 .light__bulb {
-  background: radial-gradient(circle at 35% 30%, #ffd2d6, var(--red) 45%, var(--red-deep));
-  box-shadow: 0 0 40px 6px rgba(255, 79, 94, 0.45);
-  color: #1d0306;
+  background: radial-gradient(circle at 35% 30%, var(--hot-hi), var(--hot) 45%, var(--hot-deep));
+  box-shadow: 0 0 40px 6px var(--hot-glow);
+  color: var(--on-hot);
 }
 
 .light--off .light__bulb {
@@ -231,32 +308,54 @@ p {
 }
 
 .light--small .light__bulb {
-  width: 22px;
+  width: 26px;
   border-width: 2px;
   font-size: 0;
   box-shadow: none;
 }
 
-/* ---------- Valve buttons ---------- */
+.light--small .light__icon {
+  width: 16px;
+}
 
-.valves {
+/* ---------- Pump buttons ---------- */
+
+.pumps {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--gap);
 }
 
-.valve {
+.pumpbtn {
   min-height: calc(var(--tap) * 1.6);
-  font-size: var(--fs-l);
+  padding-inline: 8px;
+  font-size: clamp(0.85rem, 4vw, var(--fs-l));
+  letter-spacing: 0.03em;
   position: relative;
 }
 
-.valve__icon {
-  font-size: 1.6rem;
-  letter-spacing: 0;
+.pumpbtn__icon {
+  display: flex;
 }
 
-.valve__plan {
+.pump__icon {
+  width: 1.9em;
+  height: 1.9em;
+}
+
+/* The smaller pump choices on the plan screens. */
+.btn--pump {
+  padding-inline: 6px;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+.btn--pump .pump__icon {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.pumpbtn__plan {
   position: absolute;
   top: 6px;
   right: 8px;
@@ -483,6 +582,11 @@ p {
 }
 .result--loss .result__verdict {
   color: var(--loss);
+}
+
+.result__cause {
+  margin: 0;
+  max-width: 34ch;
 }
 
 .result__pair {

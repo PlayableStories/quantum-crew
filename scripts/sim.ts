@@ -16,9 +16,9 @@ import {
 import { mulberry32 } from "../src/shared/rng.ts";
 
 const pct = (r: number) => `${(r * 100).toFixed(1)}%`;
-const valve = (v: number) => (v === 0 ? "OPEN" : "CLOSED");
-const plan = (s: ClassicalStrategy) => `GREEN→${valve(s.onGreen)}, RED→${valve(s.onRed)}`;
-const dials = (c: TuningConfig) => `GREEN ${c.greenDeg}°, RED ${c.redDeg}°`;
+const pump = (v: number) => (v === 0 ? "CLOCKWISE" : "ANTICLOCKWISE");
+const plan = (s: ClassicalStrategy) => `COOL→${pump(s.onGreen)}, HOT→${pump(s.onRed)}`;
+const dials = (c: TuningConfig) => `COOL ${c.greenDeg}°, HOT ${c.redDeg}°`;
 
 let bestClassical = { rate: 0, a: CLASSICAL_STRATEGIES[0]!, b: CLASSICAL_STRATEGIES[0]! };
 for (const a of CLASSICAL_STRATEGIES)
@@ -45,6 +45,6 @@ const atOptimum = sweep.filter((s) => Math.abs(s.rate - QUANTUM_LIMIT) < 1e-9).l
 console.log(`Classical best:  ${bestClassical.rate.toFixed(4)}  (A: ${plan(bestClassical.a)} · B: ${plan(bestClassical.b)})`);
 console.log(`Quantum optimum: ${optimal.toFixed(4)}  (A: ${dials(OPTIMAL_TUNING.A)} · B: ${dials(OPTIMAL_TUNING.B)})`);
 console.log(`Tsirelson bound: ${QUANTUM_LIMIT.toFixed(4)}  = cos²(π/8)`);
-console.log(`1,000 sampled rounds at the optimum: ${pct(sampled.winRate)}, A CLOSED ${pct(sampled.aMarginal)}, B CLOSED ${pct(sampled.bMarginal)}`);
+console.log(`1,000 sampled rounds at the optimum: ${pct(sampled.winRate)}, A anticlockwise ${pct(sampled.aMarginal)}, B anticlockwise ${pct(sampled.bMarginal)}`);
 console.log(`\nTop 5 of ${sweep.length} dial setups (${atOptimum} reach the optimum):`);
 sweep.slice(0, 5).forEach((s, i) => console.log(`  ${i + 1}. ${s.rate.toFixed(4)}  A: ${dials(s.a)} · B: ${dials(s.b)}`));
