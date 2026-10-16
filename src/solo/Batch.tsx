@@ -1,14 +1,16 @@
 // A batch of fast rounds. Timers live here; the store decides everything else.
 // Buttons fire on pointer-down for speed; a second event in the same round is ignored by the store.
-// Keyboard: O / ← = OPEN, C / → = CLOSED in Act II; Space / Enter = MEASURE in Act III.
+// Keyboard: A / ← = ANTICLOCKWISE, C / → = CLOCKWISE in Act II; Space / Enter = MEASURE in Act III.
 import { useEffect } from "react";
 import { playSfx } from "../audio/sfx.ts";
 import { Countdown } from "../components/Countdown.tsx";
 import { Dial } from "../components/Dial.tsx";
+import { PumpIcon } from "../components/PumpIcon.tsx";
 import { SensorLight } from "../components/SensorLight.tsx";
 import { StabilityMeter } from "../components/StabilityMeter.tsx";
 import { BATCH_SIZE, LEAD_MS, RESULT_MS, ROUND_MS } from "../config.ts";
-import { CLOSED, OPEN, dialFor, type RoundResult, type Valve } from "../shared/chsh.ts";
+import { dialFor, type RoundResult, type Valve } from "../shared/chsh.ts";
+import { ANTICLOCKWISE, CLOCKWISE, roundCause } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
 import { actOf, displayedStability, useSolo } from "./soloStore.ts";
 
@@ -35,8 +37,8 @@ export function Batch() {
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat) return;
       const k = e.key.toLowerCase();
-      if (act === 2 && (k === "o" || k === "arrowleft")) answer(OPEN, Date.now());
-      else if (act === 2 && (k === "c" || k === "arrowright")) answer(CLOSED, Date.now());
+      if (act === 2 && (k === "a" || k === "arrowleft")) answer(ANTICLOCKWISE, Date.now());
+      else if (act === 2 && (k === "c" || k === "arrowright")) answer(CLOCKWISE, Date.now());
       else if (act === 3 && (k === " " || k === "enter")) {
         e.preventDefault();
         measure(Date.now());
@@ -72,15 +74,15 @@ export function Batch() {
           <SensorLight light={round.x} label={S.batch.yourLight} />
           <div className="spacer" />
           {act === 2 ? (
-            <div className="valves">
-              {[OPEN, CLOSED].map((v) => (
-                <button key={v} className="btn valve" onPointerDown={() => answer(v, Date.now())}
+            <div className="pumps">
+              {[ANTICLOCKWISE, CLOCKWISE].map((v) => (
+                <button key={v} className="btn pumpbtn" onPointerDown={() => answer(v, Date.now())}
                   onClick={() => answer(v, Date.now())}>
-                  <span className="valve__icon" aria-hidden="true">
-                    {v === OPEN ? "═ ═" : "═╪═"}
+                  <span className="pumpbtn__icon">
+                    <PumpIcon pump={v} />
                   </span>
-                  {S.valve[v]}
-                  {planned === v && <span className="valve__plan">{S.batch.planTag}</span>}
+                  {S.pump[v]}
+                  {planned === v && <span className="pumpbtn__plan">{S.batch.planTag}</span>}
                 </button>
               ))}
             </div>
@@ -102,25 +104,29 @@ export function Batch() {
 }
 
 function RoundOutcome({ result }: { result: RoundResult }) {
-  const verdict = result.timedOut ? S.batch.slow : result.win ? S.batch.stable : S.batch.leak;
+  const cause = roundCause(result);
+  const text = S.outcome[cause];
+  // A fight with only one side HOT is the case players most often expect to purge: say why the vent stayed shut.
+  const line = cause === "spike" && result.x !== result.y ? S.outcome.spike.lineHot : text.line;
   return (
     <div className={`result spacer ${result.win ? "result--win" : "result--loss"}`} role="status">
-      <div className="result__verdict">{result.win ? "✓ " : "✗ "}{verdict}</div>
+      <div className="result__verdict">{result.win ? "✓ " : "✗ "}{text.title}</div>
+      <p className="result__cause">{line}</p>
       <div className="result__pair panel">
-        <Side who={S.batch.you} light={result.x} valve={result.a} />
-        <Side who={S.batch.crewmate} light={result.y} valve={result.b} />
+        <Side who={S.batch.you} light={result.x} pump={result.a} />
+        <Side who={S.batch.crewmate} light={result.y} pump={result.b} />
       </div>
-      <p className="muted small">{S.rule.body}</p>
+      <p className="muted small">{S.rule.quick}</p>
     </div>
   );
 }
 
-function Side({ who, light, valve }: { who: string; light: 0 | 1; valve: Valve | null }) {
+function Side({ who, light, pump }: { who: string; light: 0 | 1; pump: Valve | null }) {
   return (
     <div className="result__side">
       <span className="kicker">{who}</span>
       <SensorLight light={light} small />
-      <strong>{valve === null ? "—" : S.valve[valve]}</strong>
+      <strong>{pump === null ? "—" : S.pump[pump]}</strong>
     </div>
   );
 }

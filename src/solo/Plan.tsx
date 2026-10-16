@@ -1,8 +1,11 @@
-// Act II strategy huddle: the player picks a valve for each light. The crewmate always OPENs.
+// Act II strategy huddle: the player picks a pump direction for each sensor reading. The crewmate always pumps
+// clockwise.
 import { Rule } from "../components/Rule.tsx";
 import { SensorLight } from "../components/SensorLight.tsx";
 import { pct } from "../components/StabilityMeter.tsx";
-import { CLOSED, GREEN, OPEN, RED, winRate, type Light } from "../shared/chsh.ts";
+import { PumpIcon } from "../components/PumpIcon.tsx";
+import { winRate, type Light } from "../shared/chsh.ts";
+import { ANTICLOCKWISE, CLOCKWISE, COOL, HOT } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
 import { useSolo } from "./soloStore.ts";
 
@@ -14,7 +17,7 @@ export function Plan() {
   const lastBatch = useSolo((s) => s.batch);
 
   const row = (light: Light, label: string) => {
-    const current = light === GREEN ? plan.onGreen : plan.onRed;
+    const current = light === COOL ? plan.onGreen : plan.onRed;
     return (
       <div className="stack">
         <div className="dial__label">
@@ -22,15 +25,16 @@ export function Plan() {
           <span>{label}</span>
         </div>
         <div className="row" role="radiogroup" aria-label={label}>
-          {[OPEN, CLOSED].map((v) => (
+          {[ANTICLOCKWISE, CLOCKWISE].map((v) => (
             <button
               key={v}
               role="radio"
               aria-checked={current === v}
-              className={`btn ${current === v ? "btn--selected" : ""}`}
+              className={`btn btn--pump ${current === v ? "btn--selected" : ""}`}
               onClick={() => setPlan(light, v)}
             >
-              {S.valve[v]}
+              <PumpIcon pump={v} />
+              {S.pump[v]}
             </button>
           ))}
         </div>
@@ -43,10 +47,10 @@ export function Plan() {
       <p className="kicker">{S.plan.kicker}</p>
       <h1>{S.plan.title}</h1>
       <p>{S.plan.crewmate}</p>
-      <Rule />
+      <Rule diagram />
       <div className="panel stack">
-        {row(GREEN, S.plan.whenGreen)}
-        {row(RED, S.plan.whenRed)}
+        {row(COOL, S.plan.whenCool)}
+        {row(HOT, S.plan.whenHot)}
       </div>
       <p className="muted small">{S.plan.blind}</p>
       {batches > 0 && <p className="muted">{S.plan.last(pct(winRate(lastBatch)))}</p>}

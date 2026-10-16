@@ -80,7 +80,7 @@ export function Debrief() {
   );
 }
 
-/** Each player's OPEN rate split by the partner's light: ≈ 50% both ways, so no message gets through. */
+/** Each player's clockwise rate split by the partner's sensor: ≈ 50% both ways, so no message gets through. */
 function NoSignallingPanel() {
   const tuning = useSolo((s) => s.tuning);
   const act3 = useSolo((s) => s.act3);

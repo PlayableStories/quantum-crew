@@ -1,5 +1,5 @@
 // Solo mode as a state machine: the player is Table A, an AI crewmate is Table B. No server, no I/O.
-// Act II: the crewmate always OPENs, so no plan beats 75%. Act III: both share the Entanglement Tool, and the
+// Act II: the crewmate always pumps clockwise, so no plan beats 75%. Act III: both share the Entanglement Tool, and the
 // crewmate's dials sit at the optimal Table B setting, so the player can reach ≈ 85% by finding their own.
 // Actions take `now` (ms) so tests can drive the clock; the Batch screen calls them from timers.
 import { createStore } from "zustand/vanilla";
@@ -89,7 +89,7 @@ export type SoloActions = {
   beginBatch(): void;
   /** Starts the next round, or ends the batch after the last one. */
   advance(now: number): void;
-  /** Act II: the player sets their valve. */
+  /** Act II: the player sets their pump direction. */
   answer(valve: Valve, now: number): void;
   /** Act III: the player taps MEASURE. */
   measure(now: number): void;
@@ -203,7 +203,7 @@ export function createSoloStore(seed: number = randomSeed()) {
       timeout: (now) => {
         const { phase, round } = get();
         if (!round || round.result || now < round.deadline) return;
-        // The crewmate still acts; the player's missing valve makes it a loss.
+        // The crewmate still acts; the player's missing pump setting makes it a loss.
         const b = phase === "act2Batch" ? classicalValve(BOT_ACT2_PLAN, round.y) : measureFirst(rng);
         resolve(scoreRound(round.x, round.y, null, b));
       },

@@ -54,7 +54,8 @@ export type RoomState = {
   marginals: { rows: MarginalRow[]; crew: Omit<MarginalRow, "name" | "table"> } | null;
 };
 
-/** One seat's Act III valves: how often it came out OPEN, split by the partner's light. ≈ 0.5 both ways. */
+/** One seat's Act III pumps: how often it ran clockwise (bit 0), split by the partner's sensor. ≈ 0.5 both ways.
+ * Field names keep the maths names: partnerGreen = partner read COOL, partnerRed = partner read HOT. */
 export type MarginalRow = {
   name: string;
   table: Table;

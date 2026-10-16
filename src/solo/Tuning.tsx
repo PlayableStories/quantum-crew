@@ -3,7 +3,8 @@ import { Dial } from "../components/Dial.tsx";
 import { Rule } from "../components/Rule.tsx";
 import { SensorLight } from "../components/SensorLight.tsx";
 import { StabilityMeter } from "../components/StabilityMeter.tsx";
-import { GREEN, RED, winRate } from "../shared/chsh.ts";
+import { winRate } from "../shared/chsh.ts";
+import { COOL, HOT } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
 import { hintAvailable, useSolo } from "./soloStore.ts";
 
@@ -18,10 +19,10 @@ export function Tuning() {
       <div className="row panel">
         <Dial
           value={s.tuning.greenDeg}
-          onChange={(d) => s.setDial(GREEN, d)}
-          label={<SensorLight light={GREEN} small />}
+          onChange={(d) => s.setDial(COOL, d)}
+          label={<SensorLight light={COOL} small />}
         />
-        <Dial value={s.tuning.redDeg} onChange={(d) => s.setDial(RED, d)} label={<SensorLight light={RED} small />} />
+        <Dial value={s.tuning.redDeg} onChange={(d) => s.setDial(HOT, d)} label={<SensorLight light={HOT} small />} />
       </div>
       {s.act3.length > 0 && (
         <div className="panel">

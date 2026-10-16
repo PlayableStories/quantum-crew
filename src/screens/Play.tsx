@@ -1,4 +1,4 @@
-// A phone in event mode: join a room at a table, then show only what the round needs (own light, valve
+// A phone in event mode: join a room at a table, then show only what the round needs (own sensor, pump
 // buttons or MEASURE with the dial in use, countdown). Everything else is on the TV.
 import { useEffect, useState, type ReactNode } from "react";
 import { Countdown } from "../components/Countdown.tsx";
@@ -9,10 +9,13 @@ import { Dial } from "../components/Dial.tsx";
 import { MuteToggle } from "../components/MuteToggle.tsx";
 import { QuantumBackdrop } from "../components/QuantumBackdrop.tsx";
 import { SensorLight } from "../components/SensorLight.tsx";
+import { PumpIcon } from "../components/PumpIcon.tsx";
+import { Rule } from "../components/Rule.tsx";
 import { navigate } from "../lib/router.ts";
 import { usePlayer } from "../net/playerStore.ts";
 import { useRemainingMs } from "../net/useCountdown.ts";
-import { CLOSED, GREEN, OPEN, RED, type Light, type Table, type Valve } from "../shared/chsh.ts";
+import type { Light, Table, Valve } from "../shared/chsh.ts";
+import { ANTICLOCKWISE, CLOCKWISE, COOL, HOT } from "../shared/fiction.ts";
 import { NAME_MAX, ROOM_CODE } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 
@@ -114,12 +117,12 @@ function InRoom() {
   const { state, seat, playerId, round, flash, plan, tuning, status, localDeadline, answer, measure, setPlan, setTuning, leave } = p;
   const left = useRemainingMs(localDeadline);
 
-  // Keyboard for laptop testing: O / C in Act II, Space / Enter = MEASURE in Act III.
+  // Keyboard for laptop testing: A / ← = ANTICLOCKWISE, C / → = CLOCKWISE in Act II, Space / Enter = MEASURE in Act III.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      if (k === "o") answer(OPEN);
-      if (k === "c") answer(CLOSED);
+      if (k === "a" || k === "arrowleft") answer(ANTICLOCKWISE);
+      if (k === "c" || k === "arrowright") answer(CLOCKWISE);
       if (k === " " || k === "enter") {
         e.preventDefault();
         measure();
@@ -160,14 +163,14 @@ function InRoom() {
         <SensorLight light={round.light} label={S.batch.yourLight} />
         <div className="spacer" />
         {round.act === 2 ? (
-          <div className="valves">
-            {[OPEN, CLOSED].map((v) => (
-              <button key={v} className="btn valve" onPointerDown={() => answer(v)} onClick={() => answer(v)}>
-                <span className="valve__icon" aria-hidden="true">
-                  {v === OPEN ? "═ ═" : "═╪═"}
+          <div className="pumps">
+            {[ANTICLOCKWISE, CLOCKWISE].map((v) => (
+              <button key={v} className="btn pumpbtn" onPointerDown={() => answer(v)} onClick={() => answer(v)}>
+                <span className="pumpbtn__icon">
+                  <PumpIcon pump={v} />
                 </span>
-                {S.valve[v]}
-                {plannedValve(plan, round.light) === v && <span className="valve__plan">{S.batch.planTag}</span>}
+                {S.pump[v]}
+                {plannedPump(plan, round.light) === v && <span className="pumpbtn__plan">{S.batch.planTag}</span>}
               </button>
             ))}
           </div>
@@ -185,8 +188,8 @@ function InRoom() {
 
   const tuningPanel = (
     <div className="row panel">
-      <Dial value={tuning.greenDeg} onChange={(d) => setTuning({ ...tuning, greenDeg: d })} label={<SensorLight light={GREEN} small />} />
-      <Dial value={tuning.redDeg} onChange={(d) => setTuning({ ...tuning, redDeg: d })} label={<SensorLight light={RED} small />} />
+      <Dial value={tuning.greenDeg} onChange={(d) => setTuning({ ...tuning, greenDeg: d })} label={<SensorLight light={COOL} small />} />
+      <Dial value={tuning.redDeg} onChange={(d) => setTuning({ ...tuning, redDeg: d })} label={<SensorLight light={HOT} small />} />
     </div>
   );
 
@@ -204,7 +207,7 @@ function InRoom() {
 
       {round && round.answered !== null && (
         <div className="result spacer">
-          <p className="result__verdict">{S.phone.valveSet(S.valve[round.answered])}</p>
+          <p className="result__verdict">{S.phone.pumpSet(S.pump[round.answered])}</p>
         </div>
       )}
 
@@ -234,14 +237,11 @@ function InRoom() {
           <h2>{S.phone.huddle}</h2>
           {left !== null && <div className="tv__clock">{Math.ceil(left / 1000)}</div>}
           <p>{state.act === 2 ? S.phone.huddleBody : S.phone.huddleBody3}</p>
-          <div className="panel rule">
-            <p className="kicker">{S.rule.head}</p>
-            <p>{S.rule.body}</p>
-          </div>
+          <Rule />
           {state.act === 2 ? (
             <PlanPicker
               plan={plan}
-              onChange={(light, v) => setPlan(light === GREEN ? { ...plan, onGreen: v } : { ...plan, onRed: v })}
+              onChange={(light, v) => setPlan(light === COOL ? { ...plan, onGreen: v } : { ...plan, onRed: v })}
             />
           ) : (
             tuningPanel
@@ -275,27 +275,28 @@ function InRoom() {
   );
 }
 
-const plannedValve = (plan: { onGreen: Valve; onRed: Valve }, light: Light) => (light === GREEN ? plan.onGreen : plan.onRed);
+const plannedPump = (plan: { onGreen: Valve; onRed: Valve }, light: Light) => (light === COOL ? plan.onGreen : plan.onRed);
 
 function PlanPicker({ plan, onChange }: { plan: { onGreen: Valve; onRed: Valve }; onChange: (light: Light, v: Valve) => void }) {
   return (
     <div className="panel stack">
       <p className="kicker">{S.phone.plan}</p>
-      {([GREEN, RED] as const).map((light) => (
+      {([COOL, HOT] as const).map((light) => (
         <div className="stack" key={light}>
           <div className="dial__label">
             <SensorLight light={light} small />
           </div>
           <div className="row" role="radiogroup">
-            {[OPEN, CLOSED].map((v) => (
+            {[ANTICLOCKWISE, CLOCKWISE].map((v) => (
               <button
                 key={v}
                 role="radio"
-                aria-checked={plannedValve(plan, light) === v}
-                className={`btn ${plannedValve(plan, light) === v ? "btn--selected" : ""}`}
+                aria-checked={plannedPump(plan, light) === v}
+                className={`btn btn--pump ${plannedPump(plan, light) === v ? "btn--selected" : ""}`}
                 onClick={() => onChange(light, v)}
               >
-                {S.valve[v]}
+                <PumpIcon pump={v} />
+                {S.pump[v]}
               </button>
             ))}
           </div>

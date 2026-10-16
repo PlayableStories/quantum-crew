@@ -1,6 +1,6 @@
 // pnpm smoke
 // End-to-end check of the real WebSocket stack: starts a station on a free port, connects one TV and four phones
-// (two pairs), plays one Act II batch with every phone always choosing OPEN, and checks that:
+// (two pairs), plays one Act II batch with every phone always pumping clockwise, and checks that:
 // - each phone receives exactly one light per round (its own), and
 // - the batch is scored and pooled on the TV.
 import { createServer } from "node:http";
@@ -95,7 +95,7 @@ for (const [i, phone] of phones.entries()) {
 check(s.lastBatch?.rounds === 2 * BATCH_SIZE, `batch scored ${s.lastBatch?.rounds} pair-rounds`);
 check(s.stability.act2.timeouts === 0, `no timeouts`);
 const r = s.stability.rolling ?? 0;
-check(r <= 1 && r >= 0, `pooled stability ${(r * 100).toFixed(1)}% (always-OPEN expects ≈ 75%)`);
+check(r <= 1 && r >= 0, `pooled stability ${(r * 100).toFixed(1)}% (always-clockwise expects ≈ 75%)`);
 console.log(`Batch took ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 
 for (const c of [tv, ...phones]) c.ws.close();

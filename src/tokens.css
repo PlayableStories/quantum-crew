@@ -18,7 +18,19 @@
   --amber: #ffb627; /* readouts, primary actions */
   --amber-deep: #b87a00;
 
-  /* Signals (the two sensor lights and round outcomes) */
+  /* Sensor readings: COOL (blue, snowflake) and HOT (orange, flame) */
+  --cool: #3aa8ff;
+  --cool-hi: #d4ecff;
+  --cool-deep: #0b3f7a;
+  --cool-glow: rgba(58, 168, 255, 0.45);
+  --on-cool: #02101f; /* text and icon on the COOL bulb */
+  --hot: #ff8a1f;
+  --hot-hi: #ffe2c2;
+  --hot-deep: #8a3a00;
+  --hot-glow: rgba(255, 138, 31, 0.45);
+  --on-hot: #1f0b00; /* text and icon on the HOT bulb */
+
+  /* Round outcomes and meters (results also carry ✓ / ✗ and words) */
   --green: #39e58c;
   --green-deep: #0f6b3d;
   --red: #ff4f5e;
