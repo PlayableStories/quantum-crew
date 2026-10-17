@@ -747,7 +747,8 @@ p {
 
 .reveal {
   position: relative;
-  overflow: hidden;
+  /* clip, not hidden: hidden would make this a scroll container and the sticky ActionBar would stick to it. */
+  overflow: clip;
   isolation: isolate;
 }
 
@@ -904,9 +905,17 @@ p {
 
 .assets li {
   display: grid;
+  min-width: 0;
   gap: 2px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--edge);
+}
+
+/* Job IDs and JSON parameter strings have no spaces: let them break anywhere rather than widen the page. */
+.assets li > span,
+.assets code {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .assets code {
@@ -1309,12 +1318,6 @@ p {
   gap: var(--gap);
 }
 
-.mute--float {
-  position: fixed;
-  top: max(8px, env(safe-area-inset-top));
-  right: 8px;
-  z-index: 10;
-}
 
 /* Act III background from the Entanglement Shader asset */
 .backdrop {
@@ -1337,10 +1340,6 @@ p {
   isolation: isolate;
 }
 
-/* Keep the first row of a solo screen clear of the floating mute button. */
-.solo .screen > :first-child {
-  padding-right: 52px;
-}
 
 .crew-icon {
   display: inline-block;
@@ -1720,4 +1719,184 @@ p {
 }
 .dials--locked .dial button {
   display: none;
+}
+
+/* ---------- Layout: ScreenLayout, ActionBar, Sheet, RuleChip ---------- */
+
+.layout__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--gap);
+  min-height: 44px;
+}
+
+.layout__title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.layout__main,
+.layout__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-width: 0;
+}
+
+.layout__main {
+  flex: 1;
+}
+
+/* The ActionBar supplies the bottom safe-area padding instead of the screen. */
+.layout--bar {
+  padding-bottom: 0;
+}
+
+.action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--gap) * 0.75);
+  margin-inline: calc(var(--gap) * -1);
+  padding: 12px var(--gap) max(12px, env(safe-area-inset-bottom));
+  background: var(--bar-bg);
+  border-top: 1px solid var(--edge);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.quantum .action-bar {
+  background: var(--bar-bg-quantum);
+}
+
+@media (orientation: landscape) and (min-width: 900px) {
+  .layout--split {
+    max-width: 1100px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas: "head head" "main side" "main actions";
+    column-gap: calc(var(--gap) * 2);
+    align-items: start;
+  }
+
+  .layout--split .layout__head {
+    grid-area: head;
+  }
+
+  .layout--split .layout__main {
+    grid-area: main;
+  }
+
+  .layout--split .layout__side {
+    grid-area: side;
+  }
+
+  .layout--split .action-bar {
+    grid-area: actions;
+    align-self: end;
+    margin-inline: 0;
+    border-top: 0;
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Sheet: a bottom sheet on portrait, a right-hand panel on landscape. Animations are dropped by the global
+   prefers-reduced-motion rule above. */
+.sheet {
+  inset: auto 0 0 0;
+  width: min(100%, 640px);
+  max-width: 100%;
+  max-height: 85dvh;
+  margin: 0 auto;
+  padding: 0;
+  border: var(--border);
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--panel);
+  color: var(--ink);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.sheet[open] {
+  animation: sheet-up 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sheet::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.sheet__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  padding: var(--gap) var(--gap) max(var(--gap), env(safe-area-inset-bottom));
+}
+
+.sheet__close {
+  align-self: flex-end;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 4px 10px;
+  letter-spacing: 0;
+}
+
+@media (orientation: landscape) and (min-width: 900px) {
+  .sheet {
+    inset: 0 0 0 auto;
+    width: 420px;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    border: var(--border);
+    border-right: 0;
+    border-radius: var(--radius) 0 0 var(--radius);
+  }
+
+  .sheet[open] {
+    animation-name: sheet-in;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+.rule-chip {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--gap) * 0.75);
+  padding: 8px 8px 8px 12px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.rule-chip__text {
+  flex: 1;
+  margin: 0;
+  font-size: var(--fs-s);
+}
+
+.rule-chip__btn {
+  flex: none;
+  min-height: 44px;
+  padding: 4px 12px;
 }

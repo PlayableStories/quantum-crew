@@ -35,6 +35,10 @@
   --board-high: #24402f; /* a 75% cell */
   --board-low: #3a1c22; /* a 25% cell */
 
+  /* The sticky action bar (solid enough to read buttons over scrolled content) */
+  --bar-bg: rgba(10, 14, 19, 0.94);
+  --bar-bg-quantum: rgba(18, 6, 31, 0.94);
+
   /* Round outcomes and meters (results also carry ✓ / ✗ and words) */
   --green: #39e58c;
   --green-deep: #0f6b3d;

@@ -99,6 +99,25 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   the 8 dial stops; the tool unlocks only after the ceiling reveal; hint and debrief step are TV-local state;
   per-seat marginals are sent only in the debrief phase (plus a pooled "whole crew" row).
 - **Deploy:** solo = static build on Vercel (PlayableStories team); event mode needs a Node host with WebSockets (TBD).
+- **Responsive solo (2026-10-17, Phase 1 of 4):**
+  - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
+    (children), `side` and `actions`.
+    - The header row holds the screen's kicker and the `MuteToggle`; there is no floating mute button any more.
+    - `actions` render in `ActionBar`, which is `position: sticky; bottom: 0` with the safe-area padding.
+  - At `(orientation: landscape) and (min-width: 900px)`, a layout with a `side` becomes a two-column grid
+    (main | side, max-width 1100), and the actions sit at the bottom of the side column. With no `side` it stays one
+    centred column. Phase 1 passes no `side` anywhere.
+  - `Sheet.tsx` is a native `<dialog>` with `showModal()`: a bottom sheet on portrait, a right-hand panel on landscape.
+    It traps Tab, closes on Escape or a backdrop tap, and returns focus to whatever opened it.
+  - `RuleChip.tsx` is the quick rule plus an "Explain" button that opens `<Rule diagram />` in a Sheet. For now it
+    sits under the full rule on the huddle; Phase 2 replaces the full card with it.
+  - Batch rounds put the pump buttons and MEASURE in the ActionBar. `.reveal` uses `overflow: clip`, not `hidden`,
+    so the sticky bar still works.
+  - `pnpm shots` (`scripts/shots.ts`, Playwright, see README) captures every solo screen. For a PR, run
+    `--out before` on main and `--out after` on the branch, then `--compare before after`. The contact sheets go to
+    the orphan branch `pr-shots` under `phase-N/` and are embedded in the PR body; that branch is never merged.
+  - Phases 2–3 restructure the screens' content: the board as plan chooser, readouts, engineering report, tuning
+    and debrief. Phase 4, a live ring on rounds, is optional.
 - **Open questions:** which Atlas sound engine for sfx; event-mode host.
 - **History:** M0–M5 were built during Moth Hack 2026 (submitted 2026-10-06; old demo
   https://quantum-crew-iota.vercel.app/solo) in github.com/WWStoryMode/moth-hack-2026 `apps/quantum-crew`, then moved

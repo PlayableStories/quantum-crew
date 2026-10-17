@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { atlasUrl, isVideo } from "../assets/atlas/manifest.ts";
 import { playSfx } from "../audio/sfx.ts";
+import { ScreenLayout } from "../components/ScreenLayout.tsx";
 import { Crystals, EntanglementSurface, hasEntanglementShader } from "../components/EntanglementSurface.tsx";
 import { S } from "../strings.ts";
 import { CrewRadio } from "./CrewRadio.tsx";
@@ -13,9 +14,16 @@ export function ToolReveal() {
   const art = atlasUrl("entanglement-reveal");
   useEffect(() => playSfx("reveal", "solo"), []);
   return (
-    <main className="screen reveal">
+    <ScreenLayout
+      className="reveal"
+      header={<p className="kicker">{S.tool.kicker}</p>}
+      actions={
+        <button className="btn btn--primary" onClick={openTool}>
+          {S.tool.go}
+        </button>
+      }
+    >
       <RevealField art={art} />
-      <p className="kicker">{S.tool.kicker}</p>
       <Crystals />
       <h1 className="reveal__title">{S.tool.title}</h1>
       <div className="stack">
@@ -24,11 +32,7 @@ export function ToolReveal() {
         ))}
       </div>
       <CrewRadio />
-      <div className="spacer" />
-      <button className="btn btn--primary" onClick={openTool}>
-        {S.tool.go}
-      </button>
-    </main>
+    </ScreenLayout>
   );
 }
 

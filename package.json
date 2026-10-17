@@ -20,7 +20,8 @@
     "smoke": "node scripts/smoke.ts",
     "assets": "node scripts/assets.ts",
     "bake-shader": "node scripts/bake-shader.ts",
-    "gen-assets": "tsx scripts/gen-assets.ts"
+    "gen-assets": "tsx scripts/gen-assets.ts",
+    "shots": "node scripts/shots.ts"
   },
   "dependencies": {
     "qrcode": "^1.5.4",
@@ -37,6 +38,7 @@
     "@types/react-dom": "^19.3.0",
     "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^6.1.1",
+    "playwright": "1.63.0",
     "tsx": "^4.23.15",
     "typescript": "~5.9.3",
     "vite": "^8.3.1",
