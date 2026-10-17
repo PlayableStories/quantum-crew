@@ -1,10 +1,9 @@
-// After each batch (comms open): how it went, the crewmate's reaction, the station, and a 1,000-round test to see past
-// small-sample luck. In Act II the test lands on the plan board.
+// After each batch (comms open): how it went, over a banner of the station; the crewmate's reaction; and one card with
+// the 1,000-round test, to see past small-sample luck. In Act II the test lands on the plan board (one line says so).
 import { useEffect } from "react";
 import { playSfx } from "../audio/sfx.ts";
-import { PlanBoard } from "../components/PlanBoard.tsx";
 import { ScreenLayout } from "../components/ScreenLayout.tsx";
-import { StabilityMeter } from "../components/StabilityMeter.tsx";
+import { StabilityMeter, pct } from "../components/StabilityMeter.tsx";
 import { StationVisual } from "../components/StationVisual.tsx";
 import { BATCH_SIZE } from "../config.ts";
 import { SURVIVAL_THRESHOLD } from "../shared/chsh.ts";
@@ -54,23 +53,27 @@ export function Readout() {
           </>
         )
       }
+      side={
+        <div className="panel stack test-card">
+          <StabilityMeter
+            value={value}
+            label={s.lastSim ? S.readout.simLabel : S.readout.actSoFar(rounds.length)}
+            showCeiling={act === 3}
+            showLimit={act === 3}
+          />
+          {act === 2 && s.lastSim && <p className="muted small">{S.readout.added(pct(s.lastSim.winRate))}</p>}
+          <button className="btn" onClick={s.runSimulation}>
+            {S.readout.simulate}
+            <small>{act === 2 ? S.readout.simulateSub2 : S.readout.simulateSub3}</small>
+          </button>
+        </div>
+      }
     >
-      <h1>{S.readout.held(wins, BATCH_SIZE)}</h1>
-      <CrewRadio />
-      <StationVisual rate={value} />
-      <div className="panel">
-        <StabilityMeter
-          value={value}
-          label={s.lastSim ? S.readout.simLabel : S.readout.actSoFar(rounds.length)}
-          showCeiling={act === 3}
-          showLimit={act === 3}
-        />
+      <div className="readout__hero">
+        <StationVisual rate={value} />
+        <h1>{S.readout.held(wins, BATCH_SIZE)}</h1>
       </div>
-      <button className="btn" onClick={s.runSimulation}>
-        {S.readout.simulate}
-        <small>{act === 2 ? S.readout.simulateSub2 : S.readout.simulateSub3}</small>
-      </button>
-      {act === 2 && <PlanBoard board={s.board} plan={s.plan} crewPlan={s.crewPlan} />}
+      <CrewRadio />
     </ScreenLayout>
   );
 }

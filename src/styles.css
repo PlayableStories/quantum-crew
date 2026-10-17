@@ -405,6 +405,7 @@ p {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  gap: 12px;
 }
 
 .meter__value {
@@ -1616,33 +1617,33 @@ p {
   text-transform: uppercase;
 }
 
-/* ---------- Plan choosers (huddle) ---------- */
+/* ---------- Selected pair (huddle): "You: Reverse when HOT ❄↻ 🔥↺ · Crewmate: …" ---------- */
 
-.plans {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-.plan-option {
-  min-height: 64px;
-  padding: 8px 6px;
-  font-size: 0.8rem;
-  letter-spacing: 0.02em;
-  gap: 6px;
-}
-.plan-option__detail {
+.pair-line {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0;
+}
+.pair-line__side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.plan-icons {
+  display: inline-flex;
   align-items: center;
   gap: 2px;
 }
-.plan-option__detail svg {
+.plan-icons svg {
   width: 18px;
   height: 18px;
 }
-.plan-option__detail .light__icon:first-child {
+.plan-icons .light__icon:first-child {
   color: var(--cool);
 }
-.plan-option__detail .light__icon:nth-child(3) {
+.plan-icons .light__icon:nth-child(3) {
   color: var(--hot);
   margin-left: 6px;
 }
@@ -1670,6 +1671,9 @@ p {
 .board__grid tbody th {
   text-align: right;
 }
+.board__grid td {
+  padding: 0;
+}
 .board__corner {
   font-size: 0.6rem;
   text-align: left !important;
@@ -1678,18 +1682,41 @@ p {
   color: var(--ink);
 }
 .board__cell {
-  height: 38px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 2px;
+  border: 0;
   border-radius: 4px;
-  text-align: center;
+  background: none;
+  color: inherit;
+  font: inherit;
   font-weight: 700;
   font-size: 0.75rem;
   line-height: 1.1;
+  text-align: center;
+}
+button.board__cell {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+button.board__cell:hover {
+  filter: brightness(1.25);
+}
+button.board__cell:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 1px;
+  z-index: 1;
 }
 .board__cell small {
   display: block;
-  font-size: 0.55rem;
+  font-size: 0.6rem;
   font-weight: 400;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
 }
 .board__cell--blank {
   border: 1px dashed var(--edge);
@@ -1702,14 +1729,69 @@ p {
   background: var(--board-low);
   color: var(--ink-muted);
 }
-/* Engineering's runs: hatched, so the player's own tests stand out. */
-.board__cell--eng {
-  background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0 3px, transparent 3px 7px);
-  color: var(--ink-muted);
+/* Engineering's runs: a small corner mark. */
+.board__cell--eng::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-top: 10px solid var(--radio);
+  border-left: 10px solid transparent;
+  border-top-right-radius: 4px;
 }
 .board__cell--current {
   outline: 2px solid var(--amber);
   outline-offset: -2px;
+  box-shadow: 0 0 0 2px var(--amber);
+}
+.board__cell--current.board__cell--blank {
+  background: rgba(255, 182, 39, 0.12);
+}
+
+/* The engineering report's board is the hero: bigger cells and numbers. */
+.board--hero .board__grid {
+  font-size: 0.8rem;
+}
+.board--hero .board__cell {
+  min-height: 56px;
+  font-size: 1.05rem;
+}
+
+@media (orientation: landscape) and (min-width: 900px) {
+  .board__grid {
+    font-size: 0.8rem;
+  }
+  .board__cell {
+    min-height: 52px;
+    font-size: 0.9rem;
+  }
+  .board--hero .board__cell {
+    min-height: 72px;
+    font-size: 1.4rem;
+  }
+}
+
+/* ---------- Readout: the station as a banner behind the headline; the 1,000-round test card ---------- */
+
+.readout__hero {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: 132px;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.readout__hero .station {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+}
+.readout__hero h1 {
+  position: relative;
+  width: 100%;
+  padding: 36px var(--gap) 14px;
+  background: linear-gradient(to bottom, transparent, rgba(5, 8, 12, 0.85) 60%);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
 }
 
 /* ---------- Act III: the crewmate's locked dials ---------- */
@@ -1748,6 +1830,14 @@ p {
 }
 
 .layout__main {
+  flex: 1;
+}
+
+/* Stacked (portrait) with a side column: keep main and side together; the spare space goes above the ActionBar. */
+.layout--split .layout__main {
+  flex: none;
+}
+.layout--split .layout__side {
   flex: 1;
 }
 
@@ -1899,4 +1989,116 @@ p {
   flex: none;
   min-height: 44px;
   padding: 4px 12px;
+}
+
+/* ---------- Phase 2: compact Act II screens ---------- */
+
+.ceiling__top {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+}
+.ceiling__top p {
+  margin: 0;
+}
+
+.rule-chip__text {
+  font-size: 0.8rem;
+}
+
+.action-bar .btn small {
+  font-size: 0.8rem;
+}
+
+/* The selected pair: one row per side. */
+.pair-line {
+  flex-direction: column;
+  gap: 6px;
+}
+.pair-line {
+  font-size: var(--fs-s);
+}
+.pair-line__side {
+  white-space: nowrap;
+  gap: 4px 8px;
+}
+.pair-line .plan-icons svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* A secondary button that takes one row: label and subtitle side by side. */
+.btn--compact {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  min-height: 44px;
+  padding: 6px 14px;
+}
+
+.board .kicker {
+  letter-spacing: 0.08em;
+}
+
+/* Phones: tighter spacing so the main screens fit one viewport. */
+@media (max-width: 599px) {
+  .layout,
+  .layout__main,
+  .layout__side {
+    gap: 12px;
+  }
+  .layout .panel {
+    padding: 12px;
+  }
+  .layout .huge {
+    font-size: 3.2rem;
+  }
+  .board--hero .board__cell {
+    min-height: 44px;
+  }
+  .layout h1 {
+    font-size: 1.6rem;
+  }
+  .rule-chip {
+    padding: 6px 6px 6px 10px;
+  }
+  .rule-chip__text,
+  .action-bar .btn small {
+    font-size: 0.75rem;
+  }
+  .radio-line {
+    gap: 2px;
+  }
+  .btn--compact small {
+    display: none;
+  }
+  .action-bar {
+    padding-top: 8px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .action-bar .btn {
+    padding-inline: 8px;
+  }
+  .board__grid thead th {
+    font-size: 0.62rem;
+    padding: 2px 0;
+  }
+  .pair-line.panel {
+    padding: 10px 12px;
+  }
+  .layout {
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+  .radio-line__text {
+    line-height: 1.35;
+  }
+  /* Kept for screen readers; the header's kicker titles the screen on a phone. */
+  .hide-on-phone {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }

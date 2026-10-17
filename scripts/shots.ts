@@ -160,8 +160,12 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
 
   await click(S.landing.solo);
   await shot("intro");
+  await click(S.intro.next);
+  await shot("intro-2");
   await click(S.intro.go);
   await shot("huddle");
+  await pickFromKeyboard(page);
+  await shot("huddle-selected");
   await click(S.plan.test);
   await shot("huddle-tested");
   await ruleSheet(page, shot);
@@ -220,6 +224,18 @@ async function playBatch(
   await page.getByRole("heading", { level: 1 }).waitFor();
 }
 
+/** On the plan board: arrow down from the selected square and press Enter. That should select your "Reverse when HOT"
+ *  with the crewmate still on "Always clockwise". */
+async function pickFromKeyboard(page: Page) {
+  const selected = page.locator('button.board__cell[aria-pressed="true"]');
+  await selected.focus();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  const label = (await selected.getAttribute("aria-label")) ?? "";
+  const want = S.board.cell(S.plans.name[1]!, S.plans.name[0]!, "");
+  if (!label.startsWith(want)) throw new Error(`board: keyboard pick selected "${label}", wanted "${want}…"`);
+}
+
 /** If the huddle has the rule chip: open the sheet, check focus is trapped, Escape closes it and focus comes back. */
 async function ruleSheet(page: Page, shot: (name: string, primary?: string | null, full?: boolean) => Promise<void>) {
   const explain = page.getByRole("button", { name: S.rule.explain });
@@ -242,7 +258,7 @@ async function ruleSheet(page: Page, shot: (name: string, primary?: string | nul
 async function measure(page: Page, primary: string | null) {
   return page.evaluate((sel) => {
     const doc = document.documentElement;
-    const screens = Math.round((doc.scrollHeight / innerHeight) * 10) / 10;
+    const screens = Math.round((doc.scrollHeight / innerHeight) * 100) / 100;
     const overflow = Math.max(0, doc.scrollWidth - doc.clientWidth);
     let inView = "—";
     if (sel) {

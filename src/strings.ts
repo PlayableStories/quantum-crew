@@ -49,13 +49,14 @@ export const S = {
     ],
     survival: "The station needs 80% stability. The core can take one bad round in five, and no more.",
     go: "Take your post",
+    next: "Next",
+    back: "Back",
   },
 
   plan: {
     kicker: "Strategy huddle",
+    side: (who: string) => `${who}:`,
     title: "Agree a plan",
-    you: "Your plan",
-    crew: (name: string) => `${name}'s plan`,
     blind: "Once the batch starts, comms go dark: neither of you can see the other's sensor.",
     test: "Test this plan",
     testSub: "1,000 rounds, no live play",
@@ -78,12 +79,17 @@ export const S = {
 
   board: {
     head: "Plan board · 1,000-round tests",
+    headExact: "Plan board · exact rates",
+    headChoose: "Plan board · tap to choose",
     rows: "You",
     cols: "Crew",
-    eng: "ENG",
-    legend: "Blank = not tested yet. ENG = engineering's run.",
+    legendExact: "Big: exact rate. Small: your test. Corner: engineering's run.",
     cell: (you: string, crew: string, value: string) => `You ${you}, crewmate ${crew}: ${value}`,
     untested: "not tested",
+    exact: (pct: string) => `exactly ${pct}`,
+    yourTest: (pct: string) => `your test ${pct}`,
+    yourTestShort: (pct: string) => `you ${pct}`,
+    engRun: "run by engineering",
   },
 
   /** Comms are open between batches, dark during one. */
@@ -117,7 +123,7 @@ export const S = {
   crew: {
     name: CREW_NAME,
     opening:
-      "Standard procedure: I always pump clockwise. But it's your call. Set your plan and mine, and I'll fly whatever you pick.",
+      "Standard procedure: I always pump clockwise. Your call, though: tap a square to set both our plans.",
     agreeCrew: [
       "Clockwise every time. Standard procedure. Suits me.",
       "Reverse when I'm hot. Understood. I'll keep an eye on my gauge.",
@@ -195,6 +201,7 @@ export const S = {
     simulateSub3: "Test your tool settings against 1,000 more sensor readings",
     simLabel: "1,000-round test",
     simResult: (pct: string) => `1,000-round test: ${pct}`,
+    added: (pct: string) => `Added to the plan board: ${pct}`,
     again2: "Back to the huddle",
     again3: "Retune and go again",
     report: "Call engineering",
@@ -219,6 +226,9 @@ export const S = {
         : ran === 0
           ? `You tested all ${tested}. We checked your numbers.`
           : `You tested ${tested}. We ran the other ${ran}.`,
+    /** Solo: the board shows exact rates, so say what a test above 75% means. */
+    truth: "The best plan's true rate is exactly 75%: it loses one round in four. The station needs 80%. A test above 75% is luck.",
+    /** Event mode (TV). */
     lines: [
       "None of them holds more than 75% of rounds: the best plan loses one in four. Not on average, not ever.",
       "The core can take one bad round in five. The station needs 80%.",
