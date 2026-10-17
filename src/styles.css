@@ -2102,3 +2102,73 @@ button.board__cell:focus-visible {
     white-space: nowrap;
   }
 }
+
+/* ---------- Phase 3: Act III and debrief ---------- */
+
+/* Tuning: the crewmate's locked dials as one reference line; the full dials open in a Sheet. */
+.crew-dials {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--gap) * 0.75);
+  padding: 8px 8px 8px 12px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.crew-dials__line {
+  flex: 1;
+  font-size: var(--fs-s);
+}
+.crew-dials__btn {
+  flex: none;
+  min-height: 44px;
+  padding: 4px 12px;
+}
+
+/* Debrief step 2: the two tables' best settings side by side. */
+.optimal {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+}
+.optimal .dial--small svg {
+  max-width: 72px;
+}
+.optimal .kicker {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+}
+
+/* Short landscape screens (iPad): a smaller, still large, MEASURE button so the round fits. */
+@media (orientation: landscape) and (max-height: 860px) {
+  .measure {
+    min-height: calc(var(--tap) * 1.2);
+  }
+}
+
+/* Phones: the debrief's long explanations and number panels a size down, so each step fits. */
+@media (max-width: 599px) {
+  .debrief .layout__main {
+    font-size: 0.95rem;
+    line-height: 1.35;
+  }
+  .debrief .bars {
+    gap: 6px;
+  }
+  .debrief .bar {
+    gap: 2px 10px;
+  }
+  .debrief .optimal {
+    gap: 8px;
+  }
+  .debrief .panel.stack {
+    gap: 8px;
+  }
+  .debrief .bar,
+  .debrief .panel .small {
+    font-size: 0.8rem;
+  }
+  .debrief .optimal .dial--small svg {
+    max-width: 56px;
+  }
+}

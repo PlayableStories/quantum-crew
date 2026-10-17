@@ -17,6 +17,16 @@ export function ToolReveal() {
     <ScreenLayout
       className="reveal"
       header={<p className="kicker">{S.tool.kicker}</p>}
+      side={
+        <>
+          <div className="stack">
+            {S.tool.lines.map((l) => (
+              <p key={l}>{l}</p>
+            ))}
+          </div>
+          <CrewRadio />
+        </>
+      }
       actions={
         <button className="btn btn--primary" onClick={openTool}>
           {S.tool.go}
@@ -26,12 +36,6 @@ export function ToolReveal() {
       <RevealField art={art} />
       <Crystals />
       <h1 className="reveal__title">{S.tool.title}</h1>
-      <div className="stack">
-        {S.tool.lines.map((l) => (
-          <p key={l}>{l}</p>
-        ))}
-      </div>
-      <CrewRadio />
     </ScreenLayout>
   );
 }

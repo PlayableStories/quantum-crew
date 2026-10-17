@@ -165,6 +165,8 @@ export const S = {
     tool: "Engineering never sends anything this fancy. I'll set mine; your dials are your business.",
     tuning: "Mine are locked at 22.5° for cool and 157.5° for hot. That's what engineering's sheet says, and I don't touch what works.",
     dialsHead: (name: string) => `${name}'s dials (locked)`,
+    dialsLine: (who: string, cool: string, hot: string) => `${who}: COOL ${cool} · HOT ${hot}, locked`,
+    seeDials: "See dials",
   },
 
   batch: {
@@ -326,6 +328,7 @@ export const S = {
     pending: "placeholder until the asset is added",
     job: (id: string) => `Atlas job ${id}`,
     learn: "Learn more: the CHSH game on IBM Quantum Learning",
+    how: "How the art was made",
     learnUrl:
       "https://quantum.cloud.ibm.com/learning/en/courses/basics-of-quantum-information/entanglement-in-action/chsh-game",
     back: "Back",
