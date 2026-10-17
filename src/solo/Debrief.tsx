@@ -25,8 +25,28 @@ export function Debrief() {
   const content = steps[step]!;
   const last = step === steps.length - 1;
 
+  // The "your numbers" panel for this step: beside the explanation on landscape, under it on a phone.
+  const numbers =
+    step === 0 && content.stat && s.act2.length > 0 ? (
+      <p className="panel">{content.stat(pct(winRate(s.act2)))}</p>
+    ) : step === 1 && content.stat ? (
+      <div className="panel stack">
+        <p>{content.stat(pct(Math.max(s.bestAct3Sim, s.act3.length ? winRate(s.act3) : 0)))}</p>
+        <div className="optimal">
+          <OptimalDials table="A" />
+          <OptimalDials table="B" />
+        </div>
+      </div>
+    ) : step === 2 ? (
+      <NoSignallingPanel />
+    ) : last ? (
+      <CreditsList />
+    ) : undefined;
+
   return (
     <ScreenLayout
+      className="debrief"
+      side={numbers}
       header={
         <>
           <div className="steps" aria-hidden="true">
@@ -67,22 +87,6 @@ export function Debrief() {
           <p key={p}>{p}</p>
         ))}
       </div>
-
-      {step === 0 && content.stat && s.act2.length > 0 && (
-        <p className="panel">{content.stat(pct(winRate(s.act2)))}</p>
-      )}
-      {step === 1 && content.stat && (
-        <>
-          <p className="panel">{content.stat(pct(Math.max(s.bestAct3Sim, s.act3.length ? winRate(s.act3) : 0)))}</p>
-          <div className="panel stack">
-            <OptimalDials table="A" />
-            <OptimalDials table="B" />
-          </div>
-        </>
-      )}
-      {step === 2 && <NoSignallingPanel />}
-      {last && <CreditsList />}
-
     </ScreenLayout>
   );
 }

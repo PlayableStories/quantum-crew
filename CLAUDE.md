@@ -130,7 +130,21 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     - Phone rules (`max-width: 599px`): 12px gaps and panel padding, and a compact test button. The huddle's h1 is
       visually hidden on phones (`.hide-on-phone`).
     - `pnpm shots` reports heights to 2 decimals and checks picking a board square from the keyboard.
-  - Phase 3 restructures tuning and the debrief. Phase 4, a live ring on rounds, is optional.
+  - **Phase 3 (2026-10-17, Act III and debrief):**
+    - Tool reveal: crystals and title in main, the text and radio in the side column.
+    - Tuning: the player's dials first, full size.
+      - The crewmate's dials are one line (`S.crew.dialsLine`), with **See dials** opening the locked dials in a
+        Sheet.
+      - The hint opens in a Sheet from the existing button. It still calls `showHint`.
+      - The rule chip replaces the full card, and there's no meter.
+    - Debrief: each step's numbers panel is the `side` slot. Step 2 is one panel, with `.optimal` putting the two
+      tables side by side.
+    - `CreditsList` (debrief final step and `/credits`) is short; **How the art was made** opens the asset list in a
+      Sheet.
+    - Phone debrief type is a size down (`.debrief`). On short landscape screens (≤ 860px tall) MEASURE is
+      1.2 × `--tap`.
+    - Every solo screen fits one viewport at 1440×900, 1180×820 and 390×844.
+  - Phase 4, a live ring on rounds, is optional.
 - **Open questions:** which Atlas sound engine for sfx; event-mode host.
 - **History:** M0–M5 were built during Moth Hack 2026 (submitted 2026-10-06; old demo
   https://quantum-crew-iota.vercel.app/solo) in github.com/WWStoryMode/moth-hack-2026 `apps/quantum-crew`, then moved

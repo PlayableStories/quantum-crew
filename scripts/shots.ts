@@ -168,7 +168,7 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   await shot("huddle-selected");
   await click(S.plan.test);
   await shot("huddle-tested");
-  await ruleSheet(page, shot);
+  await checkSheet(page, S.rule.explain, "huddle-rule-sheet", shot);
 
   await click(S.plan.start(1));
   await playBatch(page, "act2", (k) => page.keyboard.press(k === 0 ? "c" : "a"), shot, tick);
@@ -179,6 +179,7 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   await shot("tool-reveal");
   await click(S.tool.go);
   await shot("tuning");
+  await checkSheet(page, S.crew.seeDials, "tuning-crew-dials", shot);
 
   for (let batch = 1; ; batch++) {
     await click(S.tuning.start(batch));
@@ -186,6 +187,11 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
     if (await page.getByRole("button", { name: S.readout.debrief, exact: true }).isVisible()) break;
     if (batch >= 4) throw new Error("debrief never unlocked");
     await click(S.readout.again3);
+    // Back at tuning after a batch under 80%: engineering's hint is on offer.
+    if (batch === 1) {
+      await shot("tuning-retune");
+      await checkSheet(page, S.tuning.hintButton, "tuning-hint", shot);
+    }
   }
   await shot("act3-readout");
   await click(S.readout.debrief);
@@ -193,9 +199,11 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
     await shot(`debrief-${step + 1}`);
     if (step < S.debrief.steps.length - 1) await click(S.debrief.next);
   }
+  await checkSheet(page, S.credits.how, "debrief-art", shot);
   await click(S.debrief.home);
   await click(S.landing.credits);
   await shot("credits", null);
+  await checkSheet(page, S.credits.how, "credits-art", shot);
 
   await context.close();
   if (errors.length) throw new Error(`page errors at ${size.name}:\n${errors.join("\n")}`);
@@ -236,23 +244,29 @@ async function pickFromKeyboard(page: Page) {
   if (!label.startsWith(want)) throw new Error(`board: keyboard pick selected "${label}", wanted "${want}…"`);
 }
 
-/** If the huddle has the rule chip: open the sheet, check focus is trapped, Escape closes it and focus comes back. */
-async function ruleSheet(page: Page, shot: (name: string, primary?: string | null, full?: boolean) => Promise<void>) {
-  const explain = page.getByRole("button", { name: S.rule.explain });
-  if (!(await explain.count())) return;
-  await explain.first().click();
-  const dialog = page.getByRole("dialog");
+/** If the screen has this button: open its sheet, screenshot it, check focus stays inside on Tab, Escape closes it
+ *  and focus comes back to the button. */
+async function checkSheet(
+  page: Page,
+  opener: string,
+  name: string,
+  shot: (name: string, primary?: string | null, full?: boolean) => Promise<void>,
+) {
+  const button = page.getByRole("button", { name: opener });
+  if (!(await button.count())) return;
+  await button.first().click();
+  const dialog = page.locator("dialog[open]");
   await dialog.waitFor();
-  await shot("huddle-rule-sheet", null, false);
+  await shot(name, null, false);
   for (let i = 0; i < 6; i++) {
     await page.keyboard.press("Tab");
     const inside = await page.evaluate(() => !!document.activeElement?.closest("dialog[open]"));
-    if (!inside) throw new Error("sheet: focus left the sheet on Tab");
+    if (!inside) throw new Error(`${name}: focus left the sheet on Tab`);
   }
   await page.keyboard.press("Escape");
   await dialog.waitFor({ state: "hidden" });
   const back = await page.evaluate(() => document.activeElement?.textContent ?? "");
-  if (!back.includes(S.rule.explain)) throw new Error(`sheet: focus went to "${back}", not the Explain button`);
+  if (!back.includes(opener)) throw new Error(`${name}: focus went to "${back}", not "${opener}"`);
 }
 
 async function measure(page: Page, primary: string | null) {

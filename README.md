@@ -94,11 +94,12 @@ flowchart TD
    crystals have arrived: one in your tool, one in your crewmate's at Table B.* You turn a dial and tap
    **MEASURE**, and the crystal decides your pump direction.
 6. **Tune your dials (Act III).** One dial for COOL and one for HOT, 8 stops each (0° to 157.5° in 22.5° steps),
-   starting at 0°/0°. Your crewmate's dials are shown, locked at 22.5° for COOL and 157.5° for HOT ("that's what
-   engineering's sheet says"); you tune only your own. In each round
+   starting at 0°/0°. Your own dials come first and large. Your crewmate's are one line, *"Crewmate: COOL 22.5° ·
+   HOT 157.5°, locked"* ("that's what engineering's sheet says"), and **See dials** shows them in full; you tune only
+   your own. In each round
    your dial turns to the angle for your sensor and you tap MEASURE. You choose *how* the crystal is read, not the
-   pump direction. After a batch under 80%, you can ask engineering for a hint: *"Try making your two dials 45° apart, and
-   your partner's offset by half that."*
+   pump direction. After a batch under 80%, **Ask engineering for a hint** opens: *"Try making your two dials 45°
+   apart, and your partner's offset by half that."*
 
    | Your dials (COOL / HOT) | Win rate |
    |---|---|
@@ -116,7 +117,9 @@ flowchart TD
      bound), with your best test and the optimal dials for both tables.
    - **But no messages:** over 10,000 rounds your pump runs clockwise about half the time whatever your crewmate's
      sensor read, so no message gets through (no-signalling).
-   - **Credits**, then *Play again* or *Home*.
+   - **Credits** (the Atlas asset list is behind **How the art was made**), then *Play again* or *Home*.
+
+   Each step's explanation sits beside your own numbers on a landscape screen, and above them on a phone.
 
 All player-facing text is in `src/strings.ts`; pacing and unlock rules are in `src/config.ts`.
 
@@ -134,9 +137,9 @@ Open the app and choose **Solo demo**. It takes about 6 minutes on a phone or a 
 3. **Engineering report.** After the first batch you can call engineering (or try more plans first): they fill in
    every pair you didn't test, and none beats 75%.
 4. **Act III: the Entanglement Tool.** You get two dials, one for COOL and one for HOT; your crewmate's are locked
-   where they set them. In each round, tap
+   where they set them (**See dials**). In each round, tap
    **MEASURE** and the tool sets your pump. Experiment until the 1,000-round test passes 80%. After a batch under
-   80%, a hint appears; after two batches the debrief opens either way.
+   80%, you can ask engineering for a hint; after two batches the debrief opens either way.
 5. **Debrief.** You learn the physics and see your own numbers, then the credits.
 
 Keyboard: **A / ←** = ANTICLOCKWISE, **C / →** = CLOCKWISE, **Space / Enter** = MEASURE.
@@ -254,7 +257,8 @@ pnpm smoke   # real WebSocket server + 1 TV + 4 phones, one Act II batch
 `pnpm shots` plays the whole solo flow like a player in headless Chromium and saves a screenshot of every screen:
 landing, both intro steps, the huddle (first view, after picking a square from the keyboard, after a test, and with
 the rule sheet open), a live round and its result in
-Acts II and III, both readouts, the engineering report, tool reveal, tuning, every debrief step and credits.
+Acts II and III, both readouts, the engineering report, tool reveal, tuning (with the crewmate's dials sheet, and
+again after a batch under 80% with the hint sheet), every debrief step and credits (with the asset-list sheet).
 
 ```sh
 pnpm exec playwright install chromium   # once (or set SHOTS_CHANNEL=chrome to use your installed Chrome)
