@@ -44,9 +44,9 @@ the core can take one bad round in five, and no more.
 
 ```mermaid
 flowchart TD
-  intro["Intro: station log, the rule, 80% to survive"] --> plan
+  intro["Intro, 2 steps: station log;<br/>the rule, 80% to survive"] --> plan
   subgraph act2 ["Act II: plans"]
-    plan["Huddle: set both plans<br/>test any pair, plan board"] --> batch2["Batch: 12 live rounds<br/>comms dark, telemetry"]
+    plan["Huddle: tap a square on the plan board<br/>(sets both plans), test any pair"] --> batch2["Batch: 12 live rounds<br/>comms dark, telemetry"]
     batch2 --> read2["Readout: crewmate reacts<br/>+ Run 1,000 rounds"]
     read2 -- "Back to the huddle" --> plan
   end
@@ -62,11 +62,13 @@ flowchart TD
   debrief --> credits["Credits → Play again / Home"]
 ```
 
-1. **Agree a plan (Act II).** The crewmate opens with *"Standard procedure: I always pump clockwise."* but leaves the
-   call to you: you set the **whole joint plan**, yours and theirs, from four named plans (always clockwise,
-   reverse when HOT, reverse when COOL, always anticlockwise). The crewmate agrees with a short comment. **Test this
-   plan (1,000 rounds)** tries the pair without live play, and every test fills a cell on the **plan board**: your
-   four plans against theirs. The board's shape is the wall: 8 pairs reach 75%, 8 reach 25%, and none beats 75%.
+1. **Agree a plan (Act II).** The crewmate opens with *"Standard procedure: I always pump clockwise. Your call,
+   though: tap a square to set both our plans."* You set the **whole joint plan** on the **plan board**: your four
+   plans (rows) against theirs (columns), from always clockwise, reverse when HOT, reverse when COOL, and always
+   anticlockwise. Tapping a square sets both plans; the arrow keys and Enter work too. A line under the board spells
+   out the pair with its COOL/HOT moves, and the crewmate agrees with a short comment. **Test this plan** tries the
+   pair over 1,000 rounds without live play, and the result fills that square. The board's shape is the wall:
+   8 pairs reach 75%, 8 reach 25%, and none beats 75%.
 
    | You ↓ · Crewmate → | Always clockwise | Reverse when HOT | Reverse when COOL | Always anticlockwise |
    |---|---|---|---|---|
@@ -81,12 +83,13 @@ flowchart TD
    Pressure spike, Overheat or Too slow). Running out of time counts as a loss.
 3. **Readout.** Comms are back on: the crewmate reacts to the batch (e.g. *"Round 7, I was cool and you reversed.
    Hard to know from your side."*). Twelve rounds are noisy, so **Run 1,000 rounds** tests the joint *plan* (not your
-   taps) and adds it to the board. Back in the huddle with the same plan, the crewmate suggests an idea for a pair
+   taps) and adds it to the board ("Added to the plan board: 74.5%"). Back in the huddle with the same plan, the crewmate suggests an idea for a pair
    you haven't tried.
 4. **Call engineering.** After the first batch you can call engineering (or go back and try more plans). Engineering
-   runs every pair you didn't test and fills in the board (marked ENG): *"You tested 5. We ran the other 11."*
-   *"None of them holds more than 75%: the best plan loses one in four."* The core can take one in five. The
-   crewmate: *"So it was never us."* Then: *"Then we need something that isn't a plan."*
+   runs every pair you didn't test (a corner mark on those squares): *"You tested 5. We ran the other 11."* The
+   board then shows every square's **exact** rate, 75% or 25%, with your own test results small underneath:
+   *"The best plan's true rate is exactly 75%: it loses one round in four. The station needs 80%. A test above 75%
+   is luck."* The crewmate: *"So it was never us."* Then: *"Then we need something that isn't a plan."*
 5. **Receive the tool.** The game changes look (a live Entanglement Shader, two synced crystals). *Two linked
    crystals have arrived: one in your tool, one in your crewmate's at Table B.* You turn a dial and tap
    **MEASURE**, and the crystal decides your pump direction.
@@ -121,11 +124,12 @@ All player-facing text is in `src/strings.ts`; pacing and unlock rules are in `s
 Open the app and choose **Solo demo**. It takes about 6 minutes on a phone or a laptop.
 
 1. **Briefing.** You are Table A. An AI crewmate is Table B. Each round your sensor reads **COOL** or **HOT**, and
-   you set your pump **CLOCKWISE** or **ANTICLOCKWISE** within 5 seconds. The station rule is always on screen:
-   *pumps MATCH, unless both sensors are HOT, then they must DIFFER* (the vent only unlocks on a double HOT).
+   you set your pump **CLOCKWISE** or **ANTICLOCKWISE** within 5 seconds. The station rule:
+   *pumps MATCH, unless both sensors are HOT, then they must DIFFER* (the vent only unlocks on a double HOT). After
+   the briefing it stays on screen as a one-line chip; **Explain** opens the full rule card.
    The station needs **80%**.
-2. **Act II: plans.** In the huddle, set your plan *and* your crewmate's, and test any pair over 1,000 rounds on the
-   plan board. Then play batches of 12 rounds (comms dark; the station's telemetry reports each round). Between
+2. **Act II: plans.** In the huddle, tap a square on the plan board to set your plan *and* your crewmate's, and
+   test any pair over 1,000 rounds. Then play batches of 12 rounds (comms dark; the station's telemetry reports each round). Between
    batches the crewmate reacts on the radio. Whatever you try, no pair beats 75%.
 3. **Engineering report.** After the first batch you can call engineering (or try more plans first): they fill in
    every pair you didn't test, and none beats 75%.
@@ -248,7 +252,8 @@ pnpm smoke   # real WebSocket server + 1 TV + 4 phones, one Act II batch
 
 ### Screenshots (`pnpm shots`)
 `pnpm shots` plays the whole solo flow like a player in headless Chromium and saves a screenshot of every screen:
-landing, intro, the huddle (before and after a test, and with the rule sheet open), a live round and its result in
+landing, both intro steps, the huddle (first view, after picking a square from the keyboard, after a test, and with
+the rule sheet open), a live round and its result in
 Acts II and III, both readouts, the engineering report, tool reveal, tuning, every debrief step and credits.
 
 ```sh

@@ -116,8 +116,21 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - `pnpm shots` (`scripts/shots.ts`, Playwright, see README) captures every solo screen. For a PR, run
     `--out before` on main and `--out after` on the branch, then `--compare before after`. The contact sheets go to
     the orphan branch `pr-shots` under `phase-N/` and are embedded in the PR body; that branch is never merged.
-  - Phases 2–3 restructure the screens' content: the board as plan chooser, readouts, engineering report, tuning
-    and debrief. Phase 4, a live ring on rounds, is optional.
+  - **Phase 2 (2026-10-17, Act II screens):**
+    - The intro has two steps in its own component state: the station log and art, then the full rule and the 80%
+      line. This is the only place the full rule shows by default.
+    - Huddle: `PlanBoard` with `onSelect` is the plan chooser. Each square is a button with roving focus, and
+      `moveCell` in `plans.ts` handles the arrow keys. A tap calls `choosePlan` only for the side that changed. A
+      pair line uses `S.batch.you` / `S.batch.crewmate`, and the Start button's subtitle is `S.plan.blind`.
+    - Readout (both acts): the station is a banner behind the headline, and one test card holds the meter and the
+      Run button, plus `S.readout.added` in Act II.
+    - Engineering report: `PlanBoard exact` shows `expectedBoard()` rates, with the player's own test small
+      underneath and a corner mark (`.board__cell--eng::after`) on engineering's squares. Solo uses
+      `S.ceiling.truth`; the TV keeps `S.ceiling.lines`.
+    - Phone rules (`max-width: 599px`): 12px gaps and panel padding, and a compact test button. The huddle's h1 is
+      visually hidden on phones (`.hide-on-phone`).
+    - `pnpm shots` reports heights to 2 decimals and checks picking a board square from the keyboard.
+  - Phase 3 restructures tuning and the debrief. Phase 4, a live ring on rounds, is optional.
 - **Open questions:** which Atlas sound engine for sfx; event-mode host.
 - **History:** M0–M5 were built during Moth Hack 2026 (submitted 2026-10-06; old demo
   https://quantum-crew-iota.vercel.app/solo) in github.com/WWStoryMode/moth-hack-2026 `apps/quantum-crew`, then moved
