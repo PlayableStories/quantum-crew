@@ -14,7 +14,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { chromium, type Browser, type Page } from "playwright";
 import { build, preview } from "vite";
-import { BATCH_SIZE, LEAD_MS, RESULT_MS } from "../src/config.ts";
+import { BATCH_SIZE, LEAD_MS, RESULT_MS, ROUND_MS } from "../src/config.ts";
 import { S } from "../src/strings.ts";
 
 // The page.evaluate callbacks run in the browser. This script is type-checked on the Node side (no DOM lib), so name
@@ -171,7 +171,15 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   await checkSheet(page, S.rule.explain, "huddle-rule-sheet", shot);
 
   await click(S.plan.start(1));
-  await playBatch(page, "act2", (k) => page.keyboard.press(k === 0 ? "c" : "a"), shot, tick);
+  // A mix of pumps for a spread of outcomes; the last round times out ("Too slow").
+  const act2Keys = "cacaaccacac";
+  await playBatch(
+    page,
+    "act2",
+    async (i) => (act2Keys[i] ? (await page.keyboard.press(act2Keys[i]!), true) : false),
+    shot,
+    tick,
+  );
   await shot("act2-readout");
   await click(S.readout.report);
   await shot("engineering-report");
@@ -183,7 +191,7 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
 
   for (let batch = 1; ; batch++) {
     await click(S.tuning.start(batch));
-    await playBatch(page, batch === 1 ? "act3" : null, () => page.keyboard.press("Space"), shot, tick);
+    await playBatch(page, batch === 1 ? "act3" : null, async () => (await page.keyboard.press("Space"), true), shot, tick);
     if (await page.getByRole("button", { name: S.readout.debrief, exact: true }).isVisible()) break;
     if (batch >= 4) throw new Error("debrief never unlocked");
     await click(S.readout.again3);
@@ -210,26 +218,35 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   return rows;
 }
 
-/** One batch: screenshot the first live round and its result (when `prefix` is set), answer the rest. */
+/** One batch. With a `prefix`: screenshot the first live round, then the first result of each cause (circulating,
+ *  heat carried off, purge, pressure spike, overheat, too slow) as it comes up. `answer` returns false to let the
+ *  round time out. */
 async function playBatch(
   page: Page,
   prefix: string | null,
-  answer: (k: number) => Promise<void>,
+  answer: (i: number) => Promise<boolean>,
   shot: (name: string, primary?: string | null) => Promise<void>,
   tick: (ms: number) => Promise<void>,
 ) {
+  const seen = new Set<string>();
+  const causes = Object.entries(S.outcome) as [string, { title: string }][];
   await tick(LEAD_MS + 50);
   for (let i = 0; i < BATCH_SIZE; i++) {
     await page.locator(".countdown").waitFor();
     if (prefix && i === 0) await shot(`${prefix}-round`, ".pumpbtn, .measure");
-    await answer(i % 2);
-    if (prefix && i === 0) {
-      await page.locator(".result").waitFor();
-      await shot(`${prefix}-result`, null);
+    if (!(await answer(i))) await tick(ROUND_MS + 100);
+    if (prefix) {
+      const verdict = (await page.locator(".result__verdict").textContent()) ?? "";
+      const cause = causes.find(([, o]) => verdict.includes(o.title))?.[0];
+      if (cause && !seen.has(cause)) {
+        seen.add(cause);
+        await shot(`${prefix}-result-${cause}`, null);
+      }
     }
     await tick(RESULT_MS + 50);
   }
   await page.getByRole("heading", { level: 1 }).waitFor();
+  if (prefix) console.log(`  ${prefix} results seen: ${[...seen].join(", ")}`);
 }
 
 /** On the plan board: arrow down from the selected square and press Enter. That should select your "Reverse when HOT"

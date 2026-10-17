@@ -6,6 +6,7 @@ import { playSfx } from "../audio/sfx.ts";
 import { Countdown } from "../components/Countdown.tsx";
 import { Dial } from "../components/Dial.tsx";
 import { PumpIcon } from "../components/PumpIcon.tsx";
+import { RingDiagram } from "../components/RingDiagram.tsx";
 import { ScreenLayout } from "../components/ScreenLayout.tsx";
 import { CommsDark } from "../components/RadioLine.tsx";
 import { SensorLight } from "../components/SensorLight.tsx";
@@ -55,6 +56,10 @@ export function Batch() {
 
   return (
     <ScreenLayout
+      className="batch"
+      actionsUnder="main"
+      // Landscape only: the ring, idle while the round is live (it must not show the crewmate's sensor), then the result.
+      side={<RingDiagram result={round?.result ?? undefined} idle={!round?.result} />}
       header={
         <div className="meter__head">
           <span className="kicker">{S.batch.label(batchNo)}</span>
@@ -118,9 +123,13 @@ function RoundOutcome({ result }: { result: RoundResult }) {
       <p className="telemetry">
         <span className="telemetry__head">{S.telemetry.head}</span> {S.telemetry.line(result)}
       </p>
-      <div className="result__pair panel">
+      <div className="result__pair panel only-split">
         <Side who={S.batch.you} light={result.x} pump={result.a} />
         <Side who={S.batch.crewmate} light={result.y} pump={result.b} />
+      </div>
+      {/* Phones and portrait: a small ring replaces the You / Crewmate panel. */}
+      <div className="only-stacked">
+        <RingDiagram result={result} small />
       </div>
       <p className="muted small">{S.rule.quick}</p>
     </div>
