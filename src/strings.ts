@@ -14,7 +14,9 @@ export const S = {
     body: "Keep the coolant flowing one way round the ring. If BOTH sections run HOT, pump against each other to purge.",
     vent: "The relief vent between the sections unlocks only when BOTH sensors read HOT. Nobody can see whether it's unlocked.",
     quick: "Quick rule: pumps MATCH, unless both sensors are HOT. Then they must DIFFER.",
+    explain: "Explain",
   },
+  sheet: { close: "Close" },
   light: { 0: "COOL", 1: "HOT" } as const,
   pump: { 0: "CLOCKWISE", 1: "ANTICLOCKWISE" } as const,
 

@@ -1,6 +1,7 @@
 // The debrief: the only place physics words appear. Four steps: the Bell/CHSH wall, the Tsirelson bound,
 // no-signalling (with the player's own numbers), and credits.
 import { useMemo } from "react";
+import { ScreenLayout } from "../components/ScreenLayout.tsx";
 import { CreditsList } from "../components/CreditsList.tsx";
 import { Bars, OptimalDials, fmt } from "../components/DebriefParts.tsx";
 import { pct } from "../components/StabilityMeter.tsx";
@@ -25,13 +26,41 @@ export function Debrief() {
   const last = step === steps.length - 1;
 
   return (
-    <main className="screen">
-      <div className="steps" aria-hidden="true">
-        {steps.map((_, i) => (
-          <span key={i} className={i <= step ? "on" : ""} />
-        ))}
-      </div>
-      <p className="kicker">{S.debrief.kicker}</p>
+    <ScreenLayout
+      header={
+        <>
+          <div className="steps" aria-hidden="true">
+            {steps.map((_, i) => (
+              <span key={i} className={i <= step ? "on" : ""} />
+            ))}
+          </div>
+          <p className="kicker">{S.debrief.kicker}</p>
+        </>
+      }
+      actions={
+        last ? (
+          <div className="row">
+            <button className="btn" onClick={() => navigate("/")}>
+              {S.debrief.home}
+            </button>
+            <button className="btn btn--primary" onClick={s.reset}>
+              {S.debrief.again}
+            </button>
+          </div>
+        ) : (
+          <div className="row">
+            {step > 0 && (
+              <button className="btn" onClick={() => s.setDebriefStep(step - 1)}>
+                {S.debrief.back}
+              </button>
+            )}
+            <button className="btn btn--primary" onClick={() => s.setDebriefStep(step + 1)}>
+              {S.debrief.next}
+            </button>
+          </div>
+        )
+      }
+    >
       <h1>{content.title}</h1>
       <div className="stack">
         {content.body.map((p) => (
@@ -54,29 +83,7 @@ export function Debrief() {
       {step === 2 && <NoSignallingPanel />}
       {last && <CreditsList />}
 
-      <div className="spacer" />
-      {last ? (
-        <div className="row">
-          <button className="btn" onClick={() => navigate("/")}>
-            {S.debrief.home}
-          </button>
-          <button className="btn btn--primary" onClick={s.reset}>
-            {S.debrief.again}
-          </button>
-        </div>
-      ) : (
-        <div className="row">
-          {step > 0 && (
-            <button className="btn" onClick={() => s.setDebriefStep(step - 1)}>
-              {S.debrief.back}
-            </button>
-          )}
-          <button className="btn btn--primary" onClick={() => s.setDebriefStep(step + 1)}>
-            {S.debrief.next}
-          </button>
-        </div>
-      )}
-    </main>
+    </ScreenLayout>
   );
 }
 

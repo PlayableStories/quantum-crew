@@ -9,7 +9,6 @@ import { ToolReveal } from "./ToolReveal.tsx";
 import { Tuning } from "./Tuning.tsx";
 import { QuantumBackdrop } from "../components/QuantumBackdrop.tsx";
 import { useSolo, type Phase } from "./soloStore.ts";
-import { MuteToggle } from "../components/MuteToggle.tsx";
 
 const QUANTUM_PHASES: Phase[] = ["toolReveal", "act3Plan", "act3Batch", "act3Readout"];
 
@@ -18,9 +17,6 @@ export function Solo() {
   return (
     <div className={`solo ${QUANTUM_PHASES.includes(phase) ? "quantum" : ""}`}>
       {QUANTUM_PHASES.includes(phase) && <QuantumBackdrop />}
-      <div className="mute--float">
-        <MuteToggle where="solo" />
-      </div>
       {screenFor(phase)}
     </div>
   );

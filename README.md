@@ -246,6 +246,30 @@ so the QR code points somewhere phones can reach. To test alone, use one `/scree
 pnpm smoke   # real WebSocket server + 1 TV + 4 phones, one Act II batch
 ```
 
+### Screenshots (`pnpm shots`)
+`pnpm shots` plays the whole solo flow like a player in headless Chromium and saves a screenshot of every screen:
+landing, intro, the huddle (before and after a test, and with the rule sheet open), a live round and its result in
+Acts II and III, both readouts, the engineering report, tool reveal, tuning, every debrief step and credits.
+
+```sh
+pnpm exec playwright install chromium   # once (or set SHOTS_CHANNEL=chrome to use your installed Chrome)
+pnpm shots                              # desktop 1440×900, iPad landscape 1180×820, iPhone 390×844
+pnpm shots --all                        # also iPhone SE 375×667 and iPad portrait 820×1180
+pnpm shots --out before                 # name the run (default: latest)
+pnpm shots --compare before after       # one contact sheet per screen: before above after, sizes side by side
+```
+
+It builds the site and serves it with `vite preview` (static, like the deploy). Nothing is added to the app for it:
+the script seeds `Math.random` before the page loads, so the same rounds come up every run, and it controls the round
+timers with Playwright's clock. Output goes to the git-ignored `shots/<out>/<size>/`:
+- `NN-name.png` is the first viewport, which is what the player sees.
+- `NN-name.full.png` is the whole page, with a dashed line at the fold.
+
+`report.md` lists, for each screen and size, the page height in screen-heights, whether the main button is visible
+without scrolling, and any horizontal overflow. The run also checks that the rule sheet keeps focus inside it,
+closes on Escape and hands focus back. Two runs give the same screens and the same report; a few anti-aliased pixels
+can differ.
+
 ## Deploy
 - **Solo only (static):** the solo mode needs no server or API key. Deploy `dist/` anywhere; `vercel.json`
   rewrites every route to `index.html`. On a static host, the event-mode buttons stay disabled.

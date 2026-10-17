@@ -3,6 +3,8 @@
 import { PlanBoard } from "../components/PlanBoard.tsx";
 import { PumpIcon } from "../components/PumpIcon.tsx";
 import { Rule } from "../components/Rule.tsx";
+import { RuleChip } from "../components/RuleChip.tsx";
+import { ScreenLayout } from "../components/ScreenLayout.tsx";
 import { LightIcon } from "../components/SensorLight.tsx";
 import { pct } from "../components/StabilityMeter.tsx";
 import { winRate, type ClassicalStrategy } from "../shared/chsh.ts";
@@ -16,8 +18,14 @@ export function Plan() {
   const s = useSolo((st) => st);
   const batches = s.act2Batches;
   return (
-    <main className="screen">
-      <p className="kicker">{S.plan.kicker}</p>
+    <ScreenLayout
+      header={<p className="kicker">{S.plan.kicker}</p>}
+      actions={
+        <button className="btn btn--primary" onClick={s.beginBatch}>
+          {S.plan.start(batches + 1)}
+        </button>
+      }
+    >
       <h1>{S.plan.title}</h1>
       <CrewRadio />
       <PlanChooser label={S.plan.you} value={s.plan} onChange={(p) => s.choosePlan("player", p)} />
@@ -30,12 +38,9 @@ export function Plan() {
       <PlanBoard board={s.board} plan={s.plan} crewPlan={s.crewPlan} />
       {batches > 0 && <p className="muted">{S.plan.last(pct(winRate(s.batch)))}</p>}
       <Rule diagram />
+      <RuleChip />
       <p className="muted small">{S.plan.blind}</p>
-      <div className="spacer" />
-      <button className="btn btn--primary" onClick={s.beginBatch}>
-        {S.plan.start(batches + 1)}
-      </button>
-    </main>
+    </ScreenLayout>
   );
 }
 

@@ -6,6 +6,7 @@ import { playSfx } from "../audio/sfx.ts";
 import { Countdown } from "../components/Countdown.tsx";
 import { Dial } from "../components/Dial.tsx";
 import { PumpIcon } from "../components/PumpIcon.tsx";
+import { ScreenLayout } from "../components/ScreenLayout.tsx";
 import { CommsDark } from "../components/RadioLine.tsx";
 import { SensorLight } from "../components/SensorLight.tsx";
 import { StabilityMeter } from "../components/StabilityMeter.tsx";
@@ -53,11 +54,36 @@ export function Batch() {
   const planned: Valve | null = round ? (round.x === 0 ? plan.onGreen : plan.onRed) : null;
 
   return (
-    <main className="screen">
-      <div className="meter__head">
-        <span className="kicker">{S.batch.label(batchNo)}</span>
-        <span className="kicker">{round ? S.batch.round(round.n, BATCH_SIZE) : ""}</span>
-      </div>
+    <ScreenLayout
+      header={
+        <div className="meter__head">
+          <span className="kicker">{S.batch.label(batchNo)}</span>
+          <span className="kicker">{round ? S.batch.round(round.n, BATCH_SIZE) : ""}</span>
+        </div>
+      }
+      actions={
+        live &&
+        (act === 2 ? (
+          <div className="pumps">
+            {[ANTICLOCKWISE, CLOCKWISE].map((v) => (
+              <button key={v} className="btn pumpbtn" onPointerDown={() => answer(v, Date.now())}
+                onClick={() => answer(v, Date.now())}>
+                <span className="pumpbtn__icon">
+                  <PumpIcon pump={v} />
+                </span>
+                {S.pump[v]}
+                {planned === v && <span className="pumpbtn__plan">{S.batch.planTag}</span>}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <button className="btn measure" onPointerDown={() => measure(Date.now())}
+            onClick={() => measure(Date.now())}>
+            {S.batch.measure}
+          </button>
+        ))
+      }
+    >
       <StabilityMeter value={displayedStability(s)} label={S.readout.stability} showCeiling={act === 3} showLimit={act === 3} />
       <Countdown id={round ? round.n : "lead"} ms={round ? ROUND_MS : LEAD_MS} paused={!live} />
       <CommsDark />
@@ -71,37 +97,15 @@ export function Batch() {
         </div>
       )}
 
-      {round && !round.result && (
+      {live && (
         <>
           <SensorLight light={round.x} label={S.batch.yourLight} />
-          <div className="spacer" />
-          {act === 2 ? (
-            <div className="pumps">
-              {[ANTICLOCKWISE, CLOCKWISE].map((v) => (
-                <button key={v} className="btn pumpbtn" onPointerDown={() => answer(v, Date.now())}
-                  onClick={() => answer(v, Date.now())}>
-                  <span className="pumpbtn__icon">
-                    <PumpIcon pump={v} />
-                  </span>
-                  {S.pump[v]}
-                  {planned === v && <span className="pumpbtn__plan">{S.batch.planTag}</span>}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <>
-              <Dial value={dialFor(tuning, round.x)} small />
-              <button className="btn measure" onPointerDown={() => measure(Date.now())}
-                onClick={() => measure(Date.now())}>
-                {S.batch.measure}
-              </button>
-            </>
-          )}
+          {act === 3 && <Dial value={dialFor(tuning, round.x)} small />}
         </>
       )}
 
       {round?.result && <RoundOutcome result={round.result} />}
-    </main>
+    </ScreenLayout>
   );
 }
 

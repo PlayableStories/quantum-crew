@@ -2,6 +2,7 @@
 // setting (the optimal Table B one); the player tunes only their own.
 import { Dial } from "../components/Dial.tsx";
 import { Rule } from "../components/Rule.tsx";
+import { ScreenLayout } from "../components/ScreenLayout.tsx";
 import { SensorLight } from "../components/SensorLight.tsx";
 import { StabilityMeter } from "../components/StabilityMeter.tsx";
 import { OPTIMAL_TUNING, winRate } from "../shared/chsh.ts";
@@ -13,8 +14,14 @@ import { hintAvailable, useSolo } from "./soloStore.ts";
 export function Tuning() {
   const s = useSolo((st) => st);
   return (
-    <main className="screen">
-      <p className="kicker">{S.tuning.kicker}</p>
+    <ScreenLayout
+      header={<p className="kicker">{S.tuning.kicker}</p>}
+      actions={
+        <button className="btn btn--primary" onClick={s.beginBatch}>
+          {S.tuning.start(s.act3Batches + 1)}
+        </button>
+      }
+    >
       <h1>{S.tuning.title}</h1>
       <CrewRadio />
       <div className="panel stack dials--locked">
@@ -49,10 +56,6 @@ export function Tuning() {
             {S.tuning.hintButton}
           </button>
         ))}
-      <div className="spacer" />
-      <button className="btn btn--primary" onClick={s.beginBatch}>
-        {S.tuning.start(s.act3Batches + 1)}
-      </button>
-    </main>
+    </ScreenLayout>
   );
 }
