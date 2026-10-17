@@ -2172,3 +2172,182 @@ button.board__cell:focus-visible {
     max-width: 56px;
   }
 }
+
+/* ---------- Phase 4: the live ring on rounds ---------- */
+
+.ring--small {
+  max-width: 260px;
+  margin: 0 auto;
+}
+.batch .layout__side .ring {
+  max-width: 440px;
+}
+.ring--idle .ring__pipe {
+  stroke: var(--edge-bright);
+  opacity: 0.6;
+}
+.ring--idle .ring__pump {
+  opacity: 0.6;
+}
+.ring__half {
+  fill: none;
+  stroke-width: 9;
+}
+.ring__half--cool {
+  stroke: var(--cool);
+}
+.ring__half--hot {
+  stroke: var(--hot);
+}
+.ring__reading {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.ring__reading--cool {
+  fill: var(--cool);
+}
+.ring__reading--hot {
+  fill: var(--hot);
+}
+.ring__flow-dash {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 2 12;
+}
+.ring--carry .ring__flow-dash {
+  stroke: var(--hot-hi);
+}
+.ring--slow .ring__half {
+  opacity: 0.5;
+}
+.ring__head {
+  fill: var(--ink);
+}
+.ring__dir {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.4;
+}
+.ring__pump--stopped {
+  opacity: 0.45;
+}
+.ring__stopped {
+  fill: var(--ink);
+  font-size: 16px;
+  font-weight: 800;
+}
+.ring__vent--open {
+  fill: var(--hot);
+  stroke: var(--hot-hi);
+}
+.ring__burst path {
+  fill: var(--red);
+  stroke: var(--red-deep);
+  stroke-width: 1.5;
+}
+.ring__purge-puff {
+  stroke: var(--hot-hi);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+.ring__glow {
+  fill: none;
+  stroke: var(--red);
+  stroke-width: 16;
+  opacity: 0.35;
+}
+
+/* Motion (the global prefers-reduced-motion rule turns all of it off; the static marks above carry the meaning). */
+.ring__impeller {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.ring__impeller--cw {
+  animation: spin 0.9s linear infinite;
+}
+.ring__impeller--acw {
+  animation: spin 0.9s linear infinite reverse;
+}
+.ring__flow-dash--fwd {
+  animation: ring-flow 0.8s linear infinite;
+}
+.ring__flow-dash--rev {
+  animation: ring-flow 0.8s linear infinite reverse;
+}
+.ring--spike .ring__flow-dash,
+.ring--purge .ring__flow-dash {
+  animation-duration: 0.5s;
+}
+.ring__burst {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ring-burst 0.5s ease-in-out infinite alternate;
+}
+.ring--spike {
+  animation: ring-shake 0.25s linear 4;
+}
+.ring__purge-puff {
+  animation: ring-puff 0.9s ease-out infinite;
+}
+.ring__glow {
+  animation: alarm 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes ring-flow {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+@keyframes ring-burst {
+  from {
+    scale: 0.8;
+  }
+  to {
+    scale: 1.15;
+  }
+}
+@keyframes ring-shake {
+  25% {
+    translate: -2px 0;
+  }
+  75% {
+    translate: 2px 0;
+  }
+}
+@keyframes ring-puff {
+  from {
+    opacity: 1;
+    translate: 0 4px;
+  }
+  to {
+    opacity: 0;
+    translate: 0 -6px;
+  }
+}
+
+/* The round screen: on landscape the ring is the right column and the buttons stay under the sensor (left). On a
+   phone or portrait screen there's no side ring; a small ring replaces the You / Crewmate panel at the result. */
+@media (orientation: landscape) and (min-width: 900px) {
+  .layout--actions-main.layout--split {
+    grid-template-areas: "head head" "main side" "actions side";
+  }
+  .layout--actions-main .layout__side {
+    grid-row: 2 / 4;
+    align-self: center;
+  }
+  .only-stacked {
+    display: none !important;
+  }
+}
+@media not ((orientation: landscape) and (min-width: 900px)) {
+  .batch .layout__side,
+  .only-split {
+    display: none !important;
+  }
+  .batch.layout--split .layout__main {
+    flex: 1;
+  }
+}

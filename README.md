@@ -80,7 +80,17 @@ flowchart TD
 2. **Play a batch.** Twelve live rounds with **comms dark**. The crewmate plays the plan you set for them. Your
    plan's direction is tagged "Plan", but you set the pump yourself and can go against it. After each round, the
    **station telemetry** reports both sensors, both pumps and the outcome (Circulating, Heat carried off, Purge,
-   Pressure spike, Overheat or Too slow). Running out of time counts as a loss.
+   Pressure spike, Overheat or Too slow). Running out of time counts as a loss. The **coolant ring** plays the round
+   back:
+   - each half lights up COOL or HOT;
+   - each pump spins the way it ran;
+   - the vent opens on a double HOT;
+   - you see the coolant circulate, carry the heat off, purge out of the vent, spike where the two flows collide,
+     overheat, or stall at a pump that never moved.
+
+   On a landscape screen the ring sits beside your sensor and stays blank during the round itself, so it never gives
+   away your crewmate's sensor. On a phone a smaller ring appears with the result. With reduced motion it's a still
+   picture with the same marks.
 3. **Readout.** Comms are back on: the crewmate reacts to the batch (e.g. *"Round 7, I was cool and you reversed.
    Hard to know from your side."*). Twelve rounds are noisy, so **Run 1,000 rounds** tests the joint *plan* (not your
    taps) and adds it to the board ("Added to the plan board: 74.5%"). Back in the huddle with the same plan, the crewmate suggests an idea for a pair
@@ -256,8 +266,8 @@ pnpm smoke   # real WebSocket server + 1 TV + 4 phones, one Act II batch
 ### Screenshots (`pnpm shots`)
 `pnpm shots` plays the whole solo flow like a player in headless Chromium and saves a screenshot of every screen:
 landing, both intro steps, the huddle (first view, after picking a square from the keyboard, after a test, and with
-the rule sheet open), a live round and its result in
-Acts II and III, both readouts, the engineering report, tool reveal, tuning (with the crewmate's dials sheet, and
+the rule sheet open), a live round in Acts II and III with the first result of each outcome (circulating, heat
+carried off, purge, pressure spike, overheat, too slow; the last Act II round is left to time out), both readouts, the engineering report, tool reveal, tuning (with the crewmate's dials sheet, and
 again after a batch under 80% with the hint sheet), every debrief step and credits (with the asset-list sheet).
 
 ```sh

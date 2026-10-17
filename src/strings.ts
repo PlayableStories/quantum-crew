@@ -27,6 +27,8 @@ export const S = {
     b: "B · crewmate",
     vent: "Vent",
     ventNote: "unlocks only when BOTH are HOT",
+    ventOpen: "Vent unlocked",
+    ventLocked: "Vent locked",
   },
 
   landing: {

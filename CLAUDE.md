@@ -144,7 +144,21 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     - Phone debrief type is a size down (`.debrief`). On short landscape screens (≤ 860px tall) MEASURE is
       1.2 × `--tap`.
     - Every solo screen fits one viewport at 1440×900, 1180×820 and 390×844.
-  - Phase 4, a live ring on rounds, is optional.
+  - **Phase 4 (2026-10-17, live ring):**
+    - `RingDiagram` has three modes:
+      - no props: the rule diagram;
+      - `idle`: a live round, which shows no sensor;
+      - `result`: the round's result.
+    - In `result` mode the halves are coloured by sensor and labelled COOL/HOT, the impellers spin with arrows, the
+      vent opens on a double HOT, and each cause has its own mark: flow dashes, a burst where opposing flows meet, puffs
+      out of the vent, a glow for overheat, a stopped pump. It is `aria-hidden`, because the telemetry text says the
+      same.
+    - Motion is pure CSS and the global reduced-motion rule stills it.
+    - Batch is `ScreenLayout className="batch" actionsUnder="main"`, with the ring as its `side`. That side shows only
+      on landscape (`.batch .layout__side` is hidden when stacked).
+    - On stacked screens `RoundOutcome` swaps the You/Crewmate panel for a small ring, using `.only-split` /
+      `.only-stacked`.
+    - `ring.test.tsx` checks that the ring stays idle through every live round in both acts.
 - **Open questions:** which Atlas sound engine for sfx; event-mode host.
 - **History:** M0–M5 were built during Moth Hack 2026 (submitted 2026-10-06; old demo
   https://quantum-crew-iota.vercel.app/solo) in github.com/WWStoryMode/moth-hack-2026 `apps/quantum-crew`, then moved
