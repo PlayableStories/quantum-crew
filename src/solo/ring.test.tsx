@@ -3,7 +3,7 @@
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
 import { RingDiagram } from "../components/RingDiagram.tsx";
-import { ROUND_MS } from "../config.ts";
+import { ACT3_ROUND_MS } from "../config.ts";
 import { scoreRound, type Bit } from "../shared/chsh.ts";
 import { ANTICLOCKWISE, CLOCKWISE, COOL, HOT, roundCause } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
@@ -90,7 +90,7 @@ describe("the ring during a batch", () => {
       ringRevealsNothing(html());
       s().answer(CLOCKWISE, now);
       expect(html()).toContain("ring--live");
-      now += ROUND_MS + 1;
+      now += ACT3_ROUND_MS + 1;
       s().timeout(now);
     }
     s().advance(now);
@@ -100,7 +100,9 @@ describe("the ring during a batch", () => {
     s().beginBatch();
     s().advance(0);
     ringRevealsNothing(html());
-    s().measure(0);
+    s().measure(0); // the crystal has spoken, but the round is still live: still nothing about CORA's sensor
+    ringRevealsNothing(html());
+    s().followCrystal(0);
     expect(html()).toContain("ring--live");
   });
 });

@@ -206,7 +206,15 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
 
   for (let batch = 1; ; batch++) {
     await click(S.tuning.start(batch));
-    await playBatch(page, batch === 1 ? "act3" : null, async () => (await page.keyboard.press("Space"), true), shot, tick);
+    // MEASURE (Space), then follow the crystal (Enter) or choose directly (A / C, sometimes against it).
+    const act3Answer = async (i: number) => {
+      await page.keyboard.press("Space");
+      await page.locator(".crystal-says").waitFor();
+      if (batch === 1 && i === 0) await shot("act3-crystal", ".pumpbtn");
+      await page.keyboard.press(["Enter", "a", "c"][i % 3]!);
+      return true;
+    };
+    await playBatch(page, batch === 1 ? "act3" : null, act3Answer, shot, tick);
     if (await page.getByRole("button", { name: S.readout.debrief, exact: true }).isVisible()) break;
     if (batch >= 4) throw new Error("debrief never unlocked");
     await click(S.readout.again3);
@@ -217,6 +225,8 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
     }
   }
   await shot("act3-readout");
+  await click(S.readout.crystalCases);
+  await shot("act3-readout-cases");
   await click(S.readout.debrief);
   for (let step = 0; step < S.debrief.steps.length; step++) {
     await shot(`debrief-${step + 1}`);

@@ -1,8 +1,9 @@
 // A batch of rounds. Timers live here; the store decides everything else.
 // Buttons fire on pointer-down for speed; a second event in the same round is ignored by the store.
 // Each result stays until the player taps Next round (or after RESULT_AUTO_MS, so a batch can't stall).
-// Keyboard: A / ← = ANTICLOCKWISE, C / → = CLOCKWISE in Act II; Space / Enter = MEASURE in Act III during a round,
-// and Next round on a result.
+// Act III: MEASURE reads the crystal, which suggests a pump; the player then sets the pump themselves.
+// Keyboard: A / ← = ANTICLOCKWISE, C / → = CLOCKWISE (Act III: once the crystal has spoken). Act III: Space / Enter =
+// MEASURE, then Enter follows the crystal. On a result, Space / Enter = Next round.
 import { useEffect } from "react";
 import { playSfx } from "../audio/sfx.ts";
 import { Countdown } from "../components/Countdown.tsx";
@@ -13,15 +14,15 @@ import { ScreenLayout } from "../components/ScreenLayout.tsx";
 import { CommsDark } from "../components/RadioLine.tsx";
 import { SensorLight } from "../components/SensorLight.tsx";
 import { StabilityMeter } from "../components/StabilityMeter.tsx";
-import { BATCH_SIZE, LEAD_MS, RESULT_AUTO_MS, ROUND_MS } from "../config.ts";
+import { BATCH_SIZE, LEAD_MS, RESULT_AUTO_MS } from "../config.ts";
 import { dialFor, type RoundResult, type Valve } from "../shared/chsh.ts";
 import { ANTICLOCKWISE, CLOCKWISE, roundCause } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
-import { actOf, displayedStability, useSolo } from "./soloStore.ts";
+import { actOf, displayedStability, roundMs, useSolo } from "./soloStore.ts";
 
 export function Batch() {
   const s = useSolo((st) => st);
-  const { round, phase, plan, crewPlan, tuning, advance, timeout, answer, measure } = s;
+  const { round, phase, plan, crewPlan, tuning, advance, timeout, answer, measure, followCrystal } = s;
   const act = actOf(phase);
   const batchNo = (act === 2 ? s.act2Batches : s.act3Batches) + 1;
 
@@ -46,19 +47,43 @@ export function Batch() {
       if (round?.result && next) {
         e.preventDefault();
         advance(Date.now());
-      } else if (act === 2 && (k === "a" || k === "arrowleft")) answer(ANTICLOCKWISE, Date.now());
-      else if (act === 2 && (k === "c" || k === "arrowright")) answer(CLOCKWISE, Date.now());
-      else if (act === 3 && next) {
+      } else if (k === "a" || k === "arrowleft") answer(ANTICLOCKWISE, Date.now());
+      else if (k === "c" || k === "arrowright") answer(CLOCKWISE, Date.now());
+      else if (act === 3 && next && round?.crystal == null) {
         e.preventDefault();
         measure(Date.now());
+      } else if (act === 3 && k === "enter") {
+        e.preventDefault();
+        followCrystal(Date.now());
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [act, round, answer, measure, advance]);
+  }, [act, round, answer, measure, followCrystal, advance]);
 
   const live = round && !round.result;
-  const planned: Valve | null = round ? (round.x === 0 ? plan.onGreen : plan.onRed) : null;
+  // The tag on a pump button: the plan's direction (Act II) or the crystal's suggestion (Act III).
+  const suggested: Valve | null =
+    act === 2 ? (round ? (round.x === 0 ? plan.onGreen : plan.onRed) : null) : (round?.crystal ?? null);
+  const tag = act === 2 ? S.batch.planTag : S.batch.crystalTag;
+  const pumps = (
+    <div className="pumps">
+      {[ANTICLOCKWISE, CLOCKWISE].map((v) => (
+        <button
+          key={v}
+          className={`btn pumpbtn ${act === 3 && suggested === v ? "pumpbtn--suggested" : ""}`}
+          onPointerDown={() => answer(v, Date.now())}
+          onClick={() => answer(v, Date.now())}
+        >
+          <span className="pumpbtn__icon">
+            <PumpIcon pump={v} />
+          </span>
+          {S.pump[v]}
+          {suggested === v && <span className="pumpbtn__plan">{tag}</span>}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <ScreenLayout
@@ -79,31 +104,19 @@ export function Batch() {
             <small>{S.batch.nextSub}</small>
           </button>
         ) : (
-        live &&
-        (act === 2 ? (
-          <div className="pumps">
-            {[ANTICLOCKWISE, CLOCKWISE].map((v) => (
-              <button key={v} className="btn pumpbtn" onPointerDown={() => answer(v, Date.now())}
-                onClick={() => answer(v, Date.now())}>
-                <span className="pumpbtn__icon">
-                  <PumpIcon pump={v} />
-                </span>
-                {S.pump[v]}
-                {planned === v && <span className="pumpbtn__plan">{S.batch.planTag}</span>}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <button className="btn measure" onPointerDown={() => measure(Date.now())}
-            onClick={() => measure(Date.now())}>
-            {S.batch.measure}
-          </button>
-        ))
+          live &&
+          (act === 2 || round.crystal !== null ? (
+            pumps
+          ) : (
+            <button className="btn measure" onPointerDown={() => measure(Date.now())} onClick={() => measure(Date.now())}>
+              {S.batch.measure}
+            </button>
+          ))
         )
       }
     >
       <StabilityMeter value={displayedStability(s)} label={S.readout.stability} showCeiling={act === 3} showLimit={act === 3} />
-      <Countdown id={round ? round.n : "lead"} ms={round ? ROUND_MS : LEAD_MS} paused={!live} />
+      <Countdown id={round ? round.n : "lead"} ms={round ? roundMs(act) : LEAD_MS} paused={!live} />
       <CommsDark />
       {act === 2 && !round?.result && <p className="agreed">{S.batch.agreed(plan, crewPlan)}</p>}
 
@@ -118,8 +131,20 @@ export function Batch() {
 
       {live && (
         <>
-          <SensorLight light={round.x} label={S.batch.yourLight} />
-          {act === 3 && <Dial value={dialFor(tuning, round.x)} small />}
+          {/* Act III: the sensor and the dial it selects, side by side. */}
+          <div className={act === 3 ? "round-reading" : "stack"}>
+            <SensorLight light={round.x} label={S.batch.yourLight} />
+            {act === 3 && <Dial value={dialFor(tuning, round.x)} small />}
+          </div>
+          {act === 3 &&
+            (round.crystal === null ? (
+              <p className="muted crystal-hint">{S.batch.measureHint}</p>
+            ) : (
+              <div className="crystal-says" role="status">
+                <strong>{S.batch.crystalSays(S.pump[round.crystal])}</strong>
+                <span className="muted small crystal-keys">{S.batch.follow}</span>
+              </div>
+            ))}
         </>
       )}
 

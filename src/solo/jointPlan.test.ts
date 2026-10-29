@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BATCH_SIZE, ROUND_MS } from "../config.ts";
+import { BATCH_SIZE, ACT3_ROUND_MS } from "../config.ts";
 import { ANTICLOCKWISE, CLOCKWISE } from "../shared/fiction.ts";
 import { ALL_CELLS, cellKey, expectedBoard, planOf } from "./plans.ts";
 import { createSoloStore, playerTried } from "./soloStore.ts";
@@ -12,7 +12,7 @@ function playBatch(store: Store, act: (s: Store) => void) {
   for (let i = 0; i < BATCH_SIZE; i++) {
     store.getState().advance(now);
     act(store);
-    now += ROUND_MS + 1;
+    now += ACT3_ROUND_MS + 1;
     store.getState().timeout(now);
   }
   store.getState().advance(now);
@@ -39,9 +39,7 @@ describe("joint plan", () => {
     s().start();
     s().choosePlan("player", planOf(1));
     s().choosePlan("crew", planOf(2));
-    s().runSimulation(); // no tests in Act II
     expect(s().board).toEqual({});
-    expect(s().lastSim).toBeNull();
     playBatch(store, () => {});
     expect(s().board[cellKey(planOf(1), planOf(2))]).toEqual({ rate: expectedBoard()["1-2"], by: "player" });
   });

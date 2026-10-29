@@ -152,8 +152,8 @@ export const S = {
       purge: (n: number) => `Round ${n}: both hot and we pumped against each other. Textbook purge.`,
       perfect: "Twelve for twelve. Don't get used to it.",
       steady: "Steady batch. Let's see what a thousand rounds say.",
-      act3Good: "Those crystals… that's the steadiest I've seen this ring. Run the thousand to be sure.",
-      act3Bad: "Twelve rounds is a coin toss. Run the thousand before you touch the dials.",
+      act3Good: "Those crystals… that's the steadiest I've seen this ring.",
+      act3Bad: "Twelve rounds is a coin toss. Look at what the crystals do in each case before you touch the dials.",
     },
     ceiling: "So it was never us. Every pair fails the same way.",
     tool: "Engineering never sends anything this fancy. I'll set mine; you find a setting for yours, and we'll see what holds.",
@@ -171,6 +171,10 @@ export const S = {
     yourLight: "Your sensor",
     planTag: "Plan",
     measure: "Measure",
+    measureHint: "Tap MEASURE to read your crystal.",
+    crystalSays: (pump: string) => `Crystal says: ${pump}`,
+    crystalTag: "Crystal",
+    follow: "Enter follows the crystal · A / C to choose",
     stable: "Stable",
     leak: "Leak",
     slow: "Too slow",
@@ -202,17 +206,20 @@ export const S = {
     held: (wins: number, total: number) => `${wins} of ${total} rounds held`,
     stability: "Station stability",
     actSoFar: (n: number) => `All ${n} rounds this shift`,
-    simulate: "Run 1,000 rounds",
-    simulateSub2: "Test your plan against 1,000 more sensor readings",
-    simulateSub3: "Test your tool settings against 1,000 more sensor readings",
-    simLabel: "1,000-round test",
-    simResult: (pct: string) => `1,000-round test: ${pct}`,
     /** Act II: the plan's exact rate, case by case. */
     cases: "If we both follow the plan perfectly",
     casesHead: "Equally likely",
     casesOrder: "Each card: you · ",
     caseTotal: (wins: number, pct: string) => `${wins} of 4 cases: ${pct}`,
-    luck: (pct: string) => `Above 80% this time, but this plan's true rate is ${pct}. Twelve rounds is mostly luck.`,
+    /** When the batch and the true rate disagree about passing 80% (act 2: the plan; act 3: the dial settings). */
+    luck: (gap: "above" | "below", act: 2 | 3, pct: string) =>
+      `${gap === "above" ? "Above" : "Below"} 80% this time, but ${act === 2 ? "this plan's" : "these settings'"} true rate is ${pct}. Twelve rounds is mostly luck.`,
+    /** Act III: the dial settings' exact rate, case by case. */
+    crystalCases: "If we both follow the crystals",
+    crystalCasesHead: "Equally likely · dials you · ",
+    holds: (pct: string) => `holds ${pct}`,
+    trueRate: (pct: string) => `True rate: ${pct}`,
+    followed: (n: number, total: number) => `You followed the crystal in ${n} of ${total} rounds.`,
     again2: "Back to the huddle",
     again3: "Retune and go again",
     report: "Call engineering",
@@ -266,6 +273,9 @@ export const S = {
     yours: "Your dials",
     hintButton: "Ask engineering for a hint",
     hint: "Try making your two dials 45° apart, and your partner's offset by half that.",
+    explainHead: "How the tool works",
+    explain:
+      "The closer your dial points to CORA's, the more often your crystals give the same direction. Need your pumps to match? Point close to hers. Need them to differ? Point far away.",
     start: (n: number) => `Start batch ${n}`,
   },
 
@@ -295,7 +305,7 @@ export const S = {
           "With dials 45° apart and your partner's offset by half that (A: 0° and 45°; B: 22.5° and −22.5°, shown as 157.5°), a crew wins cos²(22.5°) ≈ 85.4% of rounds. No quantum strategy does better: this is the Tsirelson bound.",
           "Real experiments have broken the 75% wall with entangled photons; that work won the 2022 Nobel Prize in Physics.",
         ],
-        stat: (pct: string) => `Your best 1,000-round test: ${pct}`,
+        stat: (pct: string) => `Your dials' true rate: ${pct}`,
       },
       {
         title: "But no messages",
@@ -309,13 +319,19 @@ export const S = {
         body: [],
       },
     ],
+    /** Solo, quantum-limit step: the best plan beside the crystals, four cases each. */
+    compare: {
+      plan: "Best plan: always clockwise",
+      dials: (yours: boolean) => (yours ? "Your dials" : "The best dials (0° / 45°)"),
+      why: "A plan has to give up one case completely. The crystals spread a small loss across all four.",
+    },
     panel: {
-      head: (n: string) => `Your tool settings, ${n} test rounds`,
+      head: "Each pump's clockwise rate, exactly",
       yourRounds: (n: number, cool: string, hot: string) =>
-        `In your ${n} real Act III rounds your pump ran clockwise ${cool} of the time when your crewmate's section was COOL, and ${hot} when it was HOT. Few rounds means more noise; the 10,000 above settle it.`,
+        `In your ${n} real Act III rounds your pump ran clockwise ${cool} of the time when CORA's section was COOL, and ${hot} when it was HOT. Twelve-round batches are noisy.`,
       row: (who: string, light: string) => `${who}: clockwise when partner's side was ${light}`,
       you: "You",
-      crewmate: "Crewmate",
+      crewmate: CREW_NAME,
     },
   },
 

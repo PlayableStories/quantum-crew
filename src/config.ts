@@ -5,16 +5,14 @@ import { CLOCKWISE } from "./shared/fiction.ts";
 /** Time a player has to set their pump or tap MEASURE. */
 // DECISION: 5 s (was 2.5 s), so solo players have time to think about the rule before answering.
 export const ROUND_MS = 5000;
+/** Solo Act III: time to tap MEASURE, read the crystal's suggestion and set the pump. */
+export const ACT3_ROUND_MS = 7000;
 /** Rounds per batch, followed by a stability readout. */
 export const BATCH_SIZE = 12;
 /** Solo: a round's result stays until the player taps Next round, or this long, so a batch can't stall. */
 export const RESULT_AUTO_MS = 6000;
 /** Pause before the first light of a batch. */
 export const LEAD_MS = 1200;
-/** Rounds behind the "Run 1,000 rounds" button. */
-export const SIM_ROUNDS = 1000;
-/** Rounds behind the no-signalling panel in the debrief (enough that 50/50 is visible). */
-export const DEBRIEF_SIM_ROUNDS = 10_000;
 
 /** Event mode: what an AI crewmate in an empty seat plays in Act II. */
 export const BOT_ACT2_PLAN: ClassicalStrategy = { onGreen: CLOCKWISE, onRed: CLOCKWISE };
@@ -28,9 +26,9 @@ export const DEFAULT_TUNING: TuningConfig = { greenDeg: 0, redDeg: 0 };
 
 /** Solo: Act II batches before the engineering report (the player may keep going). */
 export const ACT2_BATCHES = 1;
-/** Solo: Act III batches below the survival line before the hint unlocks. */
+/** Solo: Act III batches played with dials under an exact 80% before the hint unlocks. */
 export const HINT_AFTER_FAILED_BATCHES = 1;
-/** Solo: Act III batches after which the debrief unlocks even without reaching 80%. */
+/** Solo: Act III batches after which the debrief unlocks even if the dials never reached an exact 80%. */
 export const DEBRIEF_AFTER_BATCHES = 2;
 
 // --- Event mode (multiplayer) -------------------------------------------------------------------

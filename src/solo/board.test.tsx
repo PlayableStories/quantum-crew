@@ -5,13 +5,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { FourCases } from "../components/FourCases.tsx";
 import { PlanBoard } from "../components/PlanBoard.tsx";
 import { StabilityMeter } from "../components/StabilityMeter.tsx";
-import { BATCH_SIZE, ROUND_MS } from "../config.ts";
+import { BATCH_SIZE, ACT3_ROUND_MS } from "../config.ts";
 import { classicalCases } from "../shared/chsh.ts";
 import { CLOCKWISE } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
 import { ALL_CELLS, PLAN_IDS, expectedBoard, planOf, type Board } from "./plans.ts";
 import { Solo } from "./Solo.tsx";
-import { luckLine, soloStore } from "./soloStore.ts";
+import { luckGap, soloStore } from "./soloStore.ts";
 
 const s = () => soloStore.getState();
 const html = () => renderToString(<Solo />);
@@ -28,7 +28,7 @@ function finishBatch(act: () => void = () => {}) {
   for (let i = 0; i < BATCH_SIZE; i++) {
     s().advance(now);
     act();
-    now += ROUND_MS + 1;
+    now += ACT3_ROUND_MS + 1;
     s().timeout(now);
   }
   s().advance(now);
@@ -71,11 +71,13 @@ describe("stability gauge", () => {
 
 describe("luck line", () => {
   it("appears only when the batch reached 80% and the plan's true rate didn't", () => {
-    expect(luckLine(10 / 12, 0.75)).toBe(true);
-    expect(luckLine(0.8, 0.75)).toBe(true);
-    expect(luckLine(9 / 12, 0.75)).toBe(false);
-    expect(luckLine(10 / 12, 0.8)).toBe(false);
-    expect(luckLine(0.5, 0.25)).toBe(false);
+    expect(luckGap(10 / 12, 0.75)).toBe("above");
+    expect(luckGap(0.8, 0.75)).toBe("above");
+    expect(luckGap(9 / 12, 0.75)).toBeNull();
+    expect(luckGap(10 / 12, 0.8)).toBeNull();
+    expect(luckGap(0.5, 0.25)).toBeNull();
+    // Act III: settings that pass, unlucky batch.
+    expect(luckGap(7 / 12, 0.854)).toBe("below");
   });
 });
 
@@ -109,15 +111,12 @@ describe("Act II screens", () => {
   it("the readout: no sampled test in Act II; the four-case button; the luck line only when it applies", () => {
     s().start();
     finishBatch(() => s().answer(CLOCKWISE, 0)); // always clockwise with CORA: true rate 75%
-    expect(s().lastSim).toBeNull();
-    s().runSimulation(); // ignored in Act II
-    expect(s().lastSim).toBeNull();
     const markup = html();
     expect(markup).toMatch(/class="readout__hero"><div class="station[^"]*"/);
     expect(markup).toContain(S.readout.cases);
     expect(markup).not.toMatch(/1,000/);
     const batchRate = s().batch.filter((r) => r.win).length / BATCH_SIZE;
-    expect(markup.includes(esc(S.readout.luck("75%")))).toBe(luckLine(batchRate, 0.75));
+    expect(markup.includes(esc(S.readout.luck("above", 2, "75%")))).toBe(luckGap(batchRate, 0.75) === "above");
   });
 
   it("a perfect batch on a 75% plan shows the luck line", () => {
@@ -128,7 +127,7 @@ describe("Act II screens", () => {
       s().answer(((r.x & r.y) ^ CLOCKWISE) as 0 | 1, 0);
     });
     expect(s().batch.every((r) => r.win)).toBe(true);
-    expect(html()).toContain(esc(S.readout.luck("75%")));
+    expect(html()).toContain(esc(S.readout.luck("above", 2, "75%")));
   });
 
   it("the board records a pair once it's been played, and engineering fills the rest exactly", () => {

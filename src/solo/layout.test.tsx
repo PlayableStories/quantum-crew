@@ -2,7 +2,7 @@
 // floating button), and each screen's primary action, or the round's pump / MEASURE buttons, is in the ActionBar.
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
-import { BATCH_SIZE, ROUND_MS } from "../config.ts";
+import { BATCH_SIZE, ACT3_ROUND_MS } from "../config.ts";
 import { CLOCKWISE } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
 import { Solo } from "./Solo.tsx";
@@ -37,7 +37,7 @@ function playBatch(act: () => void) {
   for (let i = 0; i < BATCH_SIZE; i++) {
     s().advance(now);
     act();
-    now += ROUND_MS + 1;
+    now += ACT3_ROUND_MS + 1;
     s().timeout(now);
   }
   s().advance(now);
@@ -59,7 +59,7 @@ describe("solo screen frame", () => {
     expectFrame("act2 live round", /pumpbtn/);
     s().answer(CLOCKWISE, 0);
     expectFrame("act2 result", /Next round/); // the result waits for Next round
-    s().timeout(ROUND_MS + 1);
+    s().timeout(ACT3_ROUND_MS + 1);
     playBatch(() => s().answer(CLOCKWISE, 0));
     expect(s().phase).toBe("act2Readout");
     expectFrame("act2 readout", PRIMARY);
@@ -75,16 +75,18 @@ describe("solo screen frame", () => {
     s().advance(0);
     expectFrame("act3 live round", /measure/);
     s().measure(0);
+    expectFrame("act3 crystal says", /pumpbtn/); // MEASURE gives way to the pumps
+    s().followCrystal(0);
     expectFrame("act3 result", /Next round/);
-    s().timeout(ROUND_MS + 1);
-    playBatch(() => s().measure(0));
+    s().timeout(ACT3_ROUND_MS + 1);
+    playBatch(() => (s().measure(0), s().followCrystal(0)));
     expect(s().phase).toBe("act3Readout");
     expectFrame("act3 readout", PRIMARY);
 
     // A second Act III batch always unlocks the debrief.
     s().nextBatch();
     s().beginBatch();
-    playBatch(() => s().measure(0));
+    playBatch(() => (s().measure(0), s().followCrystal(0)));
     s().startDebrief();
     expect(s().phase).toBe("debrief");
     for (let step = 0; step < S.debrief.steps.length; step++) {

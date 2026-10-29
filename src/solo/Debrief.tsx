@@ -1,22 +1,26 @@
 // The debrief: the only place physics words appear. Four steps: the Bell/CHSH wall, the Tsirelson bound,
 // no-signalling (with the player's own numbers), and credits.
-import { useMemo } from "react";
 import { ScreenLayout } from "../components/ScreenLayout.tsx";
 import { CreditsList } from "../components/CreditsList.tsx";
-import { Bars, OptimalDials, fmt } from "../components/DebriefParts.tsx";
+import { Bars, fmt } from "../components/DebriefParts.tsx";
+import { formatDeg } from "../components/Dial.tsx";
+import { LightIcon } from "../components/SensorLight.tsx";
 import { pct } from "../components/StabilityMeter.tsx";
-import { DEBRIEF_SIM_ROUNDS } from "../config.ts";
+import { DEFAULT_CREW_PLAN } from "../config.ts";
 import { navigate } from "../lib/router.ts";
 import {
   OPTIMAL_TUNING,
+  SURVIVAL_THRESHOLD,
+  classicalCases,
+  exactOpenRates,
   openRatesByPartnerLight,
-  playRounds,
-  quantumStrategyFn,
+  quantumCases,
   winRate,
+  type Light,
 } from "../shared/chsh.ts";
-import { mulberry32 } from "../shared/rng.ts";
+import { HOT } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
-import { useSolo } from "./soloStore.ts";
+import { dialsRate, useSolo } from "./soloStore.ts";
 
 export function Debrief() {
   const s = useSolo((st) => st);
@@ -31,11 +35,8 @@ export function Debrief() {
       <p className="panel">{content.stat(pct(winRate(s.act2)))}</p>
     ) : step === 1 && content.stat ? (
       <div className="panel stack">
-        <p>{content.stat(pct(Math.max(s.bestAct3Sim, s.act3.length ? winRate(s.act3) : 0)))}</p>
-        <div className="optimal">
-          <OptimalDials table="A" />
-          <OptimalDials table="B" />
-        </div>
+        <p>{content.stat(pct(dialsRate(s)))}</p>
+        <PlanVsCrystals />
       </div>
     ) : step === 2 ? (
       <NoSignallingPanel />
@@ -91,28 +92,87 @@ export function Debrief() {
   );
 }
 
-/** Each player's clockwise rate split by the partner's sensor: ≈ 50% both ways, so no message gets through. */
+/**
+ * The quantum-limit step: the best plan and the crystals side by side, four cases each. A plan holds three cases
+ * every time and loses the fourth every time (75%); the crystals hold every case about 85% of the time.
+ * The right column shows the player's dials if they passed, else the best dials.
+ */
+function PlanVsCrystals() {
+  const s = useSolo((st) => st);
+  const yours = dialsRate(s) >= SURVIVAL_THRESHOLD;
+  const plan = classicalCases(DEFAULT_CREW_PLAN, DEFAULT_CREW_PLAN);
+  const crystals = quantumCases(yours ? s.tuning : OPTIMAL_TUNING.A, OPTIMAL_TUNING.B);
+  const C = S.debrief.compare;
+  const whole = (p: number) => `${Math.round(p * 100)}%`;
+  return (
+    <div className="stack">
+      <div className="compare">
+        <div className="compare__col">
+          <p className="kicker">
+            {C.plan}
+            <b className="compare__rate">{"\u00a0·\u00a075%"}</b>
+          </p>
+          <ul>
+            {plan.map((c) => (
+              <li key={`${c.x}${c.y}`} className={c.win ? "case--win" : "case--loss"}>
+                <Sensors x={c.x} y={c.y} />
+                <b>{c.win ? "✓ 100%" : "✗ 0%"}</b>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="compare__col">
+          <p className="kicker">
+            {C.dials(yours)}
+            <b className="compare__rate">{`\u00a0·\u00a0${pct(crystals.reduce((sum, c) => sum + c.pWin, 0) / 4)}`}</b>
+          </p>
+          <ul>
+            {crystals.map((c) => (
+              <li key={`${c.x}${c.y}`} className="case--win">
+                <Sensors x={c.x} y={c.y} />
+                <span className="muted compare__angles">
+                  {formatDeg(c.thetaA)}·{formatDeg(c.thetaB)}
+                </span>
+                <b>{whole(c.pWin)}</b>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <p className="small">{C.why}</p>
+    </div>
+  );
+}
+
+function Sensors({ x, y }: { x: Light; y: Light }) {
+  return (
+    <span className="compare__sensors">
+      <span className={x === HOT ? "case__reading--hot" : "case__reading--cool"}>
+        <LightIcon light={x} />
+      </span>
+      <span className={y === HOT ? "case__reading--hot" : "case__reading--cool"}>
+        <LightIcon light={y} />
+      </span>
+    </span>
+  );
+}
+
+/** Each pump's clockwise rate split by the partner's sensor, exactly: 50% both ways, so no message gets through.
+ *  The player's own Act III rounds sit underneath for comparison. */
 function NoSignallingPanel() {
   const tuning = useSolo((s) => s.tuning);
   const act3 = useSolo((s) => s.act3);
-  const sim = useMemo(
-    () =>
-      openRatesByPartnerLight(
-        playRounds(quantumStrategyFn(tuning, OPTIMAL_TUNING.B, "A"), DEBRIEF_SIM_ROUNDS, mulberry32(2026)),
-      ),
-    [tuning],
-  );
+  const exact = exactOpenRates(tuning, OPTIMAL_TUNING.B);
   const real = openRatesByPartnerLight(act3);
   const P = S.debrief.panel;
   return (
     <div className="panel stack">
-      <p className="kicker">{P.head(DEBRIEF_SIM_ROUNDS.toLocaleString("en-GB"))}</p>
-      <Bars who={P.you} rates={sim.a} />
-      <Bars who={P.crewmate} rates={sim.b} />
+      <p className="kicker">{P.head}</p>
+      <Bars who={P.you} rates={exact.a} />
+      <Bars who={P.crewmate} rates={exact.b} />
       {act3.length > 0 && (
         <p className="muted small">{P.yourRounds(act3.length, fmt(real.a.partnerGreen), fmt(real.a.partnerRed))}</p>
       )}
     </div>
   );
 }
-

@@ -2,16 +2,26 @@
 // station meter and a look past small-sample luck: in Act II the plan's exact rate case by case ("If we both follow
 // the plan perfectly"), with a luck line when the batch passed 80% but the plan can't; in Act III a 1,000-round test.
 import { useEffect, useState } from "react";
+import { CrystalCases } from "../components/CrystalCases.tsx";
 import { FourCases } from "../components/FourCases.tsx";
 import { playSfx } from "../audio/sfx.ts";
 import { ScreenLayout } from "../components/ScreenLayout.tsx";
 import { StabilityMeter, pct } from "../components/StabilityMeter.tsx";
 import { StationVisual } from "../components/StationVisual.tsx";
 import { BATCH_SIZE } from "../config.ts";
-import { SURVIVAL_THRESHOLD, classicalExpectedWinRate } from "../shared/chsh.ts";
+import { OPTIMAL_TUNING, SURVIVAL_THRESHOLD, classicalExpectedWinRate } from "../shared/chsh.ts";
 import { S } from "../strings.ts";
 import { CrewRadio } from "./CrewRadio.tsx";
-import { actOf, canReportCeiling, debriefAvailable, displayedStability, luckLine, useSolo } from "./soloStore.ts";
+import {
+  actOf,
+  canReportCeiling,
+  debriefAvailable,
+  dialsRate,
+  displayedStability,
+  followedCount,
+  luckGap,
+  useSolo,
+} from "./soloStore.ts";
 
 export function Readout() {
   const s = useSolo((st) => st);
@@ -20,7 +30,8 @@ export function Readout() {
   const wins = s.batch.filter((r) => r.win).length;
   const rounds = act === 2 ? s.act2 : s.act3;
   const value = displayedStability(s);
-  const trueRate = classicalExpectedWinRate(s.plan, s.crewPlan);
+  const trueRate = act === 2 ? classicalExpectedWinRate(s.plan, s.crewPlan) : dialsRate(s);
+  const trueText = act === 2 ? `${trueRate * 100}%` : `${(trueRate * 100).toFixed(1)}%`;
   const [showCases, setShowCases] = useState(false);
 
   // Alarm once when a batch ends with the station below the survival line.
@@ -28,6 +39,7 @@ export function Readout() {
   useEffect(() => {
     if (batchRate < SURVIVAL_THRESHOLD) playSfx("alarm", "solo");
   }, [batchRate]);
+  const gap = luckGap(batchRate, trueRate);
 
   return (
     <ScreenLayout
@@ -60,29 +72,26 @@ export function Readout() {
       side={
         <div className="panel stack test-card">
           {/* With the four cases open, they take the meter's place (the headline still says how the batch went). */}
-          {!(act === 2 && showCases) && (
+          {!showCases && (
             <StabilityMeter
               value={value}
-              label={s.lastSim ? S.readout.simLabel : S.readout.actSoFar(rounds.length)}
+              label={S.readout.actSoFar(rounds.length)}
               showCeiling={act === 3}
               showLimit={act === 3}
             />
           )}
-          {act === 2 ? (
-            <>
-              {luckLine(batchRate, trueRate) && <p className="luck">{S.readout.luck(`${trueRate * 100}%`)}</p>}
-              {/* The plan's exact rate, case by case (no sampling). */}
-              <button className="btn btn--compact" aria-expanded={showCases} onClick={() => setShowCases((v) => !v)}>
-                {S.readout.cases}
-              </button>
-              {showCases && <FourCases plan={s.plan} crewPlan={s.crewPlan} />}
-            </>
-          ) : (
-            <button className="btn" onClick={s.runSimulation}>
-              {S.readout.simulate}
-              <small>{S.readout.simulateSub3}</small>
-            </button>
-          )}
+          {act === 3 && <p className="muted small">{S.readout.followed(followedCount(s), BATCH_SIZE)}</p>}
+          {gap && <p className="luck">{S.readout.luck(gap, act, trueText)}</p>}
+          {/* The exact rate, case by case (no sampling): the plan in Act II, the dial settings in Act III. */}
+          <button className="btn btn--compact" aria-expanded={showCases} onClick={() => setShowCases((v) => !v)}>
+            {act === 2 ? S.readout.cases : S.readout.crystalCases}
+          </button>
+          {showCases &&
+            (act === 2 ? (
+              <FourCases plan={s.plan} crewPlan={s.crewPlan} />
+            ) : (
+              <CrystalCases tuning={s.tuning} crew={OPTIMAL_TUNING.B} />
+            ))}
         </div>
       }
     >

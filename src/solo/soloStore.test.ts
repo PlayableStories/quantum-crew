@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { ACT2_BATCHES, BATCH_SIZE, DEBRIEF_AFTER_BATCHES, HINT_AFTER_FAILED_BATCHES, ROUND_MS } from "../config.ts";
-import { CLOSED, OPEN, OPTIMAL_TUNING, classicalExpectedWinRate } from "../shared/chsh.ts";
-import { canReportCeiling, createSoloStore, debriefAvailable, displayedStability, hintAvailable } from "./soloStore.ts";
+import { ACT2_BATCHES, BATCH_SIZE, DEBRIEF_AFTER_BATCHES, HINT_AFTER_FAILED_BATCHES, ROUND_MS, ACT3_ROUND_MS } from "../config.ts";
+import { CLOSED, OPEN, OPTIMAL_TUNING, classicalExpectedWinRate, winRate } from "../shared/chsh.ts";
+import { canReportCeiling, createSoloStore, debriefAvailable, dialsRate, displayedStability, hintAvailable } from "./soloStore.ts";
 
 type Store = ReturnType<typeof createSoloStore>;
 
@@ -12,7 +12,7 @@ function playBatch(store: Store, act: (s: Store) => void) {
   for (let i = 0; i < BATCH_SIZE; i++) {
     store.getState().advance(now);
     act(store);
-    now += ROUND_MS + 1;
+    now += ACT3_ROUND_MS + 1;
     store.getState().timeout(now);
   }
   store.getState().advance(now); // ends the batch
@@ -49,13 +49,16 @@ describe("solo flow", () => {
 
     s().setDial(0, OPTIMAL_TUNING.A.greenDeg);
     s().setDial(1, OPTIMAL_TUNING.A.redDeg);
-    playBatch(store, (st) => st.getState().measure(0));
+    playBatch(store, (st) => {
+      st.getState().measure(0);
+      st.getState().followCrystal(0);
+    });
     expect(s().phase).toBe("act3Readout");
     expect(s().act3).toHaveLength(BATCH_SIZE);
 
-    s().runSimulation();
-    expect(s().lastSim!.winRate).toBeGreaterThan(0.8);
-    expect(displayedStability(s())).toBe(s().lastSim!.winRate);
+    // The optimal dials pass the gate whatever the batch scored.
+    expect(dialsRate(s())).toBeGreaterThan(0.8);
+    expect(displayedStability(s())).toBe(winRate(s().act3));
     expect(debriefAvailable(s())).toBe(true);
     s().startDebrief();
     expect(s().phase).toBe("debrief");
@@ -74,8 +77,6 @@ describe("solo flow", () => {
     ] as const) {
       s().setPlan(0, g);
       s().setPlan(1, r);
-      s().runSimulation(); // ignored in Act II: the readout shows exact rates instead
-      expect(s().lastSim).toBeNull();
       expect(classicalExpectedWinRate(s().plan, s().crewPlan)).toBeLessThanOrEqual(0.75);
     }
   });
