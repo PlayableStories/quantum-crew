@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ACT2_BATCHES, BATCH_SIZE, DEBRIEF_AFTER_BATCHES, HINT_AFTER_FAILED_BATCHES, ROUND_MS } from "../config.ts";
-import { CLOSED, OPEN, OPTIMAL_TUNING } from "../shared/chsh.ts";
+import { CLOSED, OPEN, OPTIMAL_TUNING, classicalExpectedWinRate } from "../shared/chsh.ts";
 import { canReportCeiling, createSoloStore, debriefAvailable, displayedStability, hintAvailable } from "./soloStore.ts";
 
 type Store = ReturnType<typeof createSoloStore>;
@@ -61,7 +61,7 @@ describe("solo flow", () => {
     expect(s().phase).toBe("debrief");
   });
 
-  it("the 1,000-round test can't beat 75% in Act II, whatever the plan", () => {
+  it("Act II has no sampled test, and no plan's exact rate beats 75%", () => {
     const store = createSoloStore(7);
     const s = () => store.getState();
     s().start();
@@ -74,8 +74,9 @@ describe("solo flow", () => {
     ] as const) {
       s().setPlan(0, g);
       s().setPlan(1, r);
-      s().runSimulation();
-      expect(s().lastSim!.winRate).toBeLessThan(0.8);
+      s().runSimulation(); // ignored in Act II: the readout shows exact rates instead
+      expect(s().lastSim).toBeNull();
+      expect(classicalExpectedWinRate(s().plan, s().crewPlan)).toBeLessThanOrEqual(0.75);
     }
   });
 

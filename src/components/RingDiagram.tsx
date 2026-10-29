@@ -39,10 +39,16 @@ export function RingDiagram({ result, idle = false, small = false }: Props) {
   // Where opposing flows meet: A clockwise with B anticlockwise pushes both halves up to the vent; the other way, down.
   const meetTop = !!result && result.a === CLOCKWISE && result.b === ANTICLOCKWISE;
 
+  // Live and idle rings are wider, so each side's labels (section, sensor, pump) can sit outside the ring at a size
+  // that stays legible on a phone (CSS keeps their text at 15 units; at phone width that renders above 12px).
+  const wide = live || idle;
+  const LX = wide ? 18 : 62;
+  const RX = wide ? 302 : 258;
+
   return (
     <svg
       className={cls.filter(Boolean).join(" ")}
-      viewBox="0 0 320 190"
+      viewBox={wide ? "-42 0 404 190" : "0 0 320 190"}
       {...(live || idle ? { "aria-hidden": true } : { role: "img", "aria-label": R_.label })}
     >
       <defs>
@@ -53,20 +59,29 @@ export function RingDiagram({ result, idle = false, small = false }: Props) {
 
       {/* Bulkhead between the sections */}
       <line className="ring__bulkhead" x1={CX} y1="54" x2={CX} y2="186" />
-      <text className="ring__section" x="62" y="80" textAnchor="middle">{R_.a}</text>
-      <text className="ring__section" x="258" y="80" textAnchor="middle">{R_.b}</text>
+      <text className="ring__section" x={LX} y={wide ? 66 : 80} textAnchor="middle">{R_.a}</text>
+      <text className="ring__section" x={RX} y={wide ? 66 : 80} textAnchor="middle">{R_.b}</text>
 
       {result ? (
         <>
           {/* Each half in its sensor's colour, labelled COOL / HOT (never colour alone) */}
           <path className={`ring__half ring__half--${result.x === HOT ? "hot" : "cool"}`} d={LEFT_HALF} />
           <path className={`ring__half ring__half--${result.y === HOT ? "hot" : "cool"}`} d={RIGHT_HALF} />
-          <text className={`ring__reading ring__reading--${result.x === HOT ? "hot" : "cool"}`} x="62" y="96" textAnchor="middle">
+          <text className={`ring__reading ring__reading--${result.x === HOT ? "hot" : "cool"}`} x={LX} y="86" textAnchor="middle">
             {S.light[result.x]}
           </text>
-          <text className={`ring__reading ring__reading--${result.y === HOT ? "hot" : "cool"}`} x="258" y="96" textAnchor="middle">
+          <text className={`ring__reading ring__reading--${result.y === HOT ? "hot" : "cool"}`} x={RX} y="86" textAnchor="middle">
             {S.light[result.y]}
           </text>
+          {/* Each pump's direction in words, under its sensor */}
+          {([0, 1] as const).map((side) => {
+            const pump = side === 0 ? result.a : result.b;
+            return (
+              <text key={side} className="ring__pump-word" x={side === 0 ? LX : RX} y="106" textAnchor="middle">
+                {pump === null ? R_.notSet : S.pump[pump]}
+              </text>
+            );
+          })}
 
           {/* The coolant: dashes along each half, moving the way that half's pump drives it */}
           {cause !== "slow" &&
@@ -133,11 +148,6 @@ export function RingDiagram({ result, idle = false, small = false }: Props) {
                     : `M${cx + 15} ${CY - 17} A23 23 0 0 0 ${cx - 15} ${CY - 17}`
                 }
               />
-            )}
-            {result && pump === null && (
-              <text className="ring__stopped" x={cx} y={CY + 34} textAnchor="middle">
-                —
-              </text>
             )}
           </g>
         );

@@ -47,7 +47,7 @@ describe("live ring", () => {
     expect(count(fought, /ring__flow-dash /g)).toBe(2);
     const slow = ring(COOL, HOT, null, CLOCKWISE);
     expect(slow).toContain("ring__pump--stopped");
-    expect(slow).toContain(">—</text>");
+    expect(slow).toContain(`>${S.ring.notSet}</text>`);
     expect(slow).not.toContain("ring__flow-dash");
   });
 

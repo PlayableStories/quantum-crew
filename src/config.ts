@@ -7,8 +7,8 @@ import { CLOCKWISE } from "./shared/fiction.ts";
 export const ROUND_MS = 5000;
 /** Rounds per batch, followed by a stability readout. */
 export const BATCH_SIZE = 12;
-/** How long a round's result stays on screen before the next light. */
-export const RESULT_MS = 2200;
+/** Solo: a round's result stays until the player taps Next round, or this long, so a batch can't stall. */
+export const RESULT_AUTO_MS = 6000;
 /** Pause before the first light of a batch. */
 export const LEAD_MS = 1200;
 /** Rounds behind the "Run 1,000 rounds" button. */

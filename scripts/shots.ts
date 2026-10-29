@@ -14,7 +14,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { chromium, type Browser, type Page } from "playwright";
 import { build, preview } from "vite";
-import { BATCH_SIZE, LEAD_MS, RESULT_MS, ROUND_MS } from "../src/config.ts";
+import { BATCH_SIZE, LEAD_MS, RESULT_AUTO_MS, ROUND_MS } from "../src/config.ts";
 import { S } from "../src/strings.ts";
 
 // The page.evaluate callbacks run in the browser. This script is type-checked on the Node side (no DOM lib), so name
@@ -50,6 +50,21 @@ type Size = (typeof SIZES)[number] & { mobile?: boolean };
 const ROOT = resolve(import.meta.dirname, "..");
 const SHOTS = join(ROOT, "shots");
 const SEED = 20261016;
+
+/** The smallest text in any visible ring, in screen pixels (font size × the SVG's scale). Null if no ring. */
+const RING_TEXT = `(() => {
+  let min = Infinity;
+  for (const svg of document.querySelectorAll("svg.ring")) {
+    const r = svg.getBoundingClientRect();
+    if (!r.width || svg.closest("[hidden]") || getComputedStyle(svg).display === "none") continue;
+    const scale = r.width / svg.viewBox.baseVal.width;
+    for (const t of svg.querySelectorAll("text")) {
+      if (!t.textContent.trim()) continue;
+      min = Math.min(min, parseFloat(getComputedStyle(t).fontSize) * scale);
+    }
+  }
+  return min === Infinity ? null : min;
+})()`;
 
 const args = process.argv.slice(2);
 const flag = (f: string) => args.includes(f);
@@ -166,11 +181,9 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   await shot("huddle");
   await pickFromKeyboard(page);
   await shot("huddle-selected");
-  await click(S.plan.test);
-  await shot("huddle-tested");
   await checkSheet(page, S.rule.explain, "huddle-rule-sheet", shot);
 
-  await click(S.plan.start(1));
+  await click(S.plan.lock);
   // A mix of pumps for a spread of outcomes; the last round times out ("Too slow").
   const act2Keys = "cacaaccacac";
   await playBatch(
@@ -181,6 +194,8 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
     tick,
   );
   await shot("act2-readout");
+  await click(S.readout.cases);
+  await shot("act2-readout-cases");
   await click(S.readout.report);
   await shot("engineering-report");
   await click(S.ceiling.go);
@@ -240,25 +255,27 @@ async function playBatch(
       const cause = causes.find(([, o]) => verdict.includes(o.title))?.[0];
       if (cause && !seen.has(cause)) {
         seen.add(cause);
-        await shot(`${prefix}-result-${cause}`, null);
+        await shot(`${prefix}-result-${cause}`);
       }
     }
-    await tick(RESULT_MS + 50);
+    // The result waits for the player: tap Next round, press Enter, or (every third round) let it auto-advance.
+    const how = i % 3;
+    if (how === 0) await page.getByRole("button", { name: S.batch.next }).click();
+    else if (how === 1) await page.keyboard.press("Enter");
+    else await tick(RESULT_AUTO_MS + 50);
+    await page.locator(".result").waitFor({ state: "detached" });
   }
   await page.getByRole("heading", { level: 1 }).waitFor();
   if (prefix) console.log(`  ${prefix} results seen: ${[...seen].join(", ")}`);
 }
 
-/** On the plan board: arrow down from the selected square and press Enter. That should select your "Reverse when HOT"
- *  with the crewmate still on "Always clockwise". */
+/** In the "Your plan" box: arrow down from the checked plan. That should select "Reverse when HOT". */
 async function pickFromKeyboard(page: Page) {
-  const selected = page.locator('button.board__cell[aria-pressed="true"]');
-  await selected.focus();
+  const box = page.getByRole("radiogroup", { name: S.plan.yourBox });
+  await box.locator('[aria-checked="true"]').focus();
   await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("Enter");
-  const label = (await selected.getAttribute("aria-label")) ?? "";
-  const want = S.board.cell(S.plans.name[1]!, S.plans.name[0]!, "");
-  if (!label.startsWith(want)) throw new Error(`board: keyboard pick selected "${label}", wanted "${want}…"`);
+  const checked = (await box.locator('[aria-checked="true"]').getAttribute("aria-label")) ?? "";
+  if (!checked.startsWith(S.plans.name[1]!)) throw new Error(`huddle: keyboard pick checked "${checked}"`);
 }
 
 /** If the screen has this button: open its sheet, screenshot it, check focus stays inside on Tab, Escape closes it
@@ -286,7 +303,10 @@ async function checkSheet(
   if (!back.includes(opener)) throw new Error(`${name}: focus went to "${back}", not "${opener}"`);
 }
 
+
 async function measure(page: Page, primary: string | null) {
+  const ringPx = (await page.evaluate(RING_TEXT)) as number | null;
+  if (ringPx !== null && ringPx < 12) throw new Error(`ring text renders at ${ringPx.toFixed(1)}px (< 12px)`);
   return page.evaluate((sel) => {
     const doc = document.documentElement;
     const screens = Math.round((doc.scrollHeight / innerHeight) * 100) / 100;

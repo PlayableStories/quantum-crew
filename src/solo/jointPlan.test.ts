@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BATCH_SIZE, ROUND_MS } from "../config.ts";
 import { ANTICLOCKWISE, CLOCKWISE } from "../shared/fiction.ts";
 import { ALL_CELLS, cellKey, expectedBoard, planOf } from "./plans.ts";
-import { createSoloStore, playerTested } from "./soloStore.ts";
+import { createSoloStore, playerTried } from "./soloStore.ts";
 
 type Store = ReturnType<typeof createSoloStore>;
 
@@ -33,83 +33,69 @@ describe("joint plan", () => {
     expect(s().batch.every((r) => r.b === (r.y === 1 ? ANTICLOCKWISE : CLOCKWISE))).toBe(true);
   });
 
-  it("tests the joint plan from the huddle and records it on the board", () => {
+  it("records the pair on the board, at its exact rate, only once a batch with it has been played", () => {
     const store = createSoloStore(10);
     const s = () => store.getState();
     s().start();
     s().choosePlan("player", planOf(1));
     s().choosePlan("crew", planOf(2));
-    s().runSimulation();
-    const cell = s().board[cellKey(planOf(1), planOf(2))];
-    expect(cell?.by).toBe("player");
-    expect(cell!.rate).toBeCloseTo(expectedBoard()["1-2"], 1);
-    expect(s().lastSim!.winRate).toBe(cell!.rate);
-    expect(s().phase).toBe("act2Plan"); // no live play
+    s().runSimulation(); // no tests in Act II
+    expect(s().board).toEqual({});
+    expect(s().lastSim).toBeNull();
+    playBatch(store, () => {});
+    expect(s().board[cellKey(planOf(1), planOf(2))]).toEqual({ rate: expectedBoard()["1-2"], by: "player" });
   });
 
-  it("keeps a tested cell when the plan changes, and the readout test records the cell too", () => {
+  it("keeps a tried pair when the plan changes, and adds the next one after its batch", () => {
     const store = createSoloStore(12);
     const s = () => store.getState();
     s().start();
-    s().runSimulation(); // 0-0
+    playBatch(store, () => {}); // 0-0
+    s().nextBatch();
     s().choosePlan("crew", planOf(3));
-    expect(s().board["0-0"]).toBeDefined();
     expect(s().board["0-3"]).toBeUndefined();
-    playBatch(store, () => {});
-    s().runSimulation(); // at the readout: 0-3
+    playBatch(store, () => {}); // 0-3
     expect(Object.keys(s().board).sort()).toEqual(["0-0", "0-3"]);
-  });
-
-  it("no tested cell beats 75%", () => {
-    const store = createSoloStore(13);
-    const s = () => store.getState();
-    s().start();
-    for (const p of [0, 1, 2, 3] as const)
-      for (const c of [0, 1, 2, 3] as const) {
-        s().choosePlan("player", planOf(p));
-        s().choosePlan("crew", planOf(c));
-        s().runSimulation();
-      }
-    for (const k of ALL_CELLS) expect(s().board[k]!.rate).toBeLessThan(0.8);
+    for (const k of ["0-0", "0-3"] as const) expect(s().board[k]!.rate).toBeLessThan(0.8);
   });
 });
 
 describe("engineering report", () => {
-  it("fills exactly the untested cells, marks them as engineering's, and keeps the player's", () => {
+  it("fills exactly the untried pairs at their exact rates, and keeps the player's", () => {
     const store = createSoloStore(14);
     const s = () => store.getState();
     s().start();
-    const tested = [
+    const tried = [
       [0, 0],
       [1, 0],
       [3, 2],
     ] as const;
-    for (const [p, c] of tested) {
+    for (const [i, [p, c]] of tried.entries()) {
+      if (i > 0) s().nextBatch();
       s().choosePlan("player", planOf(p));
       s().choosePlan("crew", planOf(c));
-      s().runSimulation();
+      playBatch(store, () => {});
     }
     const before = { ...s().board };
-    playBatch(store, () => {});
     s().reportCeiling();
     expect(s().phase).toBe("ceiling");
-    expect(playerTested(s())).toHaveLength(3);
+    expect(playerTried(s())).toHaveLength(3);
     expect(s().engineeringRan).toBe(13);
+    const exact = expectedBoard();
     for (const k of ALL_CELLS) {
       const cell = s().board[k]!;
       if (before[k]) expect(cell).toEqual(before[k]);
-      else expect(cell.by).toBe("engineering");
-      expect(cell.rate).toBeLessThan(0.8);
+      else expect(cell).toEqual({ rate: exact[k], by: "engineering" });
     }
   });
 
-  it("runs all 16 when the player tested none", () => {
+  it("runs the other 15 after one batch", () => {
     const store = createSoloStore(15);
     const s = () => store.getState();
     s().start();
     playBatch(store, () => {});
     s().reportCeiling();
-    expect(s().engineeringRan).toBe(16);
-    expect(playerTested(s())).toHaveLength(0);
+    expect(s().engineeringRan).toBe(15);
+    expect(playerTried(s())).toHaveLength(1);
   });
 });

@@ -47,7 +47,7 @@ describe("comms rule", () => {
     const store = createSoloStore(11);
     const base = store.getState();
     for (const phase of COMMS_DARK_PHASES) {
-      for (const crewCue of ["opening", "agreeCrew", "agreePlayer", "tested", "idea"] as const) {
+      for (const crewCue of ["opening", "agreeCrew", "agreePlayer", "idea"] as const) {
         expect(crewLines({ ...base, phase, crewCue })).toEqual([]);
       }
     }
@@ -88,8 +88,6 @@ describe("huddle lines", () => {
     expect(crewLines(s())).toEqual([S.crew.agreeCrew[1]]);
     s().choosePlan("player", planOf(3));
     expect(crewLines(s())).toEqual([S.crew.agreePlayer[3]]);
-    s().runSimulation();
-    expect(crewLines(s())[0]).toMatch(/%/);
   });
 
   it("offers an idea when the player comes back to the huddle with the same plan", () => {
@@ -134,14 +132,23 @@ describe("readout reactions", () => {
 });
 
 describe("station telemetry", () => {
-  it("reports both sensors, both pumps and the cause, in the station's voice", () => {
-    const line = S.telemetry.line;
-    expect(line(scoreRound(HOT, HOT, CLOCKWISE, CLOCKWISE))).toBe("Both sections HOT. Pumps agreed. Vent unlocked, no purge. Overheat.");
-    expect(line(scoreRound(HOT, HOT, ANTICLOCKWISE, CLOCKWISE))).toBe("Both sections HOT. Pumps fought. Vent unlocked. Purge. Stable.");
-    expect(line(scoreRound(HOT, COOL, ANTICLOCKWISE, CLOCKWISE))).toBe("A HOT · B COOL. Pumps fought. Vent locked. Pressure spike.");
-    expect(line(scoreRound(COOL, COOL, CLOCKWISE, ANTICLOCKWISE))).toBe("Both sections COOL. Pumps fought. Vent locked. Pressure spike.");
-    expect(line(scoreRound(COOL, HOT, CLOCKWISE, CLOCKWISE))).toBe("A COOL · B HOT. Pumps agreed. Heat carried to the cool side. Stable.");
-    expect(line(scoreRound(COOL, COOL, ANTICLOCKWISE, ANTICLOCKWISE))).toBe("Both sections COOL. Pumps agreed. Coolant circulating. Stable.");
-    expect(line(scoreRound(COOL, HOT, null, CLOCKWISE))).toBe("A COOL · B HOT. Pump A not set. Round lost.");
+  it("says in one impersonal sentence why the round held or failed", () => {
+    const why = S.telemetry.why;
+    expect(why(scoreRound(HOT, HOT, CLOCKWISE, CLOCKWISE))).toBe(
+      "Both sections HOT and the pumps matched, so nothing pushed the heat out of the open vent.",
+    );
+    expect(why(scoreRound(HOT, HOT, ANTICLOCKWISE, CLOCKWISE))).toBe(
+      "Both sections HOT and the pumps fought, so the vent opened and purged the heat.",
+    );
+    expect(why(scoreRound(HOT, COOL, ANTICLOCKWISE, CLOCKWISE))).toBe(
+      "The pumps fought, but the vent stays locked unless both sections are HOT.",
+    );
+    expect(why(scoreRound(COOL, HOT, CLOCKWISE, CLOCKWISE))).toBe(
+      "One section HOT and the pumps matched, so the heat was carried to the cool side.",
+    );
+    expect(why(scoreRound(COOL, COOL, ANTICLOCKWISE, ANTICLOCKWISE))).toBe(
+      "Both sections COOL and the pumps matched, so the coolant circulated.",
+    );
+    expect(why(scoreRound(COOL, HOT, null, CLOCKWISE))).toBe("Your pump wasn't set in time.");
   });
 });

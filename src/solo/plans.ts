@@ -21,7 +21,7 @@ export const cellKey = (player: ClassicalStrategy, crew: ClassicalStrategy): Cel
 
 export const ALL_CELLS: readonly CellKey[] = PLAN_IDS.flatMap((p) => PLAN_IDS.map((c) => `${p}-${c}` as CellKey));
 
-/** A tested cell: its 1,000-round win rate and who ran it. */
+/** A board square: its exact rate, and whether the player tried the pair (locked in and played) or engineering ran it. */
 export type BoardCell = { rate: number; by: "player" | "engineering" };
 
 export type Board = Partial<Record<CellKey, BoardCell>>;
@@ -34,23 +34,4 @@ export function expectedBoard(): Record<CellKey, number> {
       return [k, classicalExpectedWinRate(planOf(p), planOf(c))];
     }),
   ) as Record<CellKey, number>;
-}
-
-const ARROWS: Record<string, [number, number]> = {
-  ArrowUp: [-1, 0],
-  ArrowDown: [1, 0],
-  ArrowLeft: [0, -1],
-  ArrowRight: [0, 1],
-};
-
-/** Keyboard movement on the board: the cell an arrow key moves to (rows = your plan), or null at an edge or for
- *  any other key. */
-export function moveCell(k: CellKey, key: string): CellKey | null {
-  const step = ARROWS[key];
-  if (!step) return null;
-  const [p, c] = k.split("-").map(Number) as [number, number];
-  const np = p + step[0];
-  const nc = c + step[1];
-  if (np < 0 || np > 3 || nc < 0 || nc > 3) return null;
-  return `${np}-${nc}` as CellKey;
 }
