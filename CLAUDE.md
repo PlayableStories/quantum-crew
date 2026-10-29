@@ -49,8 +49,12 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   returns nothing in `act2Batch` / `act3Batch`; screens render it through `CrewRadio` → `RadioLine`. Batches show
   `CommsDark` and per-round **station telemetry** (`S.telemetry.line`), never crewmate text (`crew.test.ts`,
   `comms.test.tsx` enforce this). The store only records `crewCue`; readout reactions are derived from the batch.
-  The crewmate's name is the `CREW_NAME` constant in `strings.ts` (placeholder until the user picks one). Act III
-  tuning shows the crewmate's dials locked at `OPTIMAL_TUNING.B`. Event mode is unchanged: empty seats still play
+  The crewmate is **CORA** (Coolant Ring Assistant, "she"): `CREW_NAME` in `strings.ts`, shown with `AiBadge`
+  (`components/AiBadge.tsx`: `CrewName`, `SeatName`) on the radio, the huddle, tuning and the round result. Event
+  mode's bot seats use the same name (`server/room.ts` `BOT_NAME = CREW_NAME`) and the badge on the TV pair card and
+  the phone's partner line. Readout reactions state only facts (`hotCool`, `coolHot`, `bothCool`), never who
+  reversed or whose fault it was. Act III
+  tuning shows the crewmate's dials locked at `OPTIMAL_TUNING.B`. Event mode's bots behave as before: empty seats play
   `BOT_ACT2_PLAN`, and the TV's ceiling text uses `S.ceiling.lead`.
 - **Engines used:** Atlas assets made by William on platform.mothquantum.com (tessa-image-v1 station art, blur-v1
   degradation levels, entanglement-shader-v1 tool reveal, a sound engine for sfx). The in-game entanglement is a
@@ -159,6 +163,11 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     - On stacked screens `RoundOutcome` swaps the You/Crewmate panel for a small ring, using `.only-split` /
       `.only-stacked`.
     - `ring.test.tsx` checks that the ring stays idle through every live round in both acts.
+- **CORA Phase 1 (2026-10-29):** CORA and her AI badge, factual copy, and the TV's 75% line matching solo's ("exactly
+  75%… any batch above it is luck"). Exact board rates are whole numbers ("75%"). On landscape ≥ 900px wide,
+  `html:has(.solo)` scales the root font with `clamp(16px, 0.6vw + 1.2vh, 22px)`; `--gap` / `--tap` and the
+  board, dials, rings and banner scale too; main and side sit centred vertically. Short landscape screens
+  (≤ 860px tall) shrink the Act III round's dial and MEASURE so it fits. Phones are unchanged.
 - **Open questions:** which Atlas sound engine for sfx; event-mode host.
 - **History:** M0–M5 were built during Moth Hack 2026 (submitted 2026-10-06; old demo
   https://quantum-crew-iota.vercel.app/solo) in github.com/WWStoryMode/moth-hack-2026 `apps/quantum-crew`, then moved

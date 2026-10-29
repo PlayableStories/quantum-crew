@@ -46,7 +46,7 @@ describe("tuning", () => {
     const main = markup.slice(markup.indexOf('class="layout__main"'), markup.indexOf("<aside"));
     expect(main).toContain(S.tuning.yours);
     expect(main.match(/class="dial "/g)).toHaveLength(2);
-    expect(side(markup)).toContain(S.crew.dialsLine(S.batch.crewmate, "22.5°", "157.5°"));
+    expect(side(markup)).toContain(S.crew.dialsLine("22.5°", "157.5°"));
     expect(side(markup)).toContain(S.crew.seeDials);
     expect(markup).toContain("rule-chip");
     expect(markup).not.toContain('class="panel rule"');

@@ -18,7 +18,8 @@ beat the wall.
 
 ## Story and player flow
 *Station log · shift 1.* The station's coolant runs round a **ring** that passes through two sections. In solo mode
-you are at **Table A** and an AI crewmate is at **Table B**, and each table runs the **pump** in its own section,
+you are at **Table A** and **CORA**, the station's Coolant Ring Assistant, is at **Table B**. She's an AI, not a
+person: her name always carries a small **AI** badge. Each table runs the **pump** in its own section,
 **CLOCKWISE** or **ANTICLOCKWISE**. The reactor flares at random, so each round each section's sensor reads **COOL**
 (blue, snowflake) or **HOT** (orange, flame). You see only your own sensor, you can't talk during a round, and you
 have 5 seconds. A **relief vent** between the sections unlocks automatically only when **both** sections are HOT, and
@@ -91,8 +92,9 @@ flowchart TD
    On a landscape screen the ring sits beside your sensor and stays blank during the round itself, so it never gives
    away your crewmate's sensor. On a phone a smaller ring appears with the result. With reduced motion it's a still
    picture with the same marks.
-3. **Readout.** Comms are back on: the crewmate reacts to the batch (e.g. *"Round 7, I was cool and you reversed.
-   Hard to know from your side."*). Twelve rounds are noisy, so **Run 1,000 rounds** tests the joint *plan* (not your
+3. **Readout.** Comms are back on: CORA reacts to the batch with the facts of one round (e.g. *"Round 7: you were
+   hot, I was cool, and our pumps fought."*). She never says who reversed or whose fault it was: with different plans
+   the pumps can fight without anyone going against the plan. Twelve rounds are noisy, so **Run 1,000 rounds** tests the joint *plan* (not your
    taps) and adds it to the board ("Added to the plan board: 74.5%"). Back in the huddle with the same plan, the crewmate suggests an idea for a pair
    you haven't tried.
 4. **Call engineering.** After the first batch you can call engineering (or go back and try more plans). Engineering
@@ -104,8 +106,9 @@ flowchart TD
    crystals have arrived: one in your tool, one in your crewmate's at Table B.* You turn a dial and tap
    **MEASURE**, and the crystal decides your pump direction.
 6. **Tune your dials (Act III).** One dial for COOL and one for HOT, 8 stops each (0° to 157.5° in 22.5° steps),
-   starting at 0°/0°. Your own dials come first and large. Your crewmate's are one line, *"Crewmate: COOL 22.5° ·
-   HOT 157.5°, locked"* ("that's what engineering's sheet says"), and **See dials** shows them in full; you tune only
+   starting at 0°/0°. Your own dials come first and large. CORA's are one line, *"CORA: COOL 22.5° · HOT
+   157.5°, locked"* (*"Mine sit where my crystal settles… Nobody knows yet if that's right."*), and **See dials**
+   shows them in full; you tune only
    your own. In each round
    your dial turns to the angle for your sensor and you tap MEASURE. You choose *how* the crystal is read, not the
    pump direction. After a batch under 80%, **Ask engineering for a hint** opens: *"Try making your two dials 45°
@@ -134,9 +137,10 @@ flowchart TD
 All player-facing text is in `src/strings.ts`; pacing and unlock rules are in `src/config.ts`.
 
 ## How to play (solo)
-Open the app and choose **Solo demo**. It takes about 6 minutes on a phone or a laptop.
+Open the app and choose **Solo demo**. It takes about 6 minutes on a phone or a laptop. On a laptop or a landscape
+iPad the type, plan board, dials and ring scale up with the screen, and every screen still fits without scrolling.
 
-1. **Briefing.** You are Table A. An AI crewmate is Table B. Each round your sensor reads **COOL** or **HOT**, and
+1. **Briefing.** You are Table A. CORA, the station's AI, is Table B. Each round your sensor reads **COOL** or **HOT**, and
    you set your pump **CLOCKWISE** or **ANTICLOCKWISE** within 5 seconds. The station rule:
    *pumps MATCH, unless both sensors are HOT, then they must DIFFER* (the vent only unlocks on a double HOT). After
    the briefing it stays on screen as a one-line chip; **Explain** opens the full rule card.
@@ -159,7 +163,8 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
 
 1. Open **/screen** on the TV (landing page → **Host on TV**). It creates a station with a 4-letter code and a QR code.
 2. Players scan the QR (or open **/play** and type the code), enter a name and pick **Table A** or **Table B**.
-   The server pairs A₁↔B₁, A₂↔B₂… (up to 4 pairs). An AI crewmate fills any empty seat.
+   The server pairs A₁↔B₁, A₂↔B₂… (up to 4 pairs). **CORA**, the AI crewmate (shown with an **AI** badge on the TV
+   and on her partner's phone), fills any empty seat.
 3. **Start strategy huddle (45 s):** partners may talk across tables and agree a plan. When the clock runs out, the
    comms blackout starts and so does the batch (or press **Start batch now**).
 4. Each round, every phone shows only its own sensor, two pump buttons and a countdown. The TV shows the round

@@ -9,6 +9,7 @@ import { Crystals } from "../components/EntanglementSurface.tsx";
 import { RevealField } from "../solo/ToolReveal.tsx";
 import { playSfx } from "../audio/sfx.ts";
 import { CreditsList } from "../components/CreditsList.tsx";
+import { SeatName } from "../components/AiBadge.tsx";
 import { CrewIcon } from "../components/CrewIcon.tsx";
 import { MuteToggle } from "../components/MuteToggle.tsx";
 import { QuantumBackdrop } from "../components/QuantumBackdrop.tsx";
@@ -334,7 +335,7 @@ function PairCard({ pair, state, result }: { pair: PairInfo; state: RoomState; r
     return (
       <span className={`seat ${connected(s.playerId) ? "" : "seat--off"} ${s.playerId === null ? "seat--bot" : ""}`}>
         <CrewIcon table={side === "a" ? "A" : "B"} bot={s.playerId === null} size={28} />
-        <b>{side.toUpperCase()}</b> {s.name}
+        <b>{side.toUpperCase()}</b> <SeatName name={s.name} bot={s.playerId === null} />
         {answered && " ✓"}
       </span>
     );

@@ -1,4 +1,5 @@
 import { S } from "../strings.ts";
+import { CrewName } from "./AiBadge.tsx";
 
 /** The crewmate on the radio. Renders nothing when there's nothing to say (always the case while comms are dark). */
 export function RadioLine({ lines }: { lines: readonly string[] }) {
@@ -10,7 +11,7 @@ export function RadioLine({ lines }: { lines: readonly string[] }) {
           <path d="M7 21h10V10H7zM9 10 15 3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           <circle cx="12" cy="15" r="2.4" fill="currentColor" />
         </svg>
-        {S.comms.radio} · {S.crew.name}
+        {S.comms.radio} · <CrewName />
       </p>
       {lines.map((l) => (
         <p key={l} className="radio-line__text">

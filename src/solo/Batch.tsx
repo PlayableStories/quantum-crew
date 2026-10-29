@@ -1,8 +1,9 @@
 // A batch of fast rounds. Timers live here; the store decides everything else.
 // Buttons fire on pointer-down for speed; a second event in the same round is ignored by the store.
 // Keyboard: A / ← = ANTICLOCKWISE, C / → = CLOCKWISE in Act II; Space / Enter = MEASURE in Act III.
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { playSfx } from "../audio/sfx.ts";
+import { CrewName } from "../components/AiBadge.tsx";
 import { Countdown } from "../components/Countdown.tsx";
 import { Dial } from "../components/Dial.tsx";
 import { PumpIcon } from "../components/PumpIcon.tsx";
@@ -125,7 +126,7 @@ function RoundOutcome({ result }: { result: RoundResult }) {
       </p>
       <div className="result__pair panel only-split">
         <Side who={S.batch.you} light={result.x} pump={result.a} />
-        <Side who={S.batch.crewmate} light={result.y} pump={result.b} />
+        <Side who={<CrewName />} light={result.y} pump={result.b} />
       </div>
       {/* Phones and portrait: a small ring replaces the You / Crewmate panel. */}
       <div className="only-stacked">
@@ -136,7 +137,7 @@ function RoundOutcome({ result }: { result: RoundResult }) {
   );
 }
 
-function Side({ who, light, pump }: { who: string; light: 0 | 1; pump: Valve | null }) {
+function Side({ who, light, pump }: { who: ReactNode; light: 0 | 1; pump: Valve | null }) {
   return (
     <div className="result__side">
       <span className="kicker">{who}</span>

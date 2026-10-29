@@ -2,6 +2,7 @@
 // crewmate's dials are locked at their setting (the optimal Table B one): one reference line here, the full locked
 // dials in a Sheet. Engineering's hint, once available, also opens in a Sheet.
 import { useCallback, useState } from "react";
+import { AiBadge, CrewName } from "../components/AiBadge.tsx";
 import { Dial, formatDeg } from "../components/Dial.tsx";
 import { RuleChip } from "../components/RuleChip.tsx";
 import { ScreenLayout } from "../components/ScreenLayout.tsx";
@@ -30,7 +31,8 @@ export function Tuning() {
           <CrewRadio />
           <div className="crew-dials">
             <p className="crew-dials__line">
-              {S.crew.dialsLine(S.batch.crewmate, formatDeg(crew.greenDeg), formatDeg(crew.redDeg))}
+              <CrewName />
+              {S.crew.dialsLine(formatDeg(crew.greenDeg), formatDeg(crew.redDeg))}
             </p>
             <button className="btn btn--ghost crew-dials__btn" aria-haspopup="dialog" onClick={() => setSheet("dials")}>
               {S.crew.seeDials}
@@ -65,7 +67,9 @@ export function Tuning() {
 
       <Sheet open={sheet === "dials"} onClose={close} label={S.crew.dialsHead(S.crew.name)}>
         <div className="panel stack dials--locked">
-          <p className="kicker">{S.crew.dialsHead(S.crew.name)}</p>
+          <p className="kicker">
+            {S.crew.dialsHead(S.crew.name)} <AiBadge />
+          </p>
           <div className="row">
             <Dial value={crew.greenDeg} small label={<SensorLight light={COOL} small />} />
             <Dial value={crew.redDeg} small label={<SensorLight light={HOT} small />} />

@@ -65,6 +65,7 @@ describe("rooms and pairing", () => {
     expect(pairs[0]!.b.name).toBe("Bo");
     expect(pairs[1]!.a.name).toBe("Cy");
     expect(pairs[1]!.b).toEqual({ playerId: null, name: BOT_NAME });
+    expect(BOT_NAME).toBe("CORA"); // the solo crewmate fills empty seats too
   });
 
   it("rejects unknown rooms and full tables", () => {
@@ -273,7 +274,7 @@ describe("Act III rounds", () => {
     expect(crew.rounds).toBe(6 * 80 * BATCH_SIZE);
     expect(Math.abs(crew.partnerGreen! - 0.5)).toBeLessThan(0.03);
     expect(Math.abs(crew.partnerRed! - 0.5)).toBeLessThan(0.03);
-    expect(rows.map((r) => r.name).sort()).toEqual(["AI crewmate (pair 3)", "Ada", "Bo", "Cy", "Di", "Ed"]);
+    expect(rows.map((r) => r.name).sort()).toEqual(["Ada", "Bo", `${BOT_NAME} (pair 3)`, "Cy", "Di", "Ed"].sort());
     for (const row of rows) {
       expect(row.rounds).toBe(80 * BATCH_SIZE);
       expect(Math.abs(row.partnerGreen! - 0.5)).toBeLessThan(0.07);

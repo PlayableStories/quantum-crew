@@ -1,6 +1,7 @@
 // A phone in event mode: join a room at a table, then show only what the round needs (own sensor, pump
 // buttons or MEASURE with the dial in use, countdown). Everything else is on the TV.
 import { useEffect, useState, type ReactNode } from "react";
+import { AiBadge } from "../components/AiBadge.tsx";
 import { Countdown } from "../components/Countdown.tsx";
 import { playSfx } from "../audio/sfx.ts";
 import { CrewIcon } from "../components/CrewIcon.tsx";
@@ -203,7 +204,12 @@ function InRoom() {
         {status !== "open" && <span className="kicker">{S.event.reconnecting}</span>}
         <MuteToggle where="phone" />
       </div>
-      {partner && <p className="muted">{S.phone.partner(partner.name, otherTable)}</p>}
+      {partner && (
+        <p className="muted">
+          {S.phone.partner(partner.name, otherTable)}
+          {partner.playerId === null && <AiBadge />}
+        </p>
+      )}
 
       {round && round.answered !== null && (
         <div className="result spacer">

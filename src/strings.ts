@@ -4,8 +4,8 @@ import { ROUND_MS } from "./config.ts";
 import type { RoundResult } from "./shared/chsh.ts";
 import { HOT, roundCause } from "./shared/fiction.ts";
 
-/** The solo crewmate's name, used in every radio line. PLACEHOLDER: pick a name. */
-const CREW_NAME = "CREWMATE_NAME";
+/** The AI crewmate's name: CORA, the Coolant Ring Assistant. Solo radio lines, and event mode's bot seats (server). */
+export const CREW_NAME = "CORA";
 
 export const S = {
   title: "Quantum Crew",
@@ -24,7 +24,7 @@ export const S = {
     label:
       "The coolant ring: Section A and Section B each have a pump that runs clockwise or anticlockwise. A relief vent between them unlocks only when both sections are HOT.",
     a: "A · you",
-    b: "B · crewmate",
+    b: `B · ${CREW_NAME}`,
     vent: "Vent",
     ventNote: "unlocks only when BOTH are HOT",
     ventOpen: "Vent unlocked",
@@ -34,7 +34,7 @@ export const S = {
   landing: {
     tagline: "Keep the station alive. Some problems no plan can solve.",
     solo: "Solo demo",
-    soloSub: "You and an AI crewmate · about 6 minutes",
+    soloSub: `You and ${CREW_NAME}, the station's AI · about 6 minutes`,
     host: "Host on TV",
     hostSub: "Event mode: open this on the big screen",
     join: "Join with code",
@@ -45,8 +45,8 @@ export const S = {
   intro: {
     kicker: "Station log · shift 1",
     lines: [
-      "The station's coolant runs round a ring that passes through two sections. You are at Table A and run your section's pump. Your crewmate, an AI, runs the pump at Table B.",
-      "The reactor flares at random. Each round your sensor reads COOL or HOT: you can't predict it, and you can't see your crewmate's.",
+      `The station's coolant runs round a ring that passes through two sections. You are at Table A and run your section's pump. ${CREW_NAME}, the station's Coolant Ring Assistant, runs the pump at Table B. She's an AI, not a person.`,
+      `The reactor flares at random. Each round your sensor reads COOL or HOT: you can't predict it, and you can't see ${CREW_NAME}'s.`,
       `You each set your pump: CLOCKWISE or ANTICLOCKWISE. No talking between sections during a round. You have ${ROUND_MS / 1000} seconds.`,
     ],
     survival: "The station needs 80% stability. The core can take one bad round in five, and no more.",
@@ -57,7 +57,7 @@ export const S = {
 
   plan: {
     kicker: "Strategy huddle",
-    side: (who: string) => `${who}:`,
+    colon: ":",
     title: "Agree a plan",
     blind: "Once the batch starts, comms go dark: neither of you can see the other's sensor.",
     test: "Test this plan",
@@ -121,9 +121,10 @@ export const S = {
     },
   },
 
-  /** The solo crewmate: a steady veteran who trusts procedure. Speaks only while comms are open (see solo/crew.ts). */
+  /** CORA, the solo crewmate: the station's AI, steady and procedural. Speaks only while comms are open (see solo/crew.ts). */
   crew: {
     name: CREW_NAME,
+    badge: "AI",
     opening:
       "Standard procedure: I always pump clockwise. Your call, though: tap a square to set both our plans.",
     agreeCrew: [
@@ -153,9 +154,10 @@ export const S = {
     allTried: "We've tried every pair between us. Maybe it's time to call engineering.",
     readout: {
       overheat: (n: number) => `Round ${n}: we were both hot and pumped the same way. Neither of us could know.`,
-      youReversed: (n: number) => `Round ${n}, I was cool and you reversed. Hard to know from your side.`,
-      iReversed: (n: number) => `Round ${n}, I was hot and fought your pump while you were cool. That one's on me.`,
-      bothCool: (n: number) => `Round ${n}, both cool and we fought each other. That's the plan, not luck.`,
+      // Facts of the round only: with different plans the pumps can fight without anyone reversing.
+      hotCool: (n: number) => `Round ${n}: you were hot, I was cool, and our pumps fought.`,
+      coolHot: (n: number) => `Round ${n}: you were cool, I was hot, and our pumps fought.`,
+      bothCool: (n: number) => `Round ${n}: we were both cool, and our pumps fought.`,
       timeout: (n: number) => `Round ${n}, your pump never moved. Five seconds goes fast.`,
       purge: (n: number) => `Round ${n}: both hot and we pumped against each other. Textbook purge.`,
       perfect: "Twelve for twelve. Don't get used to it.",
@@ -164,10 +166,11 @@ export const S = {
       act3Bad: "Twelve rounds is a coin toss. Run the thousand before you touch the dials.",
     },
     ceiling: "So it was never us. Every pair fails the same way.",
-    tool: "Engineering never sends anything this fancy. I'll set mine; your dials are your business.",
-    tuning: "Mine are locked at 22.5° for cool and 157.5° for hot. That's what engineering's sheet says, and I don't touch what works.",
+    tool: "Engineering never sends anything this fancy. I'll set mine; you find a setting for yours, and we'll see what holds.",
+    tuning:
+      "Mine sit where my crystal settles: 22.5° cool, 157.5° hot. Nobody knows yet if that's right.",
     dialsHead: (name: string) => `${name}'s dials (locked)`,
-    dialsLine: (who: string, cool: string, hot: string) => `${who}: COOL ${cool} · HOT ${hot}, locked`,
+    dialsLine: (cool: string, hot: string) => `: COOL ${cool} · HOT ${hot}, locked`,
     seeDials: "See dials",
   },
 
@@ -234,7 +237,7 @@ export const S = {
     truth: "The best plan's true rate is exactly 75%: it loses one round in four. The station needs 80%. A test above 75% is luck.",
     /** Event mode (TV). */
     lines: [
-      "None of them holds more than 75% of rounds: the best plan loses one in four. Not on average, not ever.",
+      "None of them holds more than 75% of rounds. The best plan's true rate is exactly 75%; any batch above it is luck.",
       "The core can take one bad round in five. The station needs 80%.",
     ],
     go: "Then we need something that isn't a plan",
@@ -244,9 +247,9 @@ export const S = {
     kicker: "Incoming cargo",
     title: "The Entanglement Tool",
     lines: [
-      "Two linked crystals have arrived. One sits in your tool. The other is in your crewmate's tool at Table B.",
+      `Two linked crystals have arrived. One sits in your tool. The other is in ${CREW_NAME}'s tool at Table B.`,
       "Turn the dial. Tap MEASURE. The crystal decides your pump: CLOCKWISE or ANTICLOCKWISE.",
-      "Your crewmate has already tuned theirs. Set one dial for COOL and one for HOT, and find what holds.",
+      `${CREW_NAME} has already set hers. Set one dial for COOL and one for HOT, and find what holds.`,
     ],
     go: "Pick up the tool",
   },
