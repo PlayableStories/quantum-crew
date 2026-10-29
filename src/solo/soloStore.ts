@@ -1,13 +1,17 @@
-// Solo mode as a state machine: the player is Table A, an AI crewmate is Table B. No server, no I/O.
-// Act II: the player locks in the whole joint plan (their own and the crewmate's) and plays it; each pair played
-// goes on the plan board at its exact rate. No pair beats 75%, and engineering fills in the untried cells. Act III: both share the Entanglement Tool,
-// and the crewmate's dials sit at the optimal Table B setting, so the player can reach ≈ 85% by finding their own.
-// What the crewmate says is chosen in crew.ts from this state; the store only records what they're reacting to.
+// Solo mode as a state machine: the player is Table A, CORA (an AI) is Table B. No server, no I/O.
+// Act II: the player locks in the whole joint plan (their own and CORA's) and plays it; each pair played goes on the
+// plan board at its exact rate. No pair beats 75%, and engineering fills in the untried pairs.
+// Act III: both share the Entanglement Tool. CORA's dials sit at the optimal Table B setting. Each round the player
+// taps MEASURE, the crystal suggests a pump, and the player sets the pump themselves (CORA always follows her
+// crystal). The debrief opens once a batch is played with dials whose exact rate is ≥ 80% (or after two batches).
+// Solo never samples: every rate shown is either the real rounds played or exact (chsh.ts).
+// What CORA says is chosen in crew.ts from this state; the store only records what she's reacting to.
 // Actions take `now` (ms) so tests can drive the clock; the Batch screen calls them from timers.
 import { createStore } from "zustand/vanilla";
 import { useStore } from "zustand";
 import {
   ACT2_BATCHES,
+  ACT3_ROUND_MS,
   BATCH_SIZE,
   DEBRIEF_AFTER_BATCHES,
   DEFAULT_CREW_PLAN,
@@ -15,7 +19,6 @@ import {
   DEFAULT_TUNING,
   HINT_AFTER_FAILED_BATCHES,
   ROUND_MS,
-  SIM_ROUNDS,
 } from "../config.ts";
 import {
   OPTIMAL_TUNING,
@@ -26,14 +29,12 @@ import {
   drawInputs,
   measureFirst,
   measureSecond,
-  quantumStrategyFn,
+  quantumExpectedWinRate,
   scoreRound,
-  simulate,
   winRate,
   type ClassicalStrategy,
   type Light,
   type RoundResult,
-  type SimulationResult,
   type TuningConfig,
   type Valve,
 } from "../shared/chsh.ts";
@@ -60,56 +61,61 @@ export type LiveRound = {
   x: Light;
   y: Light;
   deadline: number;
+  /** Act III: the player's crystal, once they tap MEASURE (a suggestion: they still set the pump). */
+  crystal: Valve | null;
+  /** Act III: CORA's pump, from her crystal, measured right after the player's. */
+  crewPump: Valve | null;
   /** Set once the player answers or times out; the screen shows it, then calls `advance`. */
   result: RoundResult | null;
 };
 
-export type SimRun = SimulationResult & { act: Act; rounds: number };
-
-/** What the crewmate is reacting to in the huddle (crew.ts turns it into words). */
+/** What CORA is reacting to in the huddle (crew.ts turns it into words). */
 export type CrewCue = "opening" | "agreeCrew" | "agreePlayer" | "idea";
 
 export type SoloData = {
   phase: Phase;
   debriefStep: number;
   plan: ClassicalStrategy;
-  /** Act II: the crewmate's half of the joint plan, set by the player in the huddle. */
+  /** Act II: CORA's half of the joint plan, set by the player in the huddle. */
   crewPlan: ClassicalStrategy;
-  /** Act II plan board: exact rates by (your plan, crewmate's plan). Blank until the pair is played in a batch. */
+  /** Act II plan board: exact rates by (your plan, CORA's plan). Blank until the pair is played in a batch. */
   board: Board;
-  /** How many cells engineering ran at the report (null before it). */
+  /** How many pairs engineering ran at the report (null before it). */
   engineeringRan: number | null;
   crewCue: CrewCue;
   tuning: TuningConfig;
   round: LiveRound | null;
   /** Rounds of the current (or last) batch. */
   batch: RoundResult[];
+  /** Act III: whether the player set the pump their crystal suggested, per round of the current (or last) batch. */
+  batchFollowed: boolean[];
   act2: RoundResult[];
   act3: RoundResult[];
   act2Batches: number;
   act3Batches: number;
+  /** Act III batches played with dials whose exact rate is below 80% (they unlock the hint). */
   act3FailedBatches: number;
-  /** Best Act III 1,000-round run so far. */
-  bestAct3Sim: number;
-  lastSim: SimRun | null;
+  /** An Act III batch has been played with dials whose exact rate is ≥ 80% (it unlocks the debrief). */
+  act3Passed: boolean;
   hintShown: boolean;
 };
 
 export type SoloActions = {
   start(): void;
   setPlan(light: Light, valve: Valve): void;
-  /** Act II: the player sets a whole plan for themselves or for the crewmate. */
+  /** Act II: the player sets a whole plan for themselves or for CORA. */
   choosePlan(who: "player" | "crew", plan: ClassicalStrategy): void;
   setDial(light: Light, deg: number): void;
   beginBatch(): void;
   /** Starts the next round, or ends the batch after the last one. */
   advance(now: number): void;
-  /** Act II: the player sets their pump direction. */
+  /** The player sets their pump direction (Act III: only after MEASURE). */
   answer(valve: Valve, now: number): void;
-  /** Act III: the player taps MEASURE. */
+  /** Act III: the player taps MEASURE; both crystals are read and the player's suggests a pump. */
   measure(now: number): void;
+  /** Act III: the player sets the pump their crystal suggested. */
+  followCrystal(now: number): void;
   timeout(now: number): void;
-  runSimulation(): void;
   nextBatch(): void;
   reportCeiling(): void;
   revealTool(): void;
@@ -133,13 +139,13 @@ const initialData = (): SoloData => ({
   tuning: DEFAULT_TUNING,
   round: null,
   batch: [],
+  batchFollowed: [],
   act2: [],
   act3: [],
   act2Batches: 0,
   act3Batches: 0,
   act3FailedBatches: 0,
-  bestAct3Sim: 0,
-  lastSim: null,
+  act3Passed: false,
   hintShown: false,
 });
 
@@ -147,18 +153,26 @@ const initialData = (): SoloData => ({
 export const actOf = (phase: Phase): Act =>
   phase.startsWith("act2") || phase === "intro" || phase === "ceiling" ? 2 : 3;
 
+/** The decision time for a round in this act. */
+export const roundMs = (act: Act) => (act === 2 ? ROUND_MS : ACT3_ROUND_MS);
+
+/** The exact rate of the player's dials against CORA's, if both follow their crystals. */
+export const dialsRate = (s: Pick<SoloData, "tuning">) => quantumExpectedWinRate(s.tuning, OPTIMAL_TUNING.B);
+
 export function createSoloStore(seed: number = randomSeed()) {
   const rng: Rng = mulberry32(seed);
 
   return createStore<SoloState>()((set, get) => {
-    const resolve = (result: RoundResult) => {
+    const resolve = (result: RoundResult, followed = false) => {
       const s = get();
       if (!s.round || s.round.result) return;
       const act = actOf(s.phase);
       set({
         round: { ...s.round, result },
         batch: [...s.batch, result],
-        ...(act === 2 ? { act2: [...s.act2, result] } : { act3: [...s.act3, result] }),
+        ...(act === 2
+          ? { act2: [...s.act2, result] }
+          : { act3: [...s.act3, result], batchFollowed: [...s.batchFollowed, followed] }),
       });
     };
 
@@ -171,17 +185,17 @@ export function createSoloStore(seed: number = randomSeed()) {
           phase: "act2Readout",
           round: null,
           act2Batches: s.act2Batches + 1,
-          lastSim: null,
           board: { ...s.board, [cellKey(s.plan, s.crewPlan)]: tried },
         });
       } else {
-        const failed = winRate(s.batch) < SURVIVAL_THRESHOLD;
+        // The gate: the dials played, not the batch's score. Exact rate ≥ 80% passes.
+        const passed = dialsRate(s) >= SURVIVAL_THRESHOLD;
         set({
           phase: "act3Readout",
           round: null,
           act3Batches: s.act3Batches + 1,
-          act3FailedBatches: s.act3FailedBatches + (failed ? 1 : 0),
-          lastSim: null,
+          act3FailedBatches: s.act3FailedBatches + (passed ? 0 : 1),
+          act3Passed: s.act3Passed || passed,
         });
       }
     };
@@ -205,8 +219,8 @@ export function createSoloStore(seed: number = randomSeed()) {
 
       beginBatch: () => {
         const { phase } = get();
-        if (phase === "act2Plan") set({ phase: "act2Batch", batch: [], round: null, lastSim: null });
-        else if (phase === "act3Plan") set({ phase: "act3Batch", batch: [], round: null, lastSim: null });
+        if (phase === "act2Plan") set({ phase: "act2Batch", batch: [], round: null });
+        else if (phase === "act3Plan") set({ phase: "act3Batch", batch: [], batchFollowed: [], round: null });
       },
 
       advance: (now) => {
@@ -215,45 +229,47 @@ export function createSoloStore(seed: number = randomSeed()) {
         if (s.round && !s.round.result) return; // still waiting for the player
         if (s.batch.length >= BATCH_SIZE) return finishBatch();
         const { x, y } = drawInputs(rng);
-        set({ round: { n: s.batch.length + 1, x, y, deadline: now + ROUND_MS, result: null } });
+        const deadline = now + roundMs(actOf(s.phase));
+        set({ round: { n: s.batch.length + 1, x, y, deadline, crystal: null, crewPump: null, result: null } });
       },
 
       answer: (valve, now) => {
         const { phase, round } = get();
-        if (phase !== "act2Batch" || !round || round.result || now > round.deadline) return;
-        resolve(scoreRound(round.x, round.y, valve, classicalValve(get().crewPlan, round.y)));
+        if (!round || round.result || now > round.deadline) return;
+        if (phase === "act2Batch") {
+          resolve(scoreRound(round.x, round.y, valve, classicalValve(get().crewPlan, round.y)));
+        } else if (phase === "act3Batch" && round.crystal !== null) {
+          // Scoring uses the pump the player set; CORA's comes from her crystal.
+          resolve(scoreRound(round.x, round.y, valve, round.crewPump), valve === round.crystal);
+        }
       },
 
       measure: (now) => {
         const { phase, round, tuning } = get();
-        if (phase !== "act3Batch" || !round || round.result || now > round.deadline) return;
-        // DECISION: in solo the player always measures first; the crewmate's result is conditioned on it.
-        const a = measureFirst(rng);
-        const b = measureSecond(a, dialFor(tuning, round.x), dialFor(OPTIMAL_TUNING.B, round.y), rng);
-        resolve(scoreRound(round.x, round.y, a, b));
+        if (phase !== "act3Batch" || !round || round.result || round.crystal !== null || now > round.deadline) return;
+        // DECISION: in solo the player always measures first; CORA's result is conditioned on it.
+        const crystal = measureFirst(rng);
+        const crewPump = measureSecond(crystal, dialFor(tuning, round.x), dialFor(OPTIMAL_TUNING.B, round.y), rng);
+        set({ round: { ...round, crystal, crewPump } });
+      },
+
+      followCrystal: (now) => {
+        const { round } = get();
+        if (round?.crystal != null) get().answer(round.crystal, now);
       },
 
       timeout: (now) => {
         const { phase, round } = get();
         if (!round || round.result || now < round.deadline) return;
-        // The crewmate still acts; the player's missing pump setting makes it a loss.
-        const b = phase === "act2Batch" ? classicalValve(get().crewPlan, round.y) : measureFirst(rng);
+        // CORA still acts (from her plan, or her crystal); the player's missing pump setting makes it a loss.
+        const b = phase === "act2Batch" ? classicalValve(get().crewPlan, round.y) : (round.crewPump ?? measureFirst(rng));
         resolve(scoreRound(round.x, round.y, null, b));
-      },
-
-      runSimulation: () => {
-        const s = get();
-        // Act III only: Act II shows exact rates (the four-case view), never a sampled test.
-        if (s.phase === "act3Plan" || s.phase === "act3Readout") {
-          const result = simulate(quantumStrategyFn(s.tuning, OPTIMAL_TUNING.B, "A"), SIM_ROUNDS, rng);
-          set({ lastSim: { ...result, act: 3, rounds: SIM_ROUNDS }, bestAct3Sim: Math.max(s.bestAct3Sim, result.winRate) });
-        }
       },
 
       nextBatch: () => {
         const { phase } = get();
-        // Back in the huddle with the plan that just played: the crewmate offers an idea.
-        if (phase === "act2Readout") set({ phase: "act2Plan", crewCue: "idea", lastSim: null });
+        // Back in the huddle with the plan that just played: CORA offers an idea.
+        if (phase === "act2Readout") set({ phase: "act2Plan", crewCue: "idea" });
         else if (phase === "act3Readout") set({ phase: "act3Plan" });
       },
 
@@ -271,7 +287,7 @@ export function createSoloStore(seed: number = randomSeed()) {
         if (get().phase === "ceiling") set({ phase: "toolReveal" });
       },
       openTool: () => {
-        if (get().phase === "toolReveal") set({ phase: "act3Plan", lastSim: null });
+        if (get().phase === "toolReveal") set({ phase: "act3Plan" });
       },
       showHint: () => {
         if (hintAvailable(get())) set({ hintShown: true });
@@ -294,22 +310,27 @@ export const canReportCeiling = (s: SoloData) => s.act2Batches >= ACT2_BATCHES;
 export const playerTried = (s: Pick<SoloData, "board">): CellKey[] =>
   ALL_CELLS.filter((k) => s.board[k]?.by === "player");
 
-/** Act II readout: the batch reached 80% but the plan's true rate can't, so say it was mostly luck. */
-export const luckLine = (batchRate: number, trueRate: number) =>
-  batchRate >= SURVIVAL_THRESHOLD && trueRate < SURVIVAL_THRESHOLD;
+/** When a batch's score and the true rate disagree about passing 80%: "above" (lucky) or "below" (unlucky). */
+export function luckGap(batchRate: number, trueRate: number): "above" | "below" | null {
+  const batchPassed = batchRate >= SURVIVAL_THRESHOLD;
+  const truePasses = trueRate >= SURVIVAL_THRESHOLD;
+  if (batchPassed === truePasses) return null;
+  return batchPassed ? "above" : "below";
+}
 
 export const hintAvailable = (s: SoloData) => s.act3FailedBatches >= HINT_AFTER_FAILED_BATCHES;
 
-/** The debrief opens once the station survives a 1,000-round test, or after enough Act III batches. */
-export const debriefAvailable = (s: SoloData) =>
-  s.bestAct3Sim >= SURVIVAL_THRESHOLD || s.act3Batches >= DEBRIEF_AFTER_BATCHES;
+/** The debrief opens after an Act III batch played with dials at an exact ≥ 80%, or after enough batches. */
+export const debriefAvailable = (s: SoloData) => s.act3Passed || s.act3Batches >= DEBRIEF_AFTER_BATCHES;
 
-/** What the stability meter shows: the latest 1,000-round test, else the current act's rounds so far. */
+/** What the stability meter shows: the current act's rounds so far. */
 export function displayedStability(s: SoloData): number | null {
-  if (s.lastSim) return s.lastSim.winRate;
   const rounds = actOf(s.phase) === 2 ? s.act2 : s.act3;
   return rounds.length ? winRate(rounds) : null;
 }
+
+/** Act III: how many rounds of the current batch the player followed their crystal in. */
+export const followedCount = (s: Pick<SoloData, "batchFollowed">) => s.batchFollowed.filter(Boolean).length;
 
 // --- React binding ------------------------------------------------------------------------------
 

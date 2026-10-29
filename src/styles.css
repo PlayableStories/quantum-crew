@@ -2662,3 +2662,165 @@ button.board__cell:focus-visible {
     padding: 4px 8px;
   }
 }
+
+/* ---------- CORA Phase 3: the crystal's suggestion, the tool explanation, plan vs crystals ---------- */
+
+.crystal-says {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+.crystal-says strong {
+  font-size: var(--fs-l);
+  color: var(--q-3);
+  letter-spacing: 0.04em;
+}
+.crystal-hint {
+  margin: 0;
+  text-align: center;
+}
+/* The pump the crystal suggests: highlighted, never colour alone (it also carries the "Crystal" tag). */
+.pumpbtn--suggested {
+  border-color: var(--q-3);
+  box-shadow: 0 0 0 2px var(--q-3), var(--press);
+}
+
+.explain p:last-child {
+  margin: 0;
+  font-size: var(--fs-s);
+}
+
+/* Debrief, quantum-limit step: the best plan beside the crystals, four cases each. */
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--gap) * 0.75);
+}
+.compare__col ul {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.compare__col li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+.compare__col li b {
+  margin-left: auto;
+}
+.compare__col li.case--win {
+  border-color: var(--green-deep);
+}
+.compare__col li.case--loss {
+  border-color: var(--red-deep);
+}
+.compare__col li.case--loss b {
+  color: var(--loss);
+}
+.compare__col .kicker {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+}
+.compare__sensors {
+  display: inline-flex;
+  gap: 2px;
+}
+.compare__sensors svg {
+  width: 14px;
+  height: 14px;
+}
+.compare__total {
+  margin: 0;
+  font-weight: 800;
+}
+
+/* Act III round: the sensor and its dial side by side. */
+.round-reading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap);
+}
+.round-reading > * {
+  flex: none;
+}
+/* Touch players don't need the keyboard line. */
+@media (max-width: 599px) {
+  .crystal-keys {
+    display: none;
+  }
+}
+.round-reading .dial {
+  width: clamp(88px, 11vh, 130px);
+}
+.round-reading .light__bulb {
+  width: min(40vw, 170px);
+}
+.compare__angles {
+  white-space: nowrap;
+  font-size: 0.7rem;
+}
+.compare__col .kicker b {
+  color: var(--ink);
+}
+@media (max-width: 599px) {
+  .compare__col ul {
+    gap: 2px;
+  }
+  .compare__col li {
+    padding: 2px 5px;
+    gap: 4px;
+  }
+  .debrief .compare + p {
+    font-size: 0.75rem;
+  }
+  /* Tuning on a phone: a little smaller, so the first visit (with the explanation) fits. */
+  .solo .layout:not(.batch) .dial svg {
+    max-width: 112px;
+  }
+  .explain p:last-child {
+    font-size: 0.82rem;
+  }
+  .radio-line__text {
+    font-size: 0.95rem;
+  }
+}
+@media (max-width: 599px) {
+  .solo .layout:not(.batch) .dial svg {
+    max-width: 100px;
+  }
+  .solo .layout .panel {
+    padding: 10px;
+  }
+  .debrief .layout__side .panel {
+    gap: 6px;
+  }
+  .debrief .layout__side .panel > p:first-child {
+    font-size: 0.9rem;
+  }
+  .debrief .compare + p.small {
+    font-size: 0.75rem;
+    margin: 0;
+  }
+}
+@media (max-width: 599px) {
+  .compare__col li {
+    padding: 1px 5px;
+  }
+  .debrief .layout__side .panel {
+    padding: 8px 10px;
+  }
+}
+.compare__rate {
+  white-space: nowrap;
+}

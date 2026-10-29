@@ -148,6 +148,39 @@ export function quantumExpectedWinRate(cA: TuningConfig, cB: TuningConfig): numb
   return total / 4;
 }
 
+/** One of the four equally likely sensor cases with the tool: both dial angles and P(the round holds) if both follow
+ *  their crystals. */
+export type QuantumCase = { x: Light; y: Light; thetaA: number; thetaB: number; pWin: number };
+
+/** The four sensor cases for a pair of dial settings, exactly. Their mean pWin is quantumExpectedWinRate. */
+export function quantumCases(cA: TuningConfig, cB: TuningConfig): QuantumCase[] {
+  return LIGHT_PAIRS.map(([x, y]) => {
+    const thetaA = dialFor(cA, x);
+    const thetaB = dialFor(cB, y);
+    const pMatch = matchProbability(thetaA, thetaB);
+    return { x, y, thetaA, thetaB, pWin: (x & y) === 0 ? pMatch : 1 - pMatch };
+  });
+}
+
+/**
+ * No-signalling, exactly: each side's chance of an OPEN (clockwise) pump, split by the partner's light, if both follow
+ * their crystals and A measures first. A's is a fair coin; B's is P(A open)·P(match) + P(A closed)·(1 − P(match)),
+ * averaged over B's own light. Both come out at exactly ½ whatever the dials: no message gets through.
+ */
+export function exactOpenRates(cA: TuningConfig, cB: TuningConfig): { a: OpenRates; b: OpenRates } {
+  const pAOpen = 0.5;
+  const aGiven = (_partner: Light) => pAOpen;
+  const bGiven = (partner: Light) =>
+    ([GREEN, RED] as const).reduce<number>((sum, y) => {
+      const pMatch = matchProbability(dialFor(cA, partner), dialFor(cB, y));
+      return sum + (pAOpen * pMatch + (1 - pAOpen) * (1 - pMatch)) / 2;
+    }, 0);
+  return {
+    a: { partnerGreen: aGiven(GREEN), partnerRed: aGiven(RED) },
+    b: { partnerGreen: bGiven(GREEN), partnerRed: bGiven(RED) },
+  };
+}
+
 // --- Stats --------------------------------------------------------------------------------------
 
 export type RoundResult = {

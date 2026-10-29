@@ -186,6 +186,25 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     - The luck line uses `luckLine(batchRate, trueRate)`.
     - On phones the two buttons sit side by side.
   - Engineering report: exact board only. "Tried" means played. `playerTried`.
+- **CORA Phase 3 (2026-10-29, Act III flow):**
+  - Rounds:
+    - `measure()` reads both crystals: the player's suggestion is `round.crystal`, CORA's pump is `round.crewPump`.
+    - The player then sets the pump with `answer` / `followCrystal`. Scoring uses that pump, and CORA follows her
+      crystal.
+    - `batchFollowed` records whether the player followed. Act III rounds last `ACT3_ROUND_MS` (7 s).
+    - The pump buttons appear only after MEASURE. Space / Enter = MEASURE, then Enter = follow.
+  - The gate: `finishBatch` checks `dialsRate` (exact, `quantumExpectedWinRate`).
+    - ≥ 80% sets `act3Passed`, which unlocks the debrief; under 80% counts as a failed batch for the hint.
+    - The two-batch fallback is unchanged.
+  - **Solo never samples:**
+    - `runSimulation`, `lastSim`, `bestAct3Sim`, `SIM_ROUNDS` and `DEBRIEF_SIM_ROUNDS` are gone.
+    - The readouts show exact four-case views: `FourCases` and `CrystalCases`, from `chsh.ts` `classicalCases` /
+      `quantumCases`.
+    - `luckGap` covers both directions.
+    - The debrief uses `exactOpenRates`, a flat 50%.
+  - Tuning: a "How the tool works" note, inline on the first visit and in a Sheet after that. No live rate.
+  - Debrief quantum step: `PlanVsCrystals` puts the best plan (75%) beside the dials (yours if they passed, else
+    0°/45°).
 - **Open questions:** which Atlas sound engine for sfx; event-mode host.
 - **History:** M0–M5 were built during Moth Hack 2026 (submitted 2026-10-06; old demo
   https://quantum-crew-iota.vercel.app/solo) in github.com/WWStoryMode/moth-hack-2026 `apps/quantum-crew`, then moved

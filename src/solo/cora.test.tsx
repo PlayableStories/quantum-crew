@@ -3,7 +3,7 @@
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
 import { SeatName } from "../components/AiBadge.tsx";
-import { BATCH_SIZE, ROUND_MS } from "../config.ts";
+import { BATCH_SIZE, ACT3_ROUND_MS } from "../config.ts";
 import { scoreRound } from "../shared/chsh.ts";
 import { ANTICLOCKWISE, CLOCKWISE, COOL, HOT } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
@@ -30,7 +30,7 @@ describe("CORA", () => {
     s().beginBatch();
     for (let i = 0; i < BATCH_SIZE; i++) {
       s().advance(now);
-      now += ROUND_MS + 1;
+      now += ACT3_ROUND_MS + 1;
       s().timeout(now);
     }
     s().advance(now);

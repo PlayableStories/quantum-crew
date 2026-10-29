@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BATCH_SIZE, ROUND_MS } from "../config.ts";
+import { BATCH_SIZE, ACT3_ROUND_MS } from "../config.ts";
 import { scoreRound, type Bit } from "../shared/chsh.ts";
 import { ANTICLOCKWISE, CLOCKWISE, COOL, HOT } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
@@ -21,7 +21,7 @@ function playBatchListening(store: Store, act: (s: Store) => void): string[] {
     listen();
     act(store);
     listen();
-    now += ROUND_MS + 1;
+    now += ACT3_ROUND_MS + 1;
     store.getState().timeout(now);
     listen();
   }
@@ -72,7 +72,10 @@ describe("comms rule", () => {
     s().reportCeiling();
     s().revealTool();
     s().openTool();
-    const heard3 = playBatchListening(store, (st) => st.getState().measure(0));
+    const heard3 = playBatchListening(store, (st) => {
+      st.getState().measure(0);
+      st.getState().followCrystal(0);
+    });
     expect(s().phase).toBe("act3Readout");
     expect([...heard2, ...heard3]).toEqual([]);
   });

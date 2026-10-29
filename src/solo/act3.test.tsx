@@ -2,7 +2,7 @@
 // as one locked line, the hint and the asset list behind Sheet buttons, and the debrief's numbers in the side column.
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
-import { BATCH_SIZE, ROUND_MS } from "../config.ts";
+import { BATCH_SIZE, ACT3_ROUND_MS } from "../config.ts";
 import { Credits } from "../screens/Credits.tsx";
 import { S } from "../strings.ts";
 import { Solo } from "./Solo.tsx";
@@ -23,7 +23,7 @@ function playBatch(act: () => void) {
   for (let i = 0; i < BATCH_SIZE; i++) {
     s().advance(now);
     act();
-    now += ROUND_MS + 1;
+    now += ACT3_ROUND_MS + 1;
     s().timeout(now);
   }
   s().advance(now);
@@ -73,9 +73,9 @@ describe("debrief", () => {
 
   function toDebrief() {
     toTuning();
-    playBatch(() => s().measure(0));
+    playBatch(() => (s().measure(0), s().followCrystal(0)));
     s().nextBatch();
-    playBatch(() => s().measure(0));
+    playBatch(() => (s().measure(0), s().followCrystal(0)));
     s().startDebrief();
     expect(s().phase).toBe("debrief");
   }
@@ -84,7 +84,7 @@ describe("debrief", () => {
     toDebrief();
     expect(side(html())).toContain(S.debrief.steps[0]!.stat!("").replace(/: $/, ""));
     s().setDebriefStep(1);
-    expect(side(html())).toContain(esc(S.debrief.table("A")));
+    expect(side(html())).toContain(S.debrief.compare.plan);
     s().setDebriefStep(2);
     expect(side(html())).toContain("bars");
   });

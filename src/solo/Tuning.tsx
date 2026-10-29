@@ -16,7 +16,9 @@ import { hintAvailable, useSolo } from "./soloStore.ts";
 
 export function Tuning() {
   const s = useSolo((st) => st);
-  const [sheet, setSheet] = useState<"dials" | "hint" | null>(null);
+  const [sheet, setSheet] = useState<"dials" | "hint" | "explain" | null>(null);
+  // How the tool works: shown in full on the first visit, then behind a button.
+  const firstVisit = s.act3Batches === 0;
   const close = useCallback(() => setSheet(null), []);
   const crew = OPTIMAL_TUNING.B;
   const openHint = () => {
@@ -38,6 +40,11 @@ export function Tuning() {
               {S.crew.seeDials}
             </button>
           </div>
+          {!firstVisit && (
+            <button className="btn btn--ghost" aria-haspopup="dialog" onClick={() => setSheet("explain")}>
+              {S.tuning.explainHead}
+            </button>
+          )}
           {hintAvailable(s) && (
             <button className="btn btn--ghost" aria-haspopup="dialog" onClick={openHint}>
               {S.tuning.hintButton}
@@ -53,6 +60,12 @@ export function Tuning() {
       }
     >
       <h1 className="hide-on-phone">{S.tuning.title}</h1>
+      {firstVisit && (
+        <div className="panel explain">
+          <p className="kicker">{S.tuning.explainHead}</p>
+          <p>{S.tuning.explain}</p>
+        </div>
+      )}
       <div className="panel stack">
         <p className="kicker">{S.tuning.yours}</p>
         <div className="row">
@@ -74,6 +87,12 @@ export function Tuning() {
             <Dial value={crew.greenDeg} small label={<SensorLight light={COOL} small />} />
             <Dial value={crew.redDeg} small label={<SensorLight light={HOT} small />} />
           </div>
+        </div>
+      </Sheet>
+      <Sheet open={sheet === "explain"} onClose={close} label={S.tuning.explainHead}>
+        <div className="panel stack">
+          <p className="kicker">{S.tuning.explainHead}</p>
+          <p>{S.tuning.explain}</p>
         </div>
       </Sheet>
       <Sheet open={sheet === "hint"} onClose={close} label={S.tuning.hintButton}>

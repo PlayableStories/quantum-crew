@@ -2,7 +2,7 @@
 // during a batch the radio is dark and no crewmate line appears; between batches the crewmate is on the radio.
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
-import { BATCH_SIZE, ROUND_MS } from "../config.ts";
+import { BATCH_SIZE, ACT3_ROUND_MS } from "../config.ts";
 import { CLOCKWISE } from "../shared/fiction.ts";
 import { Solo } from "./Solo.tsx";
 import { soloStore } from "./soloStore.ts";
@@ -19,7 +19,8 @@ function finishBatch() {
     s().advance(now);
     s().answer(CLOCKWISE, now);
     s().measure(now);
-    now += ROUND_MS + 1;
+    s().followCrystal(now);
+    now += ACT3_ROUND_MS + 1;
     s().timeout(now);
   }
   s().advance(now);
@@ -53,7 +54,9 @@ describe("comms in the rendered screens", () => {
     s().advance(0);
     expect(html()).toContain("comms-dark");
     expect(html()).not.toContain("radio-line");
-    s().measure(0);
+    s().measure(0); // the crystal has spoken; the round is still live
+    expect(html()).not.toContain("radio-line");
+    s().followCrystal(0);
     expect(html()).not.toContain("radio-line");
   });
 });

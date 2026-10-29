@@ -55,11 +55,11 @@ flowchart TD
   ceiling --> tool["The Entanglement Tool arrives"]
   tool --> tune
   subgraph act3 ["Act III: the tool"]
-    tune["Tune your dials<br/>(hint after 1 batch under 80%)"] --> batch3["Batch: 12 rounds, tap MEASURE"]
-    batch3 --> read3["Readout + Run 1,000 rounds"]
+    tune["Tune your dials<br/>(hint after a batch whose dials are under 80%)"] --> batch3["Batch: 12 rounds, MEASURE,<br/>the crystal suggests, you set the pump"]
+    batch3 --> read3["Readout: followed N of 12<br/>+ the dials' four cases (exact)"]
     read3 -- "Retune and go again" --> tune
   end
-  read3 -- "Debrief: a 1,000-round test ≥ 80%<br/>or after 2 batches" --> debrief["Debrief: 4 steps"]
+  read3 -- "Debrief: the dials played are ≥ 80% exactly<br/>or after 2 batches" --> debrief["Debrief: 4 steps"]
   debrief --> credits["Credits → Play again / Home"]
 ```
 
@@ -106,33 +106,44 @@ flowchart TD
    board shows every square's **exact** rate, 75% or 25%: *"The best plan's true rate is exactly 75%: it loses one
    round in four. The station needs 80%. A batch above 75% is luck."* The crewmate: *"So it was never us."* Then: *"Then we need something that isn't a plan."*
 5. **Receive the tool.** The game changes look (a live Entanglement Shader, two synced crystals). *Two linked
-   crystals have arrived: one in your tool, one in your crewmate's at Table B.* You turn a dial and tap
-   **MEASURE**, and the crystal decides your pump direction.
+   crystals have arrived: one in your tool, one in CORA's at Table B.* You turn a dial and tap **MEASURE**, and
+   the crystal suggests a pump direction.
 6. **Tune your dials (Act III).** One dial for COOL and one for HOT, 8 stops each (0° to 157.5° in 22.5° steps),
    starting at 0°/0°. Your own dials come first and large. CORA's are one line, *"CORA: COOL 22.5° · HOT
    157.5°, locked"* (*"Mine sit where my crystal settles… Nobody knows yet if that's right."*), and **See dials**
-   shows them in full; you tune only
-   your own. In each round
-   your dial turns to the angle for your sensor and you tap MEASURE. You choose *how* the crystal is read, not the
-   pump direction. After a batch under 80%, **Ask engineering for a hint** opens: *"Try making your two dials 45°
-   apart, and your partner's offset by half that."*
+   shows them in full; you tune only your own. On the first visit a short note explains the tool, without giving
+   the answer: *"The closer your dial points to CORA's, the more often your crystals give the same direction. Need
+   your pumps to match? Point close to hers. Need them to differ? Point far away."* There's no live rate while you
+   turn the dials. After a batch whose dials didn't pass, **Ask engineering for a hint** opens: *"Try making your
+   two dials 45° apart, and your partner's offset by half that."*
+
+   **Rounds** last 7 seconds. Your dial turns to the angle for your sensor; you tap **MEASURE** and the crystal
+   suggests a pump (*"Crystal says: ANTICLOCKWISE"*, that button highlighted). Then you set the pump yourself:
+   Enter follows the crystal, A / C choose directly, and you may go against it. Scoring uses the pump you set; CORA
+   always follows her crystal. The result shows the same way as in Act II.
 
    | Your dials (COOL / HOT) | Win rate |
    |---|---|
    | **0° / 45°** | **85.4%**, the only best setting of the 64 |
-   | 0°/22.5°, 0°/67.5°, 22.5°/45°, 157.5°/45° | 80.2%, which passes a 1,000-round test about half the time |
+   | 0°/22.5°, 0°/67.5°, 22.5°/45°, 157.5°/45° | 80.2%, which passes the gate |
    | 0° / 0° (the start) | 67.7% |
 
-7. **Result.** The debrief unlocks when a 1,000-round test reaches **80%** or more, or after **2** Act III batches,
-   so every player reaches the end.
+7. **Readout and the gate.** The readout says *"You followed the crystal in N of 12 rounds."* **If we both follow
+   the crystals** shows the four sensor combinations with both dial angles and the exact chance each holds, then
+   the dials' true rate. A luck line appears when the batch and the true rate disagree about passing 80%. The
+   **debrief unlocks after a batch played with dials whose exact rate is 80% or more**, whatever the batch scored.
+   Otherwise you go to batch 2 (with the hint); after **2** Act III batches it opens either way, so every player
+   reaches the end.
 8. **Debrief.** The physics words appear only here, in four steps:
    - **No plan beats 75%:** the fiction mapped back to the game (sensors = input bits, pumps = output bits, "match
      unless both HOT" = the CHSH rule), and the wall was a Bell inequality, with your Act II rate. Mixing plans at
      random only averages cells on the plan board, so it can never beat the best cell.
    - **Entanglement broke through:** the crystals agree with probability cos²(θA − θB), up to 85.4% (the Tsirelson
-     bound), with your best test and the optimal dials for both tables.
-   - **But no messages:** over 10,000 rounds your pump runs clockwise about half the time whatever your crewmate's
-     sensor read, so no message gets through (no-signalling).
+     bound), with your dials' true rate. Two four-case views sit side by side: the best plan (three cases always
+     held, one always lost: 75%) and your dials (or the best dials, if yours didn't pass), where every case holds
+     about 85%. *A plan has to give up one case completely; the crystals spread a small loss across all four.*
+   - **But no messages:** each pump runs clockwise exactly 50% of the time whatever the partner's sensor read
+     (computed exactly), so no message gets through (no-signalling). Your own 12-round numbers sit underneath.
    - **Credits** (the Atlas asset list is behind **How the art was made**), then *Play again* or *Home*.
 
    Each step's explanation sits beside your own numbers on a landscape screen, and above them on a phone.
@@ -155,12 +166,13 @@ iPad the type, plan board, dials and ring scale up with the screen, and every sc
 3. **Engineering report.** After the first batch you can call engineering (or try more plans first): they fill in
    every pair you didn't try, and none beats 75%.
 4. **Act III: the Entanglement Tool.** You get two dials, one for COOL and one for HOT; your crewmate's are locked
-   where they set them (**See dials**). In each round, tap
-   **MEASURE** and the tool sets your pump. Experiment until the 1,000-round test passes 80%. After a batch under
-   80%, you can ask engineering for a hint; after two batches the debrief opens either way.
+   where they set them (**See dials**). In each round, tap **MEASURE**: the crystal suggests a pump, and you set it
+   (follow it or not). Find dials whose exact rate passes 80%; after a batch with dials that don't, you can ask
+   engineering for a hint, and after two batches the debrief opens either way.
 5. **Debrief.** You learn the physics and see your own numbers, then the credits.
 
-Keyboard: **A / ←** = ANTICLOCKWISE, **C / →** = CLOCKWISE, **Space / Enter** = MEASURE.
+Keyboard: **A / ←** = ANTICLOCKWISE, **C / →** = CLOCKWISE. Act III: **Space / Enter** = MEASURE, then **Enter**
+follows the crystal. On a round's result, **Space / Enter** = Next round.
 
 ## How to play (event)
 Two tables of players, one phone each, and a TV or projector. A facilitator runs the session from the TV.
@@ -278,7 +290,7 @@ landing, both intro steps, the huddle (first view, after picking a plan from the
 open), a live round in Acts II and III with the first result of each outcome (circulating, heat carried off, purge,
 pressure spike, overheat, too slow; the last Act II round is left to time out; results move on by Next round, Enter
 and the auto-advance), both readouts (Act II also with the four cases open), the engineering report, tool reveal, tuning (with the crewmate's dials sheet, and
-again after a batch under 80% with the hint sheet), every debrief step and credits (with the asset-list sheet).
+again after a batch under 80% with the hint sheet), the crystal's suggestion in Act III, every debrief step and credits (with the asset-list sheet).
 
 ```sh
 pnpm exec playwright install chromium   # once (or set SHOTS_CHANNEL=chrome to use your installed Chrome)
