@@ -5,6 +5,7 @@ import { Debrief } from "./Debrief.tsx";
 import { Intro } from "./Intro.tsx";
 import { Plan } from "./Plan.tsx";
 import { Readout } from "./Readout.tsx";
+import { Resolution } from "./Resolution.tsx";
 import { Storm } from "./Storm.tsx";
 import { ToolReveal } from "./ToolReveal.tsx";
 import { Tuning } from "./Tuning.tsx";
@@ -44,6 +45,8 @@ function screenFor(phase: Phase) {
       return <Storm />;
     case "act3Plan":
       return <Tuning />;
+    case "resolution":
+      return <Resolution />;
     case "debrief":
       return <Debrief />;
   }

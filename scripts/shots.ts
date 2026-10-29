@@ -222,7 +222,7 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   await checkSheet(page, S.crew.seeDials, "tuning-crew-dials", shot);
 
   for (let batch = 1; ; batch++) {
-    await click(S.tuning.start(batch));
+    await click(S.tuning.start(0).replace(/ 0$/, "")); // "Ride out wave …": waves count on from Act II
     // MEASURE (Space), then follow the crystal (Enter) or choose directly (A / C, sometimes against it).
     const act3Answer = async (i: number) => {
       await page.keyboard.press("Space");
@@ -244,7 +244,9 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   await shot("act3-readout");
   await click(S.readout.crystalCases);
   await shot("act3-readout-cases");
-  await click(S.readout.debrief);
+  await click(S.readout.debrief); // "The storm passes"
+  await shot("resolution");
+  await click(S.resolution.go);
   for (let step = 0; step < S.debrief.steps.length; step++) {
     await shot(`debrief-${step + 1}`);
     if (step < S.debrief.steps.length - 1) await click(S.debrief.next);

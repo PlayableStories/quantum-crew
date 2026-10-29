@@ -89,6 +89,7 @@ describe("solo screen frame", () => {
     s().beginBatch();
     playBatch(() => (s().measure(0), s().followCrystal(0)));
     s().startDebrief();
+    s().openReport(); // the resolution, then the incident report
     expect(s().phase).toBe("debrief");
     for (let step = 0; step < S.debrief.steps.length; step++) {
       s().setDebriefStep(step);

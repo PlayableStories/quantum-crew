@@ -13,7 +13,7 @@ import { COOL, HOT } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
 import { CrewRadio } from "./CrewRadio.tsx";
 import { PLAN_IDS, planId, planOf, type PlanId } from "./plans.ts";
-import { useSolo } from "./soloStore.ts";
+import { nextWave, useSolo } from "./soloStore.ts";
 
 export function Plan() {
   const s = useSolo((st) => st);
@@ -31,7 +31,7 @@ export function Plan() {
       actions={
         <button className="btn btn--primary" onClick={s.beginBatch}>
           {S.plan.lock}
-          <small>{S.plan.lockSub(batches + 1)}</small>
+          <small>{S.plan.lockSub(nextWave(s))}</small>
         </button>
       }
     >

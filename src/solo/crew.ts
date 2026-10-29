@@ -15,7 +15,11 @@ export const commsDark = (phase: Phase) => COMMS_DARK_PHASES.includes(phase);
 
 type CrewView = Pick<SoloData, "phase" | "crewCue" | "plan" | "crewPlan" | "board" | "batch"> & {
   round?: SoloData["round"];
+  batchFollowed?: SoloData["batchFollowed"];
 };
+
+/** Act III: more than this many rounds against the crystal, and CORA says so. */
+const OWN_WAY_AFTER = 3;
 
 export function crewLines(s: CrewView): string[] {
   if (commsDark(s.phase)) return [];
@@ -32,7 +36,9 @@ export function crewLines(s: CrewView): string[] {
     case "act2Readout":
       return act2Reactions(s.batch);
     case "act3Readout":
-      return [winRate(s.batch) >= SURVIVAL_THRESHOLD ? C.readout.act3Good : C.readout.act3Bad];
+      return [winRate(s.batch) >= SURVIVAL_THRESHOLD ? C.readout.act3Good : C.readout.act3Bad, ...followLine(s)];
+    case "resolution":
+      return [C.resolution];
     case "ceiling":
       return [C.ceiling];
     case "toolReveal":
@@ -42,6 +48,17 @@ export function crewLines(s: CrewView): string[] {
     default:
       return []; // intro and debrief: no radio
   }
+}
+
+/** Act III readout: CORA notices how the player used the crystal (she always follows hers). */
+export function followLine(s: Pick<CrewView, "batchFollowed" | "batch">): string[] {
+  const followed = s.batchFollowed ?? [];
+  if (followed.length === 0) return [];
+  // Rounds where the player set a pump against the crystal (a timeout isn't going your own way).
+  const against = followed.filter((f, i) => !f && !s.batch[i]?.timedOut).length;
+  if (against > OWN_WAY_AFTER) return [S.crew.readout.ownWay];
+  if (followed.every(Boolean)) return [S.crew.readout.followedAll];
+  return [];
 }
 
 function huddleLine(s: CrewView): string {

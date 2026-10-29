@@ -19,6 +19,7 @@ import {
   dialsRate,
   displayedStability,
   followedCount,
+  lastWave,
   luckGap,
   useSolo,
 } from "./soloStore.ts";
@@ -26,7 +27,7 @@ import {
 export function Readout() {
   const s = useSolo((st) => st);
   const act = actOf(s.phase) === 2 ? 2 : 3; // a readout only follows an Act II or Act III batch
-  const batchNo = act === 2 ? s.act2Batches : s.act3Batches;
+  const batchNo = lastWave(s); // the storm wave that just ended (counted across Acts II and III)
   const wins = s.batch.filter((r) => r.win).length;
   const rounds = act === 2 ? s.act2 : s.act3;
   const value = displayedStability(s);
@@ -80,7 +81,7 @@ export function Readout() {
               showLimit={act === 3}
             />
           )}
-          {act === 3 && <p className="muted small">{S.readout.followed(followedCount(s), BATCH_SIZE)}</p>}
+          {act === 3 && !showCases && <p className="muted small">{S.readout.followed(followedCount(s), BATCH_SIZE)}</p>}
           {gap && <p className="luck">{S.readout.luck(gap, act, trueText)}</p>}
           {/* The exact rate, case by case (no sampling): the plan in Act II, the dial settings in Act III. */}
           <button className="btn btn--compact" aria-expanded={showCases} onClick={() => setShowCases((v) => !v)}>

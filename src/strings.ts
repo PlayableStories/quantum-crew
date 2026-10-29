@@ -40,9 +40,9 @@ export const S = {
   },
 
   landing: {
-    tagline: "Keep the station alive. Some problems no plan can solve.",
+    tagline: `Keep ${STATION_NAME} alive through a solar storm.`,
     solo: "Solo demo",
-    soloSub: `You and ${CREW_NAME}, the station's AI · about 6 minutes`,
+    soloSub: `A night shift with ${CREW_NAME}, the station's AI · about 7 minutes`,
     host: "Host on TV",
     hostSub: "Event mode: open this on the big screen",
     join: "Join with code",
@@ -66,17 +66,18 @@ export const S = {
     back: "Back",
   },
 
+  /** Solo: the huddle is the lull between storm waves. */
   plan: {
-    kicker: "Strategy huddle",
+    kicker: "The lull",
     title: "Last chance to talk",
-    sub: "Lock in a plan. Once it's locked, comms go dark until the batch ends, then reopen.",
+    sub: "Lock in a plan before the next wave hits. Once it hits, the radio goes dark until it passes.",
     you: "You",
     /** The two dialogue boxes: whose plan each one sets. */
     box: (who: string) => `${who}'s plan`,
     yourBox: "Your plan",
     lock: "Lock in the plan",
-    lockSub: (n: number) => `Batch ${n} · comms go dark`,
-    last: (pct: string) => `Last batch: ${pct} stable`,
+    lockSub: (n: number) => `Wave ${n} · radio goes dark`,
+    last: (pct: string) => `Last wave: ${pct} stable`,
   },
 
   /** The four Act II plans, in chsh.ts's CLASSICAL_STRATEGIES order. */
@@ -104,11 +105,11 @@ export const S = {
     engRun: "run by engineering",
   },
 
-  /** Comms are open between batches, dark during one. */
+  /** Solo: the radio works between storm waves, and goes down during one. */
   comms: {
     radio: "Radio",
-    dark: "Comms dark",
-    darkSub: "No talking until the batch ends.",
+    dark: "Storm wave · radio down",
+    darkSub: "It may come back when the wave passes.",
   },
 
   /** The station's automatic log after each round: one impersonal sentence on why it held or failed. The ring shows
@@ -148,6 +149,29 @@ export const S = {
     goSub: "The last chance to talk before the first wave",
   },
 
+  /** Solo: the debrief is the station's incident report. (The TV's debrief keeps `debrief.kicker`.) */
+  report: {
+    kicker: `Incident report · ${STATION_NAME}`,
+    act1: "Act I · radio",
+    act1Possible: "every round winnable",
+    act1Yours: (pct: string) => `possible · you held ${pct}`,
+    act2: "Act II · best plan",
+    act2Note: "exactly, at best",
+    act3: "Act III · crystals",
+    act3Note: "your dials, exactly",
+    story:
+      "Talking made every round winnable. No plan could replace talking. The crystals beat every plan without carrying a single message.",
+    noJam: "That's why the storm couldn't jam them: there was no signal to jam.",
+  },
+
+  /** Solo: the storm passes and the radio comes back (after the Act III gate, before the incident report). */
+  resolution: {
+    kicker: `Station log · ${STATION_NAME}`,
+    title: "The storm passes",
+    log: "The last wave rolls past the station. The core is steady, and the radio crackles back to life.",
+    go: "Read the incident report",
+  },
+
   /** CORA, the solo crewmate: the station's AI, steady and procedural. Speaks only while comms are open (see solo/crew.ts). */
   crew: {
     name: CREW_NAME,
@@ -161,6 +185,8 @@ export const S = {
       `${CORA_READING[light]} Turning ${pump === 0 ? "clockwise" : "anticlockwise"}.`,
     /** The storm: her line breaks off mid-sentence. */
     stormBreak: "Something's coming off the star. Hold the pumps st—",
+    /** The resolution: the radio is back. */
+    resolution: "I couldn't hear you the whole time. But we were in step anyway.",
     opening:
       "Standard procedure: I always pump clockwise. Your call, though: tap a square to set both our plans.",
     agreeCrew: [
@@ -191,12 +217,15 @@ export const S = {
       timeout: (n: number) => `Round ${n}, your pump never moved. Five seconds goes fast.`,
       purge: (n: number) => `Round ${n}: both hot and we pumped against each other. Textbook purge.`,
       perfect: "Twelve for twelve. Don't get used to it.",
-      steady: "Steady batch. Let's see what a thousand rounds say.",
+      steady: "Steady wave.",
+      /** Act III: how the player used the crystal this wave (CORA always follows hers). */
+      ownWay: "You went your own way a lot. I just did what my crystal said.",
+      followedAll: "You followed your crystal every round. So did I.",
       act3Good: "Those crystals… that's the steadiest I've seen this ring.",
       act3Bad: "Twelve rounds is a coin toss. Look at what the crystals do in each case before you touch the dials.",
     },
     ceiling: "So it was never us. Every pair fails the same way.",
-    tool: "Engineering never sends anything this fancy. I'll set mine; you find a setting for yours, and we'll see what holds.",
+    tool: "A crystal that tells me which way to turn. Fine. That's my new procedure.",
     tuning:
       "Mine sit where my crystal settles: 22.5° cool, 157.5° hot. Nobody knows yet if that's right.",
     dialsHead: (name: string) => `${name}'s dials (locked)`,
@@ -205,7 +234,8 @@ export const S = {
   },
 
   batch: {
-    label: (n: number) => `Batch ${n}`,
+    /** Solo: a batch is a storm wave. */
+    label: (n: number) => `Wave ${n}`,
     round: (n: number, total: number) => `Round ${n}/${total}`,
     incoming: "Sensors warming up…",
     yourLight: "Your sensor",
@@ -242,7 +272,7 @@ export const S = {
   },
 
   readout: {
-    kicker: (n: number) => `Batch ${n} complete`,
+    kicker: (n: number) => `Wave ${n} complete`,
     held: (wins: number, total: number) => `${wins} of ${total} rounds held`,
     stability: "Station stability",
     actSoFar: (n: number) => `All ${n} rounds this shift`,
@@ -261,9 +291,10 @@ export const S = {
     trueRate: (pct: string) => `True rate: ${pct}`,
     followed: (n: number, total: number) => `You followed the crystal in ${n} of ${total} rounds.`,
     again2: "Back to the huddle",
-    again3: "Retune and go again",
+    again3: "Retune before the next wave",
     report: "Call engineering",
-    debrief: "Debrief",
+    /** Solo: the gate passed (or the last wave is done): on to the ending. */
+    debrief: "The storm passes",
   },
 
   meter: {
@@ -276,7 +307,7 @@ export const S = {
   },
 
   ceiling: {
-    kicker: "Engineering report",
+    kicker: "Engineering report · supply deck",
     big: "75%",
     /** Event mode (TV): engineering's summary. Solo shows the plan board and `engineering` instead. */
     lead: "We tried every plan your crew could make. Every single one.",
@@ -294,6 +325,18 @@ export const S = {
       "The core can take one bad round in five. The station needs 80%.",
     ],
     go: "Then we need something that isn't a plan",
+  },
+
+  /** Solo: the tool arrives in a supply pod during a lull. (Event mode's phone uses `tool` below.) */
+  pod: {
+    kicker: "Supply pod · during the lull",
+    title: "The Entanglement Tool",
+    lines: [
+      `A supply pod docks from engineering with two linked crystals: one for your tool, one for ${CREW_NAME}'s at Table B.`,
+      "Engineering's note: the crystals don't carry messages, so the storm can't jam them. Measure one and it gives a direction, linked to its partner in a way no plan can copy.",
+      "Turn your dial, tap MEASURE, and the crystal suggests a pump. You decide whether to follow it.",
+    ],
+    go: "Pick up the tool",
   },
 
   tool: {
@@ -316,7 +359,7 @@ export const S = {
     explainHead: "How the tool works",
     explain:
       "The closer your dial points to CORA's, the more often your crystals give the same direction. Need your pumps to match? Point close to hers. Need them to differ? Point far away.",
-    start: (n: number) => `Start batch ${n}`,
+    start: (n: number) => `Ride out wave ${n}`,
   },
 
   dial: { prev: "Turn dial left", next: "Turn dial right" },

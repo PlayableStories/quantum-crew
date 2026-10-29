@@ -2920,3 +2920,63 @@ button.board__cell:focus-visible {
     font-size: 0.78rem;
   }
 }
+
+/* ---------- Story Phase 2: the incident report's three numbers ---------- */
+
+.three {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.three li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+}
+.three .kicker {
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+}
+.three__big {
+  font-size: var(--fs-l);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 599px) {
+  .debrief .layout__title .kicker {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+  }
+  .three {
+    gap: 4px;
+  }
+  .three li {
+    padding: 4px 6px;
+  }
+  .three .kicker {
+    font-size: 0.6rem;
+  }
+  .three .muted.small {
+    font-size: 0.68rem;
+    line-height: 1.25;
+  }
+  .three + p.small,
+  .debrief .panel > p.small:last-child {
+    font-size: 0.78rem;
+    margin: 0;
+  }
+}
+@media (max-width: 599px) {
+  .debrief .panel.stack {
+    gap: 5px;
+  }
+  .debrief .panel .muted.small {
+    font-size: 0.72rem;
+    line-height: 1.3;
+  }
+}

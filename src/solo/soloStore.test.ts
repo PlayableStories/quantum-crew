@@ -62,6 +62,7 @@ describe("solo flow", () => {
     expect(displayedStability(s())).toBe(winRate(s().act3));
     expect(debriefAvailable(s())).toBe(true);
     s().startDebrief();
+    s().openReport(); // the resolution, then the incident report
     expect(s().phase).toBe("debrief");
   });
 

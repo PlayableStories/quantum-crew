@@ -31,8 +31,8 @@ export function Debrief() {
 
   // The "your numbers" panel for this step: beside the explanation on landscape, under it on a phone.
   const numbers =
-    step === 0 && content.stat && s.act2.length > 0 ? (
-      <p className="panel">{content.stat(pct(winRate(s.act2)))}</p>
+    step === 0 ? (
+      <ThreeNumbers />
     ) : step === 1 && content.stat ? (
       <div className="panel stack">
         <p>{content.stat(pct(dialsRate(s)))}</p>
@@ -55,7 +55,7 @@ export function Debrief() {
               <span key={i} className={i <= step ? "on" : ""} />
             ))}
           </div>
-          <p className="kicker">{S.debrief.kicker}</p>
+          <p className="kicker">{S.report.kicker}</p>
         </>
       }
       actions={
@@ -173,6 +173,40 @@ function NoSignallingPanel() {
       {act3.length > 0 && (
         <p className="muted small">{P.yourRounds(act3.length, fmt(real.a.partnerGreen), fmt(real.a.partnerRed))}</p>
       )}
+      <p className="small">{S.report.noJam}</p>
+    </div>
+  );
+}
+
+/**
+ * The incident report's first finding: the game's three numbers side by side. Act I with the radio (every round
+ * winnable; the player's own Act I score too), Act II's best plan (exactly 75%), and Act III's crystals (the player's
+ * dial settings' exact rate, about 85% at best).
+ */
+function ThreeNumbers() {
+  const s = useSolo((st) => st);
+  const R = S.report;
+  const act1 = s.act1.length ? pct(winRate(s.act1)) : null;
+  return (
+    <div className="panel stack">
+      <ul className="three">
+        <li>
+          <span className="kicker">{R.act1}</span>
+          <b className="three__big">100%</b>
+          <span className="muted small">{act1 === null ? R.act1Possible : R.act1Yours(act1)}</span>
+        </li>
+        <li>
+          <span className="kicker">{R.act2}</span>
+          <b className="three__big">75%</b>
+          <span className="muted small">{R.act2Note}</span>
+        </li>
+        <li>
+          <span className="kicker">{R.act3}</span>
+          <b className="three__big">{pct(dialsRate(s))}</b>
+          <span className="muted small">{R.act3Note}</span>
+        </li>
+      </ul>
+      <p className="small">{R.story}</p>
     </div>
   );
 }
