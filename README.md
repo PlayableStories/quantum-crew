@@ -351,7 +351,7 @@ timers with Playwright's clock. Output goes to the git-ignored `shots/<out>/<siz
 - `NN-name.png` is the first viewport, which is what the player sees.
 - `NN-name.full.png` is the whole page, with a dashed line at the fold.
 
-The run fails if any text in a coolant ring renders below 12px. `report.md` lists, for each screen and size, the page height in screen-heights, whether the main button is visible
+The run fails if any text in a coolant ring renders below 12px, or if any stability-gauge labels overlap. `report.md` lists, for each screen and size, the page height in screen-heights, whether the main button is visible
 without scrolling, and any horizontal overflow. The run also checks that the rule sheet keeps focus inside it,
 closes on Escape and hands focus back. Two runs give the same screens and the same report; a few anti-aliased pixels
 can differ.
