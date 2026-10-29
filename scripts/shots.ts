@@ -178,14 +178,18 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   await click(S.intro.next);
   await shot("intro-2");
   await click(S.intro.go);
-  // Act I, the night shift: both readings are known (yours on the sensor, CORA's on the radio), so apply the rule.
+  // Act I, the night shift: both readings are known (yours on the sensor, CORA's on the radio) and she calls which way
+  // she's turning, so apply the rule: match her unless both are HOT.
   await shot("act1-lead-in", null);
   const act1Answer = async () => {
     const x = (await page.locator(".light--1").count()) > 0 ? 1 : 0;
-    const y = (await page.locator(".radio-line__text").textContent())?.includes(S.crew.readingLight[1]) ? 1 : 0;
-    await page.keyboard.press(((x & y) ^ 0) === 0 ? "c" : "a");
+    const call = (await page.locator(".radio-line__text").textContent()) ?? "";
+    const y = call.includes(S.crew.readingLight[1]) ? 1 : 0;
+    const crew = /anticlockwise/i.test(call) ? 1 : 0; // the way CORA says she's turning
+    await page.keyboard.press(((x & y) ^ crew) === 0 ? "c" : "a");
     return true;
   };
+
   await playBatch(page, "act1", act1Answer, shot, tick, ACT1_ROUNDS);
   await shot("storm");
   await click(S.storm.next);

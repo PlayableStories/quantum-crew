@@ -1,6 +1,6 @@
 // Solo mode as a state machine: the player is Table A, CORA (an AI) is Table B. No server, no I/O.
-// Act I: a short run of rounds with the radio working: CORA calls her reading and holds clockwise, so the rule wins
-// every round. Then the storm knocks the radio out.
+// Act I: a short run of rounds with the radio working: CORA calls her reading and which way she's turning (at random,
+// round by round), so the rule wins every round. Then the storm knocks the radio out.
 // Act II: the player locks in the whole joint plan (their own and CORA's) and plays it; each pair played goes on the
 // plan board at its exact rate. No pair beats 75%, and engineering fills in the untried pairs.
 // Act III: both share the Entanglement Tool. CORA's dials sit at the optimal Table B setting. Each round the player
@@ -42,6 +42,7 @@ import {
   type TuningConfig,
   type Valve,
 } from "../shared/chsh.ts";
+import { ANTICLOCKWISE, CLOCKWISE } from "../shared/fiction.ts";
 import { mulberry32, randomSeed, type Rng } from "../shared/rng.ts";
 import { act1Order, type SensorPair } from "./act1.ts";
 import { ALL_CELLS, cellKey, expectedBoard, type Board, type CellKey } from "./plans.ts";
@@ -71,7 +72,8 @@ export type LiveRound = {
   deadline: number;
   /** Act III: the player's crystal, once they tap MEASURE (a suggestion: they still set the pump). */
   crystal: Valve | null;
-  /** Act III: CORA's pump, from her crystal, measured right after the player's. */
+  /** CORA's pump. Act I: drawn at random and called over the radio. Act III: from her crystal, measured right after
+   *  the player's. */
   crewPump: Valve | null;
   /** Set once the player answers or times out; the screen shows it, then calls `advance`. */
   result: RoundResult | null;
@@ -97,6 +99,8 @@ export type SoloData = {
   batch: RoundResult[];
   /** Act I: the sensor readings for each round, drawn when the night shift starts. */
   act1Order: SensorPair[];
+  /** Act I: CORA's pump for each round, at random (seeded), drawn when the night shift starts. She calls it out. */
+  act1Crew: Valve[];
   act1: RoundResult[];
   /** Act III: whether the player set the pump their crystal suggested, per round of the current (or last) batch. */
   batchFollowed: boolean[];
@@ -154,6 +158,7 @@ const initialData = (): SoloData => ({
   round: null,
   batch: [],
   act1Order: [],
+  act1Crew: [],
   act1: [],
   batchFollowed: [],
   act2: [],
@@ -179,9 +184,6 @@ export const roundMs = (act: Act) => (act === 1 ? ACT1_ROUND_MS : act === 2 ? RO
 /** Rounds in a batch: Act I's short night-shift run, else BATCH_SIZE. */
 export const batchSize = (act: Act) => (act === 1 ? ACT1_ROUNDS : BATCH_SIZE);
 
-/** CORA's Act I pump: standard procedure, always clockwise, whatever her reading. She says it on the radio too. */
-export const act1CrewPump = (y: Light): Valve => classicalValve(DEFAULT_CREW_PLAN, y);
-const crewAct1 = act1CrewPump;
 
 /** The exact rate of the player's dials against CORA's, if both follow their crystals. */
 export const dialsRate = (s: Pick<SoloData, "tuning">) => quantumExpectedWinRate(s.tuning, OPTIMAL_TUNING.B);
@@ -237,7 +239,9 @@ export function createSoloStore(seed: number = randomSeed()) {
 
       start: () => {
         if (get().phase !== "intro") return;
-        set({ phase: "act1Batch", act1Order: act1Order(rng), act1: [], batch: [], round: null });
+        const order = act1Order(rng);
+        const crew = order.map((): Valve => (rng() < 0.5 ? CLOCKWISE : ANTICLOCKWISE));
+        set({ phase: "act1Batch", act1Order: order, act1Crew: crew, act1: [], batch: [], round: null });
       },
 
       endStorm: () => {
@@ -271,14 +275,16 @@ export function createSoloStore(seed: number = randomSeed()) {
         // Act I follows its prepared order (every combination, a purge but not first); later acts draw at random.
         const [x, y] = act === 1 ? s.act1Order[s.batch.length]! : (({ x, y }) => [x, y] as const)(drawInputs(rng));
         const deadline = now + roundMs(act);
-        set({ round: { n: s.batch.length + 1, x, y, deadline, crystal: null, crewPump: null, result: null } });
+        // Act I: CORA's pump is set (and called over the radio) as the round starts.
+        const crewPump = act === 1 ? s.act1Crew[s.batch.length]! : null;
+        set({ round: { n: s.batch.length + 1, x, y, deadline, crystal: null, crewPump, result: null } });
       },
 
       answer: (valve, now) => {
         const { phase, round } = get();
         if (!round || round.result || now > round.deadline) return;
         if (phase === "act1Batch") {
-          resolve(scoreRound(round.x, round.y, valve, crewAct1(round.y)));
+          resolve(scoreRound(round.x, round.y, valve, round.crewPump));
         } else if (phase === "act2Batch") {
           resolve(scoreRound(round.x, round.y, valve, classicalValve(get().crewPlan, round.y)));
         } else if (phase === "act3Batch" && round.crystal !== null) {
@@ -307,7 +313,7 @@ export function createSoloStore(seed: number = randomSeed()) {
         // CORA still acts (from her plan, or her crystal); the player's missing pump setting makes it a loss.
         const b =
           phase === "act1Batch"
-            ? crewAct1(round.y)
+            ? round.crewPump
             : phase === "act2Batch"
               ? classicalValve(get().crewPlan, round.y)
               : (round.crewPump ?? measureFirst(rng));

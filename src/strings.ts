@@ -153,8 +153,9 @@ export const S = {
     name: CREW_NAME,
     badge: "AI",
     /** Act I, before the first round: standard procedure. */
-    act1Opening: "Standard procedure: I hold clockwise, every round. Call yours, I'll call mine.",
-    /** Act I: CORA's call over the radio each round: her reading, then which way she's turning her pump. */
+    act1Opening: "Quiet night. Each round I'll call my reading and which way I'm turning. Call yours, and keep us in step.",
+    /** Act I: CORA's call over the radio each round: her reading, then which way she's turning her pump (it varies
+     *  from round to round). */
     readingLight: CORA_READING,
     reading: (light: 0 | 1, pump: 0 | 1) =>
       `${CORA_READING[light]} Turning ${pump === 0 ? "clockwise" : "anticlockwise"}.`,
