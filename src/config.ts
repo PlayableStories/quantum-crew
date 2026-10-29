@@ -5,6 +5,10 @@ import { CLOCKWISE } from "./shared/fiction.ts";
 /** Time a player has to set their pump or tap MEASURE. */
 // DECISION: 5 s (was 2.5 s), so solo players have time to think about the rule before answering.
 export const ROUND_MS = 5000;
+/** Solo Act I: rounds with the radio working (both readings known) before the storm. */
+export const ACT1_ROUNDS = 6;
+/** Solo Act I: time to hear CORA's reading, apply the rule and set the pump. */
+export const ACT1_ROUND_MS = 8000;
 /** Solo Act III: time to tap MEASURE, read the crystal's suggestion and set the pump. */
 export const ACT3_ROUND_MS = 7000;
 /** Rounds per batch, followed by a stability readout. */

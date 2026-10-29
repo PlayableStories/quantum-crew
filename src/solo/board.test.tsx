@@ -12,6 +12,7 @@ import { S } from "../strings.ts";
 import { ALL_CELLS, PLAN_IDS, expectedBoard, planOf, type Board } from "./plans.ts";
 import { Solo } from "./Solo.tsx";
 import { luckGap, soloStore } from "./soloStore.ts";
+import { toHuddle } from "./testkit.ts";
 
 const s = () => soloStore.getState();
 const html = () => renderToString(<Solo />);
@@ -94,7 +95,7 @@ describe("Act II screens", () => {
   });
 
   it("the huddle: last chance to talk, two dialogue boxes, Lock in the plan, no test and no board", () => {
-    s().start();
+    toHuddle(s);
     const markup = html();
     expect(markup).toContain(S.plan.title);
     expect(markup).toContain(esc(S.plan.sub));
@@ -109,7 +110,7 @@ describe("Act II screens", () => {
   });
 
   it("the readout: no sampled test in Act II; the four-case button; the luck line only when it applies", () => {
-    s().start();
+    toHuddle(s);
     finishBatch(() => s().answer(CLOCKWISE, 0)); // always clockwise with CORA: true rate 75%
     const markup = html();
     expect(markup).toMatch(/class="readout__hero"><div class="station[^"]*"/);
@@ -120,7 +121,7 @@ describe("Act II screens", () => {
   });
 
   it("a perfect batch on a 75% plan shows the luck line", () => {
-    s().start();
+    toHuddle(s);
     // Win every round on purpose: CORA always pumps clockwise, so pick the pump the rule needs.
     finishBatch(() => {
       const r = s().round!;
@@ -131,7 +132,7 @@ describe("Act II screens", () => {
   });
 
   it("the board records a pair once it's been played, and engineering fills the rest exactly", () => {
-    s().start();
+    toHuddle(s);
     s().choosePlan("player", planOf(1));
     expect(s().board).toEqual({});
     finishBatch();
@@ -144,7 +145,7 @@ describe("Act II screens", () => {
   });
 
   it("the engineering report: exact board, 75% as the true rate, no shift meter; the TV says the same", () => {
-    s().start();
+    toHuddle(s);
     finishBatch();
     s().reportCeiling();
     const markup = html();

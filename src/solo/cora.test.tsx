@@ -10,6 +10,7 @@ import { S } from "../strings.ts";
 import { act2Reactions } from "./crew.ts";
 import { Solo } from "./Solo.tsx";
 import { soloStore } from "./soloStore.ts";
+import { toHuddle } from "./testkit.ts";
 
 const s = () => soloStore.getState();
 const html = () => renderToString(<Solo />);
@@ -23,7 +24,7 @@ describe("CORA", () => {
 
   it("is CORA, with her AI badge on the radio, the huddle's pair line and tuning", () => {
     expect(S.crew.name).toBe("CORA");
-    s().start();
+    toHuddle(s);
     const huddle = html();
     expect(huddle.match(new RegExp(NAME_AND_BADGE, "g"))!.length).toBeGreaterThanOrEqual(2); // radio + pair line
     let now = 0;
@@ -43,8 +44,9 @@ describe("CORA", () => {
 
   it("the landing and intro introduce her as the station's AI, not a person", () => {
     expect(S.landing.soloSub).toContain("CORA");
-    expect(S.intro.lines[0]).toContain("CORA, the station's Coolant Ring Assistant");
-    expect(S.intro.lines[0]).toContain("not a person");
+    const intro = S.intro.lines.join(" ");
+    expect(intro).toContain("CORA, the station's Coolant Ring Assistant");
+    expect(intro).toContain("not a person");
     expect(JSON.stringify(S)).not.toMatch(/an AI crewmate|Your crewmate, an AI|CREWMATE_NAME/);
   });
 

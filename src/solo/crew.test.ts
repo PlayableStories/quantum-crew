@@ -6,6 +6,7 @@ import { S } from "../strings.ts";
 import { COMMS_DARK_PHASES, act2Reactions, crewLines, nextIdea } from "./crew.ts";
 import { planOf } from "./plans.ts";
 import { createSoloStore, type Phase } from "./soloStore.ts";
+import { toHuddle } from "./testkit.ts";
 
 type Store = ReturnType<typeof createSoloStore>;
 
@@ -31,6 +32,8 @@ function playBatchListening(store: Store, act: (s: Store) => void): string[] {
 
 const ALL_PHASES: Phase[] = [
   "intro",
+  "act1Batch",
+  "storm",
   "act2Plan",
   "act2Batch",
   "act2Readout",
@@ -56,7 +59,17 @@ describe("comms rule", () => {
   it("speaks only while comms are open", () => {
     const store = createSoloStore(11);
     const base = store.getState();
-    const speaks = new Set<Phase>(["act2Plan", "act2Readout", "ceiling", "toolReveal", "act3Plan", "act3Readout"]);
+    // Act I's night shift (its opening line before the first round) and the storm's broken line count as comms open.
+    const speaks = new Set<Phase>([
+      "act1Batch",
+      "storm",
+      "act2Plan",
+      "act2Readout",
+      "ceiling",
+      "toolReveal",
+      "act3Plan",
+      "act3Readout",
+    ]);
     for (const phase of ALL_PHASES) {
       expect(crewLines({ ...base, phase }).length > 0, phase).toBe(speaks.has(phase));
     }
@@ -65,7 +78,7 @@ describe("comms rule", () => {
   it("stays silent through every step of live batches in both acts", () => {
     const store = createSoloStore(21);
     const s = () => store.getState();
-    s().start();
+    toHuddle(s);
     const heard2 = playBatchListening(store, (st) => st.getState().answer(CLOCKWISE, 0));
     expect(s().phase).toBe("act2Readout");
     expect(crewLines(s()).length).toBeGreaterThan(0); // comms back on at the readout
@@ -85,7 +98,7 @@ describe("huddle lines", () => {
   it("opens with standard procedure, then agrees to whatever the player proposes", () => {
     const store = createSoloStore(2);
     const s = () => store.getState();
-    s().start();
+    toHuddle(s);
     expect(crewLines(s())).toEqual([S.crew.opening]);
     s().choosePlan("crew", planOf(1));
     expect(crewLines(s())).toEqual([S.crew.agreeCrew[1]]);
@@ -96,7 +109,7 @@ describe("huddle lines", () => {
   it("offers an idea when the player comes back to the huddle with the same plan", () => {
     const store = createSoloStore(4);
     const s = () => store.getState();
-    s().start();
+    toHuddle(s);
     playBatchListening(store, () => {});
     s().nextBatch();
     expect(s().crewCue).toBe("idea");

@@ -3,6 +3,7 @@ import { BATCH_SIZE, ACT3_ROUND_MS } from "../config.ts";
 import { ANTICLOCKWISE, CLOCKWISE } from "../shared/fiction.ts";
 import { ALL_CELLS, cellKey, expectedBoard, planOf } from "./plans.ts";
 import { createSoloStore, playerTried } from "./soloStore.ts";
+import { toHuddle } from "./testkit.ts";
 
 type Store = ReturnType<typeof createSoloStore>;
 
@@ -22,7 +23,7 @@ describe("joint plan", () => {
   it("the crewmate plays whatever plan the player set for them", () => {
     const store = createSoloStore(9);
     const s = () => store.getState();
-    s().start();
+    toHuddle(s);
     s().choosePlan("crew", planOf(3)); // always anticlockwise
     playBatch(store, (st) => st.getState().answer(CLOCKWISE, 0));
     expect(s().batch.every((r) => r.b === ANTICLOCKWISE)).toBe(true);
@@ -36,7 +37,7 @@ describe("joint plan", () => {
   it("records the pair on the board, at its exact rate, only once a batch with it has been played", () => {
     const store = createSoloStore(10);
     const s = () => store.getState();
-    s().start();
+    toHuddle(s);
     s().choosePlan("player", planOf(1));
     s().choosePlan("crew", planOf(2));
     expect(s().board).toEqual({});
@@ -47,7 +48,7 @@ describe("joint plan", () => {
   it("keeps a tried pair when the plan changes, and adds the next one after its batch", () => {
     const store = createSoloStore(12);
     const s = () => store.getState();
-    s().start();
+    toHuddle(s);
     playBatch(store, () => {}); // 0-0
     s().nextBatch();
     s().choosePlan("crew", planOf(3));
@@ -62,7 +63,7 @@ describe("engineering report", () => {
   it("fills exactly the untried pairs at their exact rates, and keeps the player's", () => {
     const store = createSoloStore(14);
     const s = () => store.getState();
-    s().start();
+    toHuddle(s);
     const tried = [
       [0, 0],
       [1, 0],
@@ -90,7 +91,7 @@ describe("engineering report", () => {
   it("runs the other 15 after one batch", () => {
     const store = createSoloStore(15);
     const s = () => store.getState();
-    s().start();
+    toHuddle(s);
     playBatch(store, () => {});
     s().reportCeiling();
     expect(s().engineeringRan).toBe(15);

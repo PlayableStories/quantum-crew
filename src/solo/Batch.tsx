@@ -18,6 +18,7 @@ import { BATCH_SIZE, LEAD_MS, RESULT_AUTO_MS } from "../config.ts";
 import { dialFor, type RoundResult, type Valve } from "../shared/chsh.ts";
 import { ANTICLOCKWISE, CLOCKWISE, roundCause } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
+import { CrewRadio } from "./CrewRadio.tsx";
 import { actOf, displayedStability, roundMs, useSolo } from "./soloStore.ts";
 
 export function Batch() {
@@ -26,7 +27,7 @@ export function Batch() {
   const act = actOf(phase);
   const batchNo = (act === 2 ? s.act2Batches : s.act3Batches) + 1;
 
-  // Round loop: lead-in → light → (answer | timeout) → result → next light … → readout.
+  // Round loop: lead-in → light → (answer | timeout) → result → next light … → readout (Act I: → the storm).
   useEffect(() => {
     let t: ReturnType<typeof setTimeout>;
     if (!round) t = setTimeout(() => advance(Date.now()), LEAD_MS);
@@ -64,7 +65,15 @@ export function Batch() {
   const live = round && !round.result;
   // The tag on a pump button: the plan's direction (Act II) or the crystal's suggestion (Act III).
   const suggested: Valve | null =
-    act === 2 ? (round ? (round.x === 0 ? plan.onGreen : plan.onRed) : null) : (round?.crystal ?? null);
+    act === 1
+      ? null // Act I: no plan, no crystal; both readings are on the radio
+      : act === 2
+        ? round
+          ? round.x === 0
+            ? plan.onGreen
+            : plan.onRed
+          : null
+        : (round?.crystal ?? null);
   const tag = act === 2 ? S.batch.planTag : S.batch.crystalTag;
   const pumps = (
     <div className="pumps">
@@ -87,14 +96,14 @@ export function Batch() {
 
   return (
     <ScreenLayout
-      className="batch"
+      className={`batch batch--act${act}`}
       actionsUnder="main"
       // Landscape only: the ring, idle while the round is live (it must not show the crewmate's sensor), then the result.
       side={<RingDiagram result={round?.result ?? undefined} idle={!round?.result} />}
       header={
         <div className="meter__head">
-          <span className="kicker">{S.batch.label(batchNo)}</span>
-          <span className="kicker">{round ? S.batch.round(round.n, BATCH_SIZE) : ""}</span>
+          <span className="kicker">{act === 1 ? S.act1.label : S.batch.label(batchNo)}</span>
+          <span className="kicker">{round ? (act === 1 ? S.act1.round(round.n) : S.batch.round(round.n, BATCH_SIZE)) : ""}</span>
         </div>
       }
       actions={
@@ -105,7 +114,7 @@ export function Batch() {
           </button>
         ) : (
           live &&
-          (act === 2 || round.crystal !== null ? (
+          (act !== 3 || round.crystal !== null ? (
             pumps
           ) : (
             <button className="btn measure" onPointerDown={() => measure(Date.now())} onClick={() => measure(Date.now())}>
@@ -117,7 +126,8 @@ export function Batch() {
     >
       <StabilityMeter value={displayedStability(s)} label={S.readout.stability} showCeiling={act === 3} showLimit={act === 3} />
       <Countdown id={round ? round.n : "lead"} ms={round ? roundMs(act) : LEAD_MS} paused={!live} />
-      <CommsDark />
+      {/* Act I: the radio works, so CORA calls her reading. Later acts: comms dark. */}
+      {act === 1 ? <CrewRadio /> : <CommsDark />}
       {act === 2 && !round?.result && <p className="agreed">{S.batch.agreed(plan, crewPlan)}</p>}
 
       {!round && (
@@ -131,6 +141,7 @@ export function Batch() {
 
       {live && (
         <>
+          {act === 1 && <p className="muted small act1-rule">{S.act1.ruleLine}</p>}
           {/* Act III: the sensor and the dial it selects, side by side. */}
           <div className={act === 3 ? "round-reading" : "stack"}>
             <SensorLight light={round.x} label={S.batch.yourLight} />
