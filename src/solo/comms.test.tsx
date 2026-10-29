@@ -6,6 +6,7 @@ import { BATCH_SIZE, ACT3_ROUND_MS } from "../config.ts";
 import { CLOCKWISE } from "../shared/fiction.ts";
 import { Solo } from "./Solo.tsx";
 import { soloStore } from "./soloStore.ts";
+import { toHuddle } from "./testkit.ts";
 
 const s = () => soloStore.getState();
 const html = () => renderToString(<Solo />);
@@ -30,7 +31,7 @@ describe("comms in the rendered screens", () => {
   beforeEach(() => s().reset());
 
   it("Act II batch: comms dark, no radio line, before and after a round", () => {
-    s().start();
+    toHuddle(s);
     expect(html()).toContain("radio-line");
     s().beginBatch();
     expect(html()).toContain("comms-dark");
@@ -43,7 +44,7 @@ describe("comms in the rendered screens", () => {
   });
 
   it("Act III batch: comms dark, no radio line; the readout brings the radio back", () => {
-    s().start();
+    toHuddle(s);
     s().beginBatch();
     finishBatch();
     expect(html()).toContain("radio-line");

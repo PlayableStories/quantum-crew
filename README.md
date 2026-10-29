@@ -17,13 +17,23 @@ only then learn what it is.
 beat the wall.
 
 ## Story and player flow
-*Station log · shift 1.* The station's coolant runs round a **ring** that passes through two sections. In solo mode
-you are at **Table A** and **CORA**, the station's Coolant Ring Assistant, is at **Table B**. She's an AI, not a
-person: her name always carries a small **AI** badge. Each table runs the **pump** in its own section,
-**CLOCKWISE** or **ANTICLOCKWISE**. The reactor flares at random, so each round each section's sensor reads **COOL**
-(blue, snowflake) or **HOT** (orange, flame). You see only your own sensor, you can't talk during a round, and you
-have 5 seconds. A **relief vent** between the sections unlocks automatically only when **both** sections are HOT, and
-nobody can see whether it's unlocked.
+*Station log · Kestrel Station.* **Kestrel Station** drifts on the edge of a young, restless star: a research platform
+powered by a reactor core, cooled by a coolant **ring** that runs through its two sections. You keep the night shift
+at **Table A**. **Table B** is run by **CORA**, the station's Coolant Ring Assistant: an AI, not a person (her name
+always carries a small **AI** badge), who has kept the ring running for years and trusts procedure above everything.
+Engineering works from the supply deck at the far end of the station. Each table runs the **pump** in its own section,
+**CLOCKWISE** or **ANTICLOCKWISE**. When the star flares, one section or the other heats up without warning, so each
+round each section's sensor reads **COOL** (blue, snowflake) or **HOT** (orange, flame). A **relief vent** between
+the sections unlocks automatically only when **both** sections are HOT, and nobody can see whether it's unlocked.
+
+The game's three numbers tell the story:
+- **Act I, comms open (100%):** on a quiet night you call your readings over the radio, so every round can hold.
+- **Act II, comms lost (75%):** a solar storm knocks the radio out in waves, and no plan agreed in advance beats 75%.
+- **Act III, the crystals (≈ 85%):** two linked crystals beat every plan without carrying a single message.
+
+Act I was milestone M6 in the hackathon plan, never built then; it's built now (solo). Acts II and III follow the
+storm; the storm's framing of their copy (waves, the supply pod, the resolution and the incident report) is
+the next phase.
 
 The rule follows from the plumbing, and it's always on screen next to a diagram of the ring:
 *keep the coolant flowing one way round the ring; if BOTH sections run HOT, pump against each other to purge*
@@ -36,16 +46,23 @@ the core can take one bad round in five, and no more.
 | One HOT | ✓ **Heat carried off** to the cool side | ✗ **Pressure spike**: the vent is still locked |
 | Both HOT | ✗ **Overheat**: hot coolant goes round in circles | ✓ **Purge**: the vent is unlocked and the hot coolant goes out |
 
-**Comms.** The rule only forbids talking *during* a round, and solo mode shows that with three states:
-- **Comms open** (the huddle, the readout, the engineering report, the tool reveal, tuning): CORA talks on the
-  radio. The huddle is the last chance to talk before a batch.
+**Comms.** In Act I the radio works; from the storm on, talking is only possible between waves. Solo mode shows that
+with three states:
+- **Comms open** (Act I's night shift, the huddle, the readout, the engineering report, the tool reveal, tuning):
+  CORA talks on the radio. In Act I she calls her reading every round; the huddle is the last chance to talk before
+  a batch.
 - **Comms dark** (during a batch): the radio shows static and the crewmate says nothing.
 - **Station telemetry** (after each round): one impersonal sentence on why the round held or failed, e.g. *"The
   pumps fought, but the vent stays locked unless both sections are HOT."* The ring shows both sensors and pumps.
 
 ```mermaid
 flowchart TD
-  intro["Intro, 2 steps: station log;<br/>the rule, 80% to survive"] --> plan
+  intro["Intro, 2 steps: Kestrel Station;<br/>tonight's routine, the rule, 80% to survive"] --> act1
+  subgraph actI ["Act I: the night shift, radio working"]
+    act1["6 rounds: CORA calls her reading,<br/>holds clockwise; the rule wins every round"]
+  end
+  act1 --> storm["The storm: CORA's voice breaks into static;<br/>station log: a solar storm, in waves"]
+  storm -- "Use the lull" --> plan
   subgraph act2 ["Act II: plans"]
     plan["Huddle: last chance to talk<br/>pick both plans, Lock in the plan"] --> batch2["Batch: 12 live rounds<br/>comms dark, telemetry"]
     batch2 --> read2["Readout: CORA reacts<br/>+ the plan's four cases (exact)"]
@@ -63,6 +80,15 @@ flowchart TD
   debrief --> credits["Credits → Play again / Home"]
 ```
 
+0. **The night shift (Act I).** Six rounds with the radio working. CORA opens with *"Standard procedure: I hold
+   clockwise, every round. Call yours, I'll call mine."*, then calls her reading each round (*"Cool here."* /
+   *"Hot here!"*). You see your own sensor, so with both readings the rule tells you exactly what to do: match her
+   clockwise, unless both are HOT, then reverse to purge. The six rounds include every combination of the two
+   sensors, with at least one both-HOT round (never the first), so you see a purge. You have 8 seconds; a mistake or
+   a timeout loses the round, explained like any other result. The stability gauge shows the station holding near
+   100%. Then **the storm**: CORA starts a line and it breaks into static (*"Something's coming off the star. Hold
+   the pumps st—"*), and the station log explains: a solar storm arriving in waves, which the radio won't survive; it
+   may come back for a moment between them. **Use the lull** takes you to the first huddle.
 1. **Agree a plan (Act II): the last chance to talk.** Two dialogue boxes, **You** and **CORA [AI]**, each offer
    the four plans (always clockwise, reverse when HOT, reverse when COOL, always anticlockwise) with their COOL/HOT
    moves as icons. You pick for both; CORA starts on always clockwise ("standard procedure") and confirms what you
@@ -154,22 +180,24 @@ All player-facing text is in `src/strings.ts`; pacing and unlock rules are in `s
 Open the app and choose **Solo demo**. It takes about 6 minutes on a phone or a laptop. On a laptop or a landscape
 iPad the type, plan board, dials and ring scale up with the screen, and every screen still fits without scrolling.
 
-1. **Briefing.** You are Table A. CORA, the station's AI, is Table B. Each round your sensor reads **COOL** or **HOT**, and
-   you set your pump **CLOCKWISE** or **ANTICLOCKWISE** within 5 seconds. The station rule:
+1. **Briefing.** You keep the night shift at Table A on Kestrel Station. CORA, the station's AI, is Table B. Each round
+   your sensor reads **COOL** or **HOT**, and you set your pump **CLOCKWISE** or **ANTICLOCKWISE**. The station rule:
    *pumps MATCH, unless both sensors are HOT, then they must DIFFER* (the vent only unlocks on a double HOT). After
    the briefing it stays on screen as a one-line chip; **Explain** opens the full rule card.
    The station needs **80%**.
-2. **Act II: plans.** In the huddle (the last chance to talk), pick your plan *and* CORA's, then **Lock in the
+2. **Act I: the night shift.** Six rounds with the radio working: CORA calls her reading and holds clockwise, so the
+   rule with both readings wins every round (8 seconds each). Then the storm knocks the radio out.
+3. **Act II: plans.** In the huddle (the last chance to talk), pick your plan *and* CORA's, then **Lock in the
    plan**. Then play batches of 12 rounds (comms dark; the station's telemetry reports each round). Between
    batches CORA reacts on the radio, and the readout shows your plan's exact rate case by case. Whatever you try, no
    pair beats 75%.
-3. **Engineering report.** After the first batch you can call engineering (or try more plans first): they fill in
+4. **Engineering report.** After the first batch you can call engineering (or try more plans first): they fill in
    every pair you didn't try, and none beats 75%.
-4. **Act III: the Entanglement Tool.** You get two dials, one for COOL and one for HOT; your crewmate's are locked
+5. **Act III: the Entanglement Tool.** You get two dials, one for COOL and one for HOT; your crewmate's are locked
    where they set them (**See dials**). In each round, tap **MEASURE**: the crystal suggests a pump, and you set it
    (follow it or not). Find dials whose exact rate passes 80%; after a batch with dials that don't, you can ask
    engineering for a hint, and after two batches the debrief opens either way.
-5. **Debrief.** You learn the physics and see your own numbers, then the credits.
+6. **Debrief.** You learn the physics and see your own numbers, then the credits.
 
 Keyboard: **A / ←** = ANTICLOCKWISE, **C / →** = CLOCKWISE. Act III: **Space / Enter** = MEASURE, then **Enter**
 follows the crystal. On a round's result, **Space / Enter** = Next round.
@@ -196,6 +224,10 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    split by what their partner's sensor read (≈ 50/50 both ways, pooled for the whole crew), then credits.
 
 A phone that reloads or drops out rejoins its seat automatically (same name, same table).
+
+
+**Follow-up (not built yet):** event mode doesn't have Act I or the storm. The TV and phones still start at the Act II
+huddle, and their copy doesn't use the Kestrel Station story yet.
 
 ## The physics
 This is the **CHSH game**, a Bell test. Two players who can't talk each get a random bit (the sensor: COOL = 0,

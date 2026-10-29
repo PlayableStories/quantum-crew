@@ -2824,3 +2824,99 @@ button.board__cell:focus-visible {
 .compare__rate {
   white-space: nowrap;
 }
+
+/* ---------- Story Phase 1: the night's routine, Act I, the storm ---------- */
+
+.routine {
+  margin: 0;
+  font-size: var(--fs-s);
+}
+.routine__head {
+  color: var(--amber);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.act1-rule {
+  margin: 0;
+  text-align: center;
+}
+
+/* The storm: static over CORA's radio panel. It flickers with motion; the global prefers-reduced-motion rule stops
+   the animation, leaving a still static texture. */
+.radio-line--interference {
+  position: relative;
+  overflow: hidden;
+}
+.radio-line__static {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 5px);
+  mix-blend-mode: screen;
+  animation: radio-static 0.18s steps(2) infinite;
+}
+.radio-line--interference .radio-line__text {
+  animation: radio-flicker 1.4s steps(1) infinite;
+}
+@keyframes radio-static {
+  50% {
+    background-position: 0 2px, 3px 0;
+    opacity: 0.7;
+  }
+}
+@keyframes radio-flicker {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 0.25;
+  }
+  76% {
+    opacity: 0.9;
+  }
+  80% {
+    opacity: 0.35;
+  }
+}
+
+/* The intro on a phone: the background and the routine are long, so a size down to fit one screen. */
+@media (max-width: 599px) {
+  .intro .kicker {
+    letter-spacing: 0.1em;
+  }
+  .intro .layout__main,
+  .intro .layout__side {
+    font-size: 0.92rem;
+    line-height: 1.38;
+  }
+  .intro .station {
+    max-height: 150px;
+  }
+  /* Not below 300px: the ring's 13-unit labels must stay at 12px or more (pnpm shots checks). */
+  .intro .ring {
+    max-width: 300px;
+    margin-bottom: 0;
+  }
+  .intro .layout__side > p:last-child {
+    font-size: var(--fs-s);
+  }
+}
+/* Short landscape screens (iPad): Act I's round has the radio and the rule line too, so a smaller sensor. */
+@media (orientation: landscape) and (min-width: 900px) and (max-height: 860px) {
+  .solo .batch--act1 .light__bulb {
+    width: min(18vh, 170px);
+  }
+}
+@media (max-width: 599px) {
+  .intro .layout__main .panel {
+    padding: 6px 10px;
+  }
+}
+@media (max-width: 599px) {
+  .intro .layout__title .kicker {
+    font-size: 0.78rem;
+  }
+}

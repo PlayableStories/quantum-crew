@@ -25,7 +25,7 @@ import {
 
 export function Readout() {
   const s = useSolo((st) => st);
-  const act = actOf(s.phase);
+  const act = actOf(s.phase) === 2 ? 2 : 3; // a readout only follows an Act II or Act III batch
   const batchNo = act === 2 ? s.act2Batches : s.act3Batches;
   const wins = s.batch.filter((r) => r.win).length;
   const rounds = act === 2 ? s.act2 : s.act3;

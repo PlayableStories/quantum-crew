@@ -7,6 +7,7 @@ import { CLOCKWISE } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
 import { Solo } from "./Solo.tsx";
 import { soloStore } from "./soloStore.ts";
+import { toHuddle } from "./testkit.ts";
 
 const s = () => soloStore.getState();
 
@@ -50,7 +51,7 @@ describe("solo screen frame", () => {
 
   it("every phase: mute in the header row, the main action in the ActionBar", () => {
     expectFrame("intro", PRIMARY);
-    s().start();
+    toHuddle(s);
     expectFrame("huddle", PRIMARY);
 
     s().beginBatch();
@@ -96,7 +97,7 @@ describe("solo screen frame", () => {
   });
 
   it("the huddle offers the rule chip with an Explain button and a closed sheet", () => {
-    s().start();
+    toHuddle(s);
     const { body } = render();
     expect(body).toContain("rule-chip");
     expect(body).toContain(S.rule.explain);

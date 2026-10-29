@@ -7,6 +7,7 @@ import { Credits } from "../screens/Credits.tsx";
 import { S } from "../strings.ts";
 import { Solo } from "./Solo.tsx";
 import { soloStore } from "./soloStore.ts";
+import { toHuddle } from "./testkit.ts";
 
 const s = () => soloStore.getState();
 const html = () => renderToString(<Solo />);
@@ -30,7 +31,7 @@ function playBatch(act: () => void) {
 }
 
 function toTuning() {
-  s().start();
+  toHuddle(s);
   playBatch(() => {});
   s().reportCeiling();
   s().revealTool();

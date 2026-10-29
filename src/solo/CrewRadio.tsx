@@ -3,7 +3,7 @@ import { crewLines } from "./crew.ts";
 import { useSolo } from "./soloStore.ts";
 
 /** The solo crewmate's radio: whatever crew.ts picks for the current state (nothing while comms are dark). */
-export function CrewRadio() {
+export function CrewRadio({ interference = false }: { interference?: boolean }) {
   const s = useSolo((st) => st);
-  return <RadioLine lines={crewLines(s)} />;
+  return <RadioLine lines={crewLines(s)} interference={interference} />;
 }

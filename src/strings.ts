@@ -1,11 +1,14 @@
 // All player-facing text in one place. Edit freely.
 // In-world copy only, up to the debrief: physics words (qubit, Bell, CHSH…) appear only in `debrief`.
-import { ROUND_MS } from "./config.ts";
+import { ACT1_ROUND_MS, ACT1_ROUNDS } from "./config.ts";
 import type { ClassicalStrategy, RoundResult } from "./shared/chsh.ts";
 import { HOT, roundCause } from "./shared/fiction.ts";
 
 /** The AI crewmate's name: CORA, the Coolant Ring Assistant. Solo radio lines, and event mode's bot seats (server). */
 export const CREW_NAME = "CORA";
+
+/** The station's name in the solo story. PLACEHOLDER: may change. Always "station", never "ship". */
+export const STATION_NAME = "Kestrel Station";
 
 export const S = {
   title: "Quantum Crew",
@@ -44,15 +47,18 @@ export const S = {
     credits: "Credits",
   },
 
+  /** Solo intro: the background (step 1), then the night's routine and the rule (step 2). */
   intro: {
-    kicker: "Station log · shift 1",
+    kicker: `Station log · ${STATION_NAME}`,
     lines: [
-      `The station's coolant runs round a ring that passes through two sections. You are at Table A and run your section's pump. ${CREW_NAME}, the station's Coolant Ring Assistant, runs the pump at Table B. She's an AI, not a person.`,
-      `The reactor flares at random. Each round your sensor reads COOL or HOT: you can't predict it, and you can't see ${CREW_NAME}'s.`,
-      `You each set your pump: CLOCKWISE or ANTICLOCKWISE. No talking between sections during a round. You have ${ROUND_MS / 1000} seconds.`,
+      `${STATION_NAME} drifts on the edge of a young, restless star: a research platform powered by a reactor core, cooled by a coolant ring that runs through its two sections.`,
+      `You keep the night shift at Table A. Table B is run by ${CREW_NAME}, the station's Coolant Ring Assistant: an AI, not a person, who has kept the ring running for years and trusts procedure above everything. Engineering works from the supply deck at the far end of the station.`,
+      "When the star flares, one section or the other heats up without warning. On a quiet night that's routine: you call your readings over the radio and keep the pumps in step.",
     ],
+    routineKicker: "Tonight's routine",
+    routine: `Each round your sensor reads COOL or HOT. You and ${CREW_NAME} call your readings over the radio, then each set your pump within ${ACT1_ROUND_MS / 1000} seconds.`,
     survival: "The station needs 80% stability. The core can take one bad round in five, and no more.",
-    go: "Take your post",
+    go: "Start the night shift",
     next: "Next",
     back: "Back",
   },
@@ -117,10 +123,38 @@ export const S = {
       })[roundCause(r)],
   },
 
+  /** Act I: the night shift, radio working. */
+  act1: {
+    label: "Night shift",
+    round: (n: number) => `Round ${n}/${ACT1_ROUNDS}`,
+    ruleLine: "Both readings on the radio: match CORA's pump, unless both sections are HOT. Then reverse to purge.",
+  },
+
+  /** The storm: the radio breaks up, then the station log. Solo only. */
+  storm: {
+    kicker: "Night shift · radio",
+    title: "Static",
+    next: "Check the station log",
+    logKicker: `Station log · ${STATION_NAME}`,
+    logTitle: "Solar storm",
+    log: [
+      "A solar storm is coming off the star, and it's arriving in waves.",
+      "Each wave heats the sections at random and drowns the radio. The radio won't survive the waves; it may come back for a moment between them.",
+    ],
+    go: "Use the lull",
+    goSub: "The last chance to talk before the first wave",
+  },
+
   /** CORA, the solo crewmate: the station's AI, steady and procedural. Speaks only while comms are open (see solo/crew.ts). */
   crew: {
     name: CREW_NAME,
     badge: "AI",
+    /** Act I, before the first round: standard procedure. */
+    act1Opening: "Standard procedure: I hold clockwise, every round. Call yours, I'll call mine.",
+    /** Act I: CORA's reading, called over the radio each round. */
+    reading: { 0: "Cool here.", 1: "Hot here!" } as const,
+    /** The storm: her line breaks off mid-sentence. */
+    stormBreak: "Something's coming off the star. Hold the pumps st—",
     opening:
       "Standard procedure: I always pump clockwise. Your call, though: tap a square to set both our plans.",
     agreeCrew: [

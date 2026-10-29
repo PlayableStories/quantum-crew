@@ -1,6 +1,7 @@
-// The station log, in two steps (same stepper as the debrief): 1. the story and the station art; 2. the full station
-// rule with the ring diagram and the 80% line. The only place the full rule shows by default; elsewhere it's the
-// RuleChip. The step is the screen's own state: the store only learns that the player took their post.
+// The station log, in two steps (same stepper as the debrief): 1. the background (Kestrel Station, CORA, the star) and
+// the station art; 2. tonight's routine (readings over the radio) with the full station rule, the ring diagram and
+// the 80% line. The only place the full rule shows by default; elsewhere it's the RuleChip. The step is the screen's
+// own state: the store only learns that the night shift started (Act I).
 import { useState } from "react";
 import { RingDiagram } from "../components/RingDiagram.tsx";
 import { Rule } from "../components/Rule.tsx";
@@ -28,6 +29,7 @@ export function Intro() {
   if (step === 0)
     return (
       <ScreenLayout
+        className="intro"
         header={header}
         side={
           <div className="stack">
@@ -49,9 +51,13 @@ export function Intro() {
 
   return (
     <ScreenLayout
+      className="intro"
       header={header}
       side={
         <>
+          <p className="routine">
+            <strong className="routine__head">{S.intro.routineKicker}</strong> {S.intro.routine}
+          </p>
           <Rule />
           <p>
             <strong>{S.intro.survival}</strong>

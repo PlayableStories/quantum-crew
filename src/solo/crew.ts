@@ -1,6 +1,7 @@
 // What the solo crewmate says, chosen deterministically from the store. Pure; the only place crewmate lines are
-// picked. Comms rule: the crewmate speaks only while comms are open (huddle, readout, engineering report, tool
-// reveal, tuning). During a batch comms are dark and this returns nothing; the station's telemetry reports rounds.
+// picked. Comms rule: the crewmate speaks only while comms are open (Act I's night shift, the storm's last broken
+// line, the huddle, readout, engineering report, tool reveal, tuning). During an Act II or III batch comms are dark and
+// this returns nothing; the station's telemetry reports rounds.
 import { SURVIVAL_THRESHOLD, winRate, type RoundResult } from "../shared/chsh.ts";
 import { COOL, HOT, roundCause } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
@@ -12,12 +13,20 @@ export const COMMS_DARK_PHASES: readonly Phase[] = ["act2Batch", "act3Batch"];
 
 export const commsDark = (phase: Phase) => COMMS_DARK_PHASES.includes(phase);
 
-type CrewView = Pick<SoloData, "phase" | "crewCue" | "plan" | "crewPlan" | "board" | "batch">;
+type CrewView = Pick<SoloData, "phase" | "crewCue" | "plan" | "crewPlan" | "board" | "batch"> & {
+  round?: SoloData["round"];
+};
 
 export function crewLines(s: CrewView): string[] {
   if (commsDark(s.phase)) return [];
   const C = S.crew;
   switch (s.phase) {
+    case "act1Batch":
+      // Act I, radio working: standard procedure before the first round, then her reading each live round.
+      if (!s.round) return s.batch.length === 0 ? [C.act1Opening] : [];
+      return s.round.result ? [] : [C.reading[s.round.y]];
+    case "storm":
+      return [C.stormBreak];
     case "act2Plan":
       return [huddleLine(s)];
     case "act2Readout":

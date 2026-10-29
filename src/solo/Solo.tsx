@@ -5,6 +5,7 @@ import { Debrief } from "./Debrief.tsx";
 import { Intro } from "./Intro.tsx";
 import { Plan } from "./Plan.tsx";
 import { Readout } from "./Readout.tsx";
+import { Storm } from "./Storm.tsx";
 import { ToolReveal } from "./ToolReveal.tsx";
 import { Tuning } from "./Tuning.tsx";
 import { QuantumBackdrop } from "../components/QuantumBackdrop.tsx";
@@ -28,6 +29,7 @@ function screenFor(phase: Phase) {
       return <Intro />;
     case "act2Plan":
       return <Plan />;
+    case "act1Batch":
     case "act2Batch":
     case "act3Batch":
       return <Batch />;
@@ -38,6 +40,8 @@ function screenFor(phase: Phase) {
       return <Ceiling />;
     case "toolReveal":
       return <ToolReveal />;
+    case "storm":
+      return <Storm />;
     case "act3Plan":
       return <Tuning />;
     case "debrief":

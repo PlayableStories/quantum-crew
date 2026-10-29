@@ -14,7 +14,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { chromium, type Browser, type Page } from "playwright";
 import { build, preview } from "vite";
-import { BATCH_SIZE, LEAD_MS, RESULT_AUTO_MS, ROUND_MS } from "../src/config.ts";
+import { ACT1_ROUNDS, BATCH_SIZE, LEAD_MS, RESULT_AUTO_MS, ROUND_MS } from "../src/config.ts";
 import { S } from "../src/strings.ts";
 
 // The page.evaluate callbacks run in the browser. This script is type-checked on the Node side (no DOM lib), so name
@@ -178,6 +178,19 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   await click(S.intro.next);
   await shot("intro-2");
   await click(S.intro.go);
+  // Act I, the night shift: both readings are known (yours on the sensor, CORA's on the radio), so apply the rule.
+  await shot("act1-lead-in", null);
+  const act1Answer = async () => {
+    const x = (await page.locator(".light--1").count()) > 0 ? 1 : 0;
+    const y = (await page.locator(".radio-line__text").textContent())?.includes(S.crew.reading[1]) ? 1 : 0;
+    await page.keyboard.press(((x & y) ^ 0) === 0 ? "c" : "a");
+    return true;
+  };
+  await playBatch(page, "act1", act1Answer, shot, tick, ACT1_ROUNDS);
+  await shot("storm");
+  await click(S.storm.next);
+  await shot("storm-log");
+  await click(S.storm.go);
   await shot("huddle");
   await pickFromKeyboard(page);
   await shot("huddle-selected");
@@ -252,11 +265,12 @@ async function playBatch(
   answer: (i: number) => Promise<boolean>,
   shot: (name: string, primary?: string | null) => Promise<void>,
   tick: (ms: number) => Promise<void>,
+  rounds: number = BATCH_SIZE,
 ) {
   const seen = new Set<string>();
   const causes = Object.entries(S.outcome) as [string, { title: string }][];
   await tick(LEAD_MS + 50);
-  for (let i = 0; i < BATCH_SIZE; i++) {
+  for (let i = 0; i < rounds; i++) {
     await page.locator(".countdown").waitFor();
     if (prefix && i === 0) await shot(`${prefix}-round`, ".pumpbtn, .measure");
     if (!(await answer(i))) await tick(ROUND_MS + 100);

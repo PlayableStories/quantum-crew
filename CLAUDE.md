@@ -205,8 +205,30 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - Tuning: a "How the tool works" note, inline on the first visit and in a Sheet after that. No live rate.
   - Debrief quantum step: `PlanVsCrystals` puts the best plan (75%) beside the dials (yours if they passed, else
     0°/45°).
+- **Story Phase 1 (2026-10-30, background, Act I and the storm):**
+  - The solo story is set on **Kestrel Station**: `STATION_NAME` in `strings.ts`, a placeholder that may change.
+    Always "station", never "ship".
+  - The intro has two steps: the background, then "Tonight's routine" (readings over the radio) with the rule.
+    `start()` now leads into **Act I** (`act1Batch`).
+  - **Act I** (it was milestone M6, now built for solo):
+    - `ACT1_ROUNDS = 6` rounds of `ACT1_ROUND_MS = 8000`.
+    - The order comes from `act1Order(rng)` (`src/solo/act1.ts`): every sensor combination, at least one both-HOT,
+      never both-HOT first.
+    - CORA calls her reading over the radio (`crewLines` for `act1Batch`) and always pumps clockwise
+      (`DEFAULT_CREW_PLAN`).
+    - The round reuses `Batch.tsx` with `act === 1`: `CrewRadio` instead of `CommsDark`, a one-line rule reminder, no
+      tags.
+    - Results are recorded in `act1` for the debrief.
+  - **The storm** (`storm` phase, `Storm.tsx`) has two steps in its own state:
+    - CORA's line breaks off under static (`RadioLine interference`; the flicker stops with reduced motion);
+    - then the station log.
+    - `endStorm()` leads to the first huddle.
+  - Solo's `Act` type is `1 | 2 | 3`. Event mode's `protocol.ts` `Act` (2 | 3) is untouched, and event mode has no
+    Act I yet (a follow-up in the README).
+  - Tests reach the huddle through `toHuddle()` (`src/solo/testkit.ts`), which plays Act I by the rule and leaves the
+    storm.
 - **Open questions:** which Atlas sound engine for sfx; event-mode host.
 - **History:** M0–M5 were built during Moth Hack 2026 (submitted 2026-10-06; old demo
   https://quantum-crew-iota.vercel.app/solo) in github.com/WWStoryMode/moth-hack-2026 `apps/quantum-crew`, then moved
   here (2026-10-16) as a standalone repo with the atlas-client vendored. Submission record: `docs/moth-hack-2026/`.
-  M6 (Act I) was never built.
+  M6 (Act I) was never built during the hackathon; it was built for solo on 2026-10-30.

@@ -15,6 +15,7 @@ import {
 import { S } from "../strings.ts";
 import { Solo } from "./Solo.tsx";
 import { createSoloStore, debriefAvailable, dialsRate, followedCount, hintAvailable, soloStore } from "./soloStore.ts";
+import { toHuddle } from "./testkit.ts";
 
 type Store = ReturnType<typeof createSoloStore>;
 const esc = (text: string) => text.replace(/'/g, "&#x27;");
@@ -34,7 +35,7 @@ function playBatch(store: Store, act: (s: Store) => void = () => {}) {
 
 function toTuning(store: Store) {
   const s = () => store.getState();
-  s().start();
+  toHuddle(s);
   playBatch(store);
   s().reportCeiling();
   s().revealTool();
@@ -91,7 +92,7 @@ describe("the crystal is a suggestion", () => {
 
   it("Act II keeps its 5 s rounds", () => {
     const store = createSoloStore(32);
-    store.getState().start();
+    toHuddle(() => store.getState());
     store.getState().beginBatch();
     store.getState().advance(0);
     expect(store.getState().round!.deadline).toBe(ROUND_MS);

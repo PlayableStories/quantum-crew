@@ -1,4 +1,6 @@
 // Solo mode as a state machine: the player is Table A, CORA (an AI) is Table B. No server, no I/O.
+// Act I: a short run of rounds with the radio working: CORA calls her reading and holds clockwise, so the rule wins
+// every round. Then the storm knocks the radio out.
 // Act II: the player locks in the whole joint plan (their own and CORA's) and plays it; each pair played goes on the
 // plan board at its exact rate. No pair beats 75%, and engineering fills in the untried pairs.
 // Act III: both share the Entanglement Tool. CORA's dials sit at the optimal Table B setting. Each round the player
@@ -10,6 +12,8 @@
 import { createStore } from "zustand/vanilla";
 import { useStore } from "zustand";
 import {
+  ACT1_ROUND_MS,
+  ACT1_ROUNDS,
   ACT2_BATCHES,
   ACT3_ROUND_MS,
   BATCH_SIZE,
@@ -39,10 +43,13 @@ import {
   type Valve,
 } from "../shared/chsh.ts";
 import { mulberry32, randomSeed, type Rng } from "../shared/rng.ts";
+import { act1Order, type SensorPair } from "./act1.ts";
 import { ALL_CELLS, cellKey, expectedBoard, type Board, type CellKey } from "./plans.ts";
 
 export type Phase =
   | "intro"
+  | "act1Batch"
+  | "storm"
   | "act2Plan"
   | "act2Batch"
   | "act2Readout"
@@ -53,7 +60,8 @@ export type Phase =
   | "act3Readout"
   | "debrief";
 
-export type Act = 2 | 3;
+/** Solo's acts (event mode's protocol has its own Act type, 2 | 3). */
+export type Act = 1 | 2 | 3;
 
 export type LiveRound = {
   /** 1-based round number within the batch. */
@@ -87,6 +95,9 @@ export type SoloData = {
   round: LiveRound | null;
   /** Rounds of the current (or last) batch. */
   batch: RoundResult[];
+  /** Act I: the sensor readings for each round, drawn when the night shift starts. */
+  act1Order: SensorPair[];
+  act1: RoundResult[];
   /** Act III: whether the player set the pump their crystal suggested, per round of the current (or last) batch. */
   batchFollowed: boolean[];
   act2: RoundResult[];
@@ -101,7 +112,10 @@ export type SoloData = {
 };
 
 export type SoloActions = {
+  /** Leaves the intro: the night shift (Act I) starts. */
   start(): void;
+  /** Leaves the storm screen: the first Act II huddle. */
+  endStorm(): void;
   setPlan(light: Light, valve: Valve): void;
   /** Act II: the player sets a whole plan for themselves or for CORA. */
   choosePlan(who: "player" | "crew", plan: ClassicalStrategy): void;
@@ -139,6 +153,8 @@ const initialData = (): SoloData => ({
   tuning: DEFAULT_TUNING,
   round: null,
   batch: [],
+  act1Order: [],
+  act1: [],
   batchFollowed: [],
   act2: [],
   act3: [],
@@ -149,12 +165,22 @@ const initialData = (): SoloData => ({
   hintShown: false,
 });
 
-/** Which act a phase belongs to (the intro and the ceiling reveal count as Act II). */
+/** Which act a phase belongs to (the intro and the storm count as Act I, the ceiling reveal as Act II). */
 export const actOf = (phase: Phase): Act =>
-  phase.startsWith("act2") || phase === "intro" || phase === "ceiling" ? 2 : 3;
+  phase.startsWith("act1") || phase === "intro" || phase === "storm"
+    ? 1
+    : phase.startsWith("act2") || phase === "ceiling"
+      ? 2
+      : 3;
 
 /** The decision time for a round in this act. */
-export const roundMs = (act: Act) => (act === 2 ? ROUND_MS : ACT3_ROUND_MS);
+export const roundMs = (act: Act) => (act === 1 ? ACT1_ROUND_MS : act === 2 ? ROUND_MS : ACT3_ROUND_MS);
+
+/** Rounds in a batch: Act I's short night-shift run, else BATCH_SIZE. */
+export const batchSize = (act: Act) => (act === 1 ? ACT1_ROUNDS : BATCH_SIZE);
+
+/** CORA's Act I pump: standard procedure, always clockwise, whatever her reading. */
+const crewAct1 = (y: Light): Valve => classicalValve(DEFAULT_CREW_PLAN, y);
 
 /** The exact rate of the player's dials against CORA's, if both follow their crystals. */
 export const dialsRate = (s: Pick<SoloData, "tuning">) => quantumExpectedWinRate(s.tuning, OPTIMAL_TUNING.B);
@@ -170,15 +196,20 @@ export function createSoloStore(seed: number = randomSeed()) {
       set({
         round: { ...s.round, result },
         batch: [...s.batch, result],
-        ...(act === 2
-          ? { act2: [...s.act2, result] }
-          : { act3: [...s.act3, result], batchFollowed: [...s.batchFollowed, followed] }),
+        ...(act === 1
+          ? { act1: [...s.act1, result] }
+          : act === 2
+            ? { act2: [...s.act2, result] }
+            : { act3: [...s.act3, result], batchFollowed: [...s.batchFollowed, followed] }),
       });
     };
 
     const finishBatch = () => {
       const s = get();
-      if (s.phase === "act2Batch") {
+      if (s.phase === "act1Batch") {
+        // The last routine round: the storm arrives.
+        set({ phase: "storm", round: null });
+      } else if (s.phase === "act2Batch") {
         // The pair just played is now "tried": it goes on the board at its exact rate (no sampling).
         const tried = { rate: classicalExpectedWinRate(s.plan, s.crewPlan), by: "player" as const };
         set({
@@ -203,7 +234,14 @@ export function createSoloStore(seed: number = randomSeed()) {
     return {
       ...initialData(),
 
-      start: () => set({ phase: "act2Plan" }),
+      start: () => {
+        if (get().phase !== "intro") return;
+        set({ phase: "act1Batch", act1Order: act1Order(rng), act1: [], batch: [], round: null });
+      },
+
+      endStorm: () => {
+        if (get().phase === "storm") set({ phase: "act2Plan" });
+      },
 
       setPlan: (light, valve) =>
         set((s) => ({
@@ -225,18 +263,22 @@ export function createSoloStore(seed: number = randomSeed()) {
 
       advance: (now) => {
         const s = get();
-        if (s.phase !== "act2Batch" && s.phase !== "act3Batch") return;
+        if (s.phase !== "act1Batch" && s.phase !== "act2Batch" && s.phase !== "act3Batch") return;
         if (s.round && !s.round.result) return; // still waiting for the player
-        if (s.batch.length >= BATCH_SIZE) return finishBatch();
-        const { x, y } = drawInputs(rng);
-        const deadline = now + roundMs(actOf(s.phase));
+        const act = actOf(s.phase);
+        if (s.batch.length >= batchSize(act)) return finishBatch();
+        // Act I follows its prepared order (every combination, a purge but not first); later acts draw at random.
+        const [x, y] = act === 1 ? s.act1Order[s.batch.length]! : (({ x, y }) => [x, y] as const)(drawInputs(rng));
+        const deadline = now + roundMs(act);
         set({ round: { n: s.batch.length + 1, x, y, deadline, crystal: null, crewPump: null, result: null } });
       },
 
       answer: (valve, now) => {
         const { phase, round } = get();
         if (!round || round.result || now > round.deadline) return;
-        if (phase === "act2Batch") {
+        if (phase === "act1Batch") {
+          resolve(scoreRound(round.x, round.y, valve, crewAct1(round.y)));
+        } else if (phase === "act2Batch") {
           resolve(scoreRound(round.x, round.y, valve, classicalValve(get().crewPlan, round.y)));
         } else if (phase === "act3Batch" && round.crystal !== null) {
           // Scoring uses the pump the player set; CORA's comes from her crystal.
@@ -262,7 +304,12 @@ export function createSoloStore(seed: number = randomSeed()) {
         const { phase, round } = get();
         if (!round || round.result || now < round.deadline) return;
         // CORA still acts (from her plan, or her crystal); the player's missing pump setting makes it a loss.
-        const b = phase === "act2Batch" ? classicalValve(get().crewPlan, round.y) : (round.crewPump ?? measureFirst(rng));
+        const b =
+          phase === "act1Batch"
+            ? crewAct1(round.y)
+            : phase === "act2Batch"
+              ? classicalValve(get().crewPlan, round.y)
+              : (round.crewPump ?? measureFirst(rng));
         resolve(scoreRound(round.x, round.y, null, b));
       },
 
@@ -325,7 +372,8 @@ export const debriefAvailable = (s: SoloData) => s.act3Passed || s.act3Batches >
 
 /** What the stability meter shows: the current act's rounds so far. */
 export function displayedStability(s: SoloData): number | null {
-  const rounds = actOf(s.phase) === 2 ? s.act2 : s.act3;
+  const act = actOf(s.phase);
+  const rounds = act === 1 ? s.act1 : act === 2 ? s.act2 : s.act3;
   return rounds.length ? winRate(rounds) : null;
 }
 

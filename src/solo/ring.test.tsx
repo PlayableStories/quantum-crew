@@ -9,6 +9,7 @@ import { ANTICLOCKWISE, CLOCKWISE, COOL, HOT, roundCause } from "../shared/ficti
 import { S } from "../strings.ts";
 import { Solo } from "./Solo.tsx";
 import { soloStore } from "./soloStore.ts";
+import { toHuddle } from "./testkit.ts";
 
 const ring = (x: Bit, y: Bit, a: Bit | null, b: Bit | null) =>
   renderToString(<RingDiagram result={scoreRound(x, y, a, b)} />);
@@ -81,7 +82,7 @@ describe("the ring during a batch", () => {
   beforeEach(() => s().reset());
 
   it("stays idle through the lead-in and every live round, in both acts; the result brings it to life", () => {
-    s().start();
+    toHuddle(s);
     s().beginBatch();
     ringRevealsNothing(html());
     let now = 0;

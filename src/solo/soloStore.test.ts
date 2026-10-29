@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ACT2_BATCHES, BATCH_SIZE, DEBRIEF_AFTER_BATCHES, HINT_AFTER_FAILED_BATCHES, ROUND_MS, ACT3_ROUND_MS } from "../config.ts";
 import { CLOSED, OPEN, OPTIMAL_TUNING, classicalExpectedWinRate, winRate } from "../shared/chsh.ts";
 import { canReportCeiling, createSoloStore, debriefAvailable, dialsRate, displayedStability, hintAvailable } from "./soloStore.ts";
+import { toHuddle } from "./testkit.ts";
 
 type Store = ReturnType<typeof createSoloStore>;
 
@@ -28,7 +29,7 @@ describe("solo flow", () => {
     const store = createSoloStore(42);
     const s = () => store.getState();
     expect(s().phase).toBe("intro");
-    s().start();
+    toHuddle(s);
     expect(s().phase).toBe("act2Plan");
 
     for (let b = 0; b < ACT2_BATCHES; b++) {
@@ -67,7 +68,7 @@ describe("solo flow", () => {
   it("Act II has no sampled test, and no plan's exact rate beats 75%", () => {
     const store = createSoloStore(7);
     const s = () => store.getState();
-    s().start();
+    toHuddle(s);
     playBatch(store, followPlan);
     for (const [g, r] of [
       [OPEN, OPEN],
@@ -83,7 +84,7 @@ describe("solo flow", () => {
 
   it("a timeout is a loss and the crewmate still answers", () => {
     const store = createSoloStore(1);
-    store.getState().start();
+    toHuddle(() => store.getState());
     playBatch(store, () => {});
     const { batch } = store.getState();
     expect(batch.every((r) => r.timedOut && !r.win && r.a === null && r.b !== null)).toBe(true);
@@ -92,7 +93,7 @@ describe("solo flow", () => {
   it("ignores answers after the deadline and answers twice", () => {
     const store = createSoloStore(3);
     const s = () => store.getState();
-    s().start();
+    toHuddle(s);
     s().beginBatch();
     s().advance(0);
     s().answer(OPEN, ROUND_MS + 1);
@@ -106,7 +107,7 @@ describe("solo flow", () => {
   it("unlocks the hint after failed Act III batches and the debrief after enough batches", () => {
     const store = createSoloStore(5);
     const s = () => store.getState();
-    s().start();
+    toHuddle(s);
     for (let b = 0; b < ACT2_BATCHES; b++) {
       playBatch(store, followPlan);
       s().nextBatch();
