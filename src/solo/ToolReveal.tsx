@@ -1,4 +1,5 @@
-// The emotional peak: the Entanglement Tool arrives, in a look the game hasn't used before.
+// The emotional peak: during a lull, a supply pod from engineering brings the Entanglement Tool, in a look the game
+// hasn't used before. (Solo copy is S.pod; the event phone keeps S.tool.)
 // Background: William's Entanglement Shader asset if present, else a slow conic shimmer.
 import { useEffect } from "react";
 import { atlasUrl, isVideo } from "../assets/atlas/manifest.ts";
@@ -16,11 +17,11 @@ export function ToolReveal() {
   return (
     <ScreenLayout
       className="reveal"
-      header={<p className="kicker">{S.tool.kicker}</p>}
+      header={<p className="kicker">{S.pod.kicker}</p>}
       side={
         <>
           <div className="stack">
-            {S.tool.lines.map((l) => (
+            {S.pod.lines.map((l) => (
               <p key={l}>{l}</p>
             ))}
           </div>
@@ -29,13 +30,13 @@ export function ToolReveal() {
       }
       actions={
         <button className="btn btn--primary" onClick={openTool}>
-          {S.tool.go}
+          {S.pod.go}
         </button>
       }
     >
       <RevealField art={art} />
       <Crystals />
-      <h1 className="reveal__title">{S.tool.title}</h1>
+      <h1 className="reveal__title">{S.pod.title}</h1>
     </ScreenLayout>
   );
 }

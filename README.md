@@ -31,9 +31,10 @@ The game's three numbers tell the story:
 - **Act II, comms lost (75%):** a solar storm knocks the radio out in waves, and no plan agreed in advance beats 75%.
 - **Act III, the crystals (≈ 85%):** two linked crystals beat every plan without carrying a single message.
 
-Act I was milestone M6 in the hackathon plan, never built then; it's built now (solo). Acts II and III follow the
-storm; the storm's framing of their copy (waves, the supply pod, the resolution and the incident report) is
-the next phase.
+Act I was milestone M6 in the hackathon plan, never built then; it's built now (solo). In solo the storm frames
+everything after it: each **batch is a storm wave** (counted across Acts II and III), the huddle is **the lull**
+between waves, the tool arrives in a **supply pod** from engineering, and after the last wave **the storm passes**:
+the radio comes back and the debrief becomes **Kestrel Station's incident report**.
 
 The rule follows from the plumbing, and it's always on screen next to a diagram of the ring:
 *keep the coolant flowing one way round the ring; if BOTH sections run HOT, pump against each other to purge*
@@ -51,7 +52,7 @@ with three states:
 - **Comms open** (Act I's night shift, the huddle, the readout, the engineering report, the tool reveal, tuning):
   CORA talks on the radio. In Act I she calls her reading every round; the huddle is the last chance to talk before
   a batch.
-- **Comms dark** (during a batch): the radio shows static and the crewmate says nothing.
+- **Comms dark** (during a storm wave): the radio is down, shown as static, and CORA says nothing.
 - **Station telemetry** (after each round): one impersonal sentence on why the round held or failed, e.g. *"The
   pumps fought, but the vent stays locked unless both sections are HOT."* The ring shows both sensors and pumps.
 
@@ -76,7 +77,8 @@ flowchart TD
     batch3 --> read3["Readout: followed N of 12<br/>+ the dials' four cases (exact)"]
     read3 -- "Retune and go again" --> tune
   end
-  read3 -- "Debrief: the dials played are ≥ 80% exactly<br/>or after 2 batches" --> debrief["Debrief: 4 steps"]
+  read3 -- "The storm passes: the dials played are ≥ 80% exactly<br/>or after 2 Act III waves" --> resolution["Resolution: the radio comes back<br/>CORA: we were in step anyway"]
+  resolution -- "Read the incident report" --> debrief["Incident report: 4 steps<br/>(the three numbers first)"]
   debrief --> credits["Credits → Play again / Home"]
 ```
 
@@ -132,9 +134,10 @@ flowchart TD
    works out every pair you didn't try (a corner mark on those squares): *"You tried 2. We ran the other 14."* The
    board shows every square's **exact** rate, 75% or 25%: *"The best plan's true rate is exactly 75%: it loses one
    round in four. The station needs 80%. A batch above 75% is luck."* The crewmate: *"So it was never us."* Then: *"Then we need something that isn't a plan."*
-5. **Receive the tool.** The game changes look (a live Entanglement Shader, two synced crystals). *Two linked
-   crystals have arrived: one in your tool, one in CORA's at Table B.* You turn a dial and tap **MEASURE**, and
-   the crystal suggests a pump direction.
+5. **Receive the tool.** During a lull a **supply pod** docks from engineering. The game changes look (a live
+   Entanglement Shader, two synced crystals). Engineering's note: the crystals don't carry messages, so the storm
+   can't jam them; measure one and it gives a direction, linked to its partner in a way no plan can copy. CORA:
+   *"A crystal that tells me which way to turn. Fine. That's my new procedure."*
 6. **Tune your dials (Act III).** One dial for COOL and one for HOT, 8 stops each (0° to 157.5° in 22.5° steps),
    starting at 0°/0°. Your own dials come first and large. CORA's are one line, *"CORA: COOL 22.5° · HOT
    157.5°, locked"* (*"Mine sit where my crystal settles… Nobody knows yet if that's right."*), and **See dials**
@@ -155,13 +158,19 @@ flowchart TD
    | 0°/22.5°, 0°/67.5°, 22.5°/45°, 157.5°/45° | 80.2%, which passes the gate |
    | 0° / 0° (the start) | 67.7% |
 
-7. **Readout and the gate.** The readout says *"You followed the crystal in N of 12 rounds."* **If we both follow
+7. **Readout and the gate.** The readout says *"You followed the crystal in N of 12 rounds."* CORA notices too:
+   *"You went your own way a lot. I just did what my crystal said."* (more than 3 rounds against it) or *"You
+   followed your crystal every round. So did I."* **If we both follow
    the crystals** shows the four sensor combinations with both dial angles and the exact chance each holds, then
    the dials' true rate. A luck line appears when the batch and the true rate disagree about passing 80%. The
    **debrief unlocks after a batch played with dials whose exact rate is 80% or more**, whatever the batch scored.
-   Otherwise you go to batch 2 (with the hint); after **2** Act III batches it opens either way, so every player
-   reaches the end.
-8. **Debrief.** The physics words appear only here, in four steps:
+   Otherwise you ride out another wave (with the hint); after **2** Act III waves it opens either way, so every
+   player reaches the end. **The storm passes** first: the station holds, the radio comes back, and CORA says *"I
+   couldn't hear you the whole time. But we were in step anyway."* **Read the incident report** opens the debrief.
+8. **The incident report (debrief).** The physics words appear only here, in four steps. The first opens with the
+   three numbers side by side: Act I with the radio (100% possible, and your own Act I score), Act II's best plan
+   (75%) and Act III's crystals (your dials' exact rate, about 85% at best), with *"Talking made every round
+   winnable. No plan could replace talking. The crystals beat every plan without carrying a single message."*
    - **No plan beats 75%:** the fiction mapped back to the game (sensors = input bits, pumps = output bits, "match
      unless both HOT" = the CHSH rule), and the wall was a Bell inequality, with your Act II rate. Mixing plans at
      random only averages cells on the plan board, so it can never beat the best cell.
@@ -170,7 +179,8 @@ flowchart TD
      held, one always lost: 75%) and your dials (or the best dials, if yours didn't pass), where every case holds
      about 85%. *A plan has to give up one case completely; the crystals spread a small loss across all four.*
    - **But no messages:** each pump runs clockwise exactly 50% of the time whatever the partner's sensor read
-     (computed exactly), so no message gets through (no-signalling). Your own 12-round numbers sit underneath.
+     (computed exactly), so no message gets through (no-signalling). Your own 12-round numbers sit underneath, and
+     the report adds: *"That's why the storm couldn't jam them: there was no signal to jam."*
    - **Credits** (the Atlas asset list is behind **How the art was made**), then *Play again* or *Home*.
 
    Each step's explanation sits beside your own numbers on a landscape screen, and above them on a phone.
@@ -199,7 +209,8 @@ iPad the type, plan board, dials and ring scale up with the screen, and every sc
    where they set them (**See dials**). In each round, tap **MEASURE**: the crystal suggests a pump, and you set it
    (follow it or not). Find dials whose exact rate passes 80%; after a batch with dials that don't, you can ask
    engineering for a hint, and after two batches the debrief opens either way.
-6. **Debrief.** You learn the physics and see your own numbers, then the credits.
+6. **The storm passes, then the incident report.** You learn the physics and see your own numbers, starting with
+   the three that tell the story (100%, 75%, ≈ 85%), then the credits.
 
 Keyboard: **A / ←** = ANTICLOCKWISE, **C / →** = CLOCKWISE. Act III: **Space / Enter** = MEASURE, then **Enter**
 follows the crystal. On a round's result, **Space / Enter** = Next round.
@@ -324,7 +335,7 @@ landing, both intro steps, the huddle (first view, after picking a plan from the
 open), a live round in Acts II and III with the first result of each outcome (circulating, heat carried off, purge,
 pressure spike, overheat, too slow; the last Act II round is left to time out; results move on by Next round, Enter
 and the auto-advance), both readouts (Act II also with the four cases open), the engineering report, tool reveal, tuning (with the crewmate's dials sheet, and
-again after a batch under 80% with the hint sheet), the crystal's suggestion in Act III, every debrief step and credits (with the asset-list sheet).
+again after a batch under 80% with the hint sheet), the crystal's suggestion in Act III, the resolution, every debrief step and credits (with the asset-list sheet).
 
 ```sh
 pnpm exec playwright install chromium   # once (or set SHOTS_CHANNEL=chrome to use your installed Chrome)

@@ -78,12 +78,13 @@ describe("debrief", () => {
     s().nextBatch();
     playBatch(() => (s().measure(0), s().followCrystal(0)));
     s().startDebrief();
+    s().openReport(); // the resolution, then the incident report
     expect(s().phase).toBe("debrief");
   }
 
   it("each step's numbers sit in the side column", () => {
     toDebrief();
-    expect(side(html())).toContain(S.debrief.steps[0]!.stat!("").replace(/: $/, ""));
+    expect(side(html())).toContain(S.report.act2); // the incident report's three numbers
     s().setDebriefStep(1);
     expect(side(html())).toContain(S.debrief.compare.plan);
     s().setDebriefStep(2);

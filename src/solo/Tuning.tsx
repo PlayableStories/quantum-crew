@@ -12,7 +12,7 @@ import { OPTIMAL_TUNING } from "../shared/chsh.ts";
 import { COOL, HOT } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
 import { CrewRadio } from "./CrewRadio.tsx";
-import { hintAvailable, useSolo } from "./soloStore.ts";
+import { hintAvailable, nextWave, useSolo } from "./soloStore.ts";
 
 export function Tuning() {
   const s = useSolo((st) => st);
@@ -55,7 +55,7 @@ export function Tuning() {
       }
       actions={
         <button className="btn btn--primary" onClick={s.beginBatch}>
-          {S.tuning.start(s.act3Batches + 1)}
+          {S.tuning.start(nextWave(s))}
         </button>
       }
     >

@@ -228,6 +228,26 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     Act I yet (a follow-up in the README).
   - Tests reach the huddle through `toHuddle()` (`src/solo/testkit.ts`), which plays Act I by the rule and leaves the
     storm.
+- **Story Phase 2 (2026-10-30, waves and the ending):**
+  - In solo copy a batch is a **storm wave**: `S.batch.label`, `S.readout.kicker`, `S.plan.lockSub`,
+    `S.tuning.start` and `S.comms`. Waves are counted across Acts II and III (`nextWave` / `lastWave`). The huddle is
+    **the lull**.
+  - Internal identifiers stay (`batch`, `act2Batch`…).
+  - **Solo has its own keys where event mode shares strings:**
+    - `S.pod` for the tool reveal (the phone keeps `S.tool`);
+    - `S.report` for the incident report (the TV keeps `S.debrief.kicker` / `steps`).
+    - Event strings are tested as unchanged in `story2.test.tsx`.
+  - **Engineering report:** kicker "· supply deck". **Tool reveal:** a supply pod, with engineering's note and CORA's
+    new procedure.
+  - **Act III readout:** CORA's `followLine` adds a line when more than 3 answered rounds went against the crystal,
+    or when every round followed it. Timeouts don't count.
+  - **Resolution** (new phase `resolution`, `Resolution.tsx`):
+    - `startDebrief` (readout, "The storm passes") goes there when `debriefAvailable`.
+    - `openReport` goes on to `debrief`.
+    - It shows the station stable and CORA's line `S.crew.resolution`.
+  - **Debrief = incident report:** kicker `S.report.kicker`. Step 1's side is `ThreeNumbers`: Act I 100% plus your
+    score, 75%, and `dialsRate`. The no-signalling step adds `S.report.noJam`.
+  - **Landing:** the storm tagline and the "night shift" solo subtitle.
 - **Open questions:** which Atlas sound engine for sfx; event-mode host.
 - **History:** M0–M5 were built during Moth Hack 2026 (submitted 2026-10-06; old demo
   https://quantum-crew-iota.vercel.app/solo) in github.com/WWStoryMode/moth-hack-2026 `apps/quantum-crew`, then moved

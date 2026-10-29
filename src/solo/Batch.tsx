@@ -19,13 +19,13 @@ import { dialFor, type RoundResult, type Valve } from "../shared/chsh.ts";
 import { ANTICLOCKWISE, CLOCKWISE, roundCause } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
 import { CrewRadio } from "./CrewRadio.tsx";
-import { actOf, displayedStability, roundMs, useSolo } from "./soloStore.ts";
+import { actOf, displayedStability, nextWave, roundMs, useSolo } from "./soloStore.ts";
 
 export function Batch() {
   const s = useSolo((st) => st);
   const { round, phase, plan, crewPlan, tuning, advance, timeout, answer, measure, followCrystal } = s;
   const act = actOf(phase);
-  const batchNo = (act === 2 ? s.act2Batches : s.act3Batches) + 1;
+  const batchNo = nextWave(s); // storm waves count on across Acts II and III
 
   // Round loop: lead-in → light → (answer | timeout) → result → next light … → readout (Act I: → the storm).
   useEffect(() => {

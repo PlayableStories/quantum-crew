@@ -180,6 +180,7 @@ describe("Act III screens", () => {
     s().setDial(1, OPTIMAL_TUNING.A.redDeg);
     playBatch(soloStore);
     s().startDebrief();
+    s().openReport(); // the resolution, then the incident report
     s().setDebriefStep(1);
     const step2 = html();
     expect(step2).toContain(S.debrief.compare.plan);

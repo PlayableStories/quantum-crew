@@ -59,6 +59,7 @@ export type Phase =
   | "act3Plan"
   | "act3Batch"
   | "act3Readout"
+  | "resolution"
   | "debrief";
 
 /** Solo's acts (event mode's protocol has its own Act type, 2 | 3). */
@@ -139,7 +140,10 @@ export type SoloActions = {
   revealTool(): void;
   openTool(): void;
   showHint(): void;
+  /** After the gate (or the last Act III wave): the storm passes (the resolution). */
   startDebrief(): void;
+  /** From the resolution: the incident report (the debrief). */
+  openReport(): void;
   setDebriefStep(step: number): void;
   reset(): void;
 };
@@ -347,7 +351,10 @@ export function createSoloStore(seed: number = randomSeed()) {
         if (hintAvailable(get())) set({ hintShown: true });
       },
       startDebrief: () => {
-        if (debriefAvailable(get())) set({ phase: "debrief", debriefStep: 0 });
+        if (get().phase === "act3Readout" && debriefAvailable(get())) set({ phase: "resolution" });
+      },
+      openReport: () => {
+        if (get().phase === "resolution") set({ phase: "debrief", debriefStep: 0 });
       },
       setDebriefStep: (step) => set({ debriefStep: step }),
 
@@ -383,6 +390,11 @@ export function displayedStability(s: SoloData): number | null {
   const rounds = act === 1 ? s.act1 : act === 2 ? s.act2 : s.act3;
   return rounds.length ? winRate(rounds) : null;
 }
+
+/** Storm waves are counted across Acts II and III (one storm): the wave under way or about to start… */
+export const nextWave = (s: Pick<SoloData, "act2Batches" | "act3Batches">) => s.act2Batches + s.act3Batches + 1;
+/** …and the wave that just ended (on a readout). */
+export const lastWave = (s: Pick<SoloData, "act2Batches" | "act3Batches">) => s.act2Batches + s.act3Batches;
 
 /** Act III: how many rounds of the current batch the player followed their crystal in. */
 export const followedCount = (s: Pick<SoloData, "batchFollowed">) => s.batchFollowed.filter(Boolean).length;
