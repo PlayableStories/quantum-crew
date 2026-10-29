@@ -1,7 +1,7 @@
 // All player-facing text in one place. Edit freely.
 // In-world copy only, up to the debrief: physics words (qubit, Bell, CHSH…) appear only in `debrief`.
 import { ROUND_MS } from "./config.ts";
-import type { RoundResult } from "./shared/chsh.ts";
+import type { ClassicalStrategy, RoundResult } from "./shared/chsh.ts";
 import { HOT, roundCause } from "./shared/fiction.ts";
 
 /** The AI crewmate's name: CORA, the Coolant Ring Assistant. Solo radio lines, and event mode's bot seats (server). */
@@ -19,6 +19,7 @@ export const S = {
   sheet: { close: "Close" },
   light: { 0: "COOL", 1: "HOT" } as const,
   pump: { 0: "CLOCKWISE", 1: "ANTICLOCKWISE" } as const,
+  pumpShort: { 0: "CW", 1: "ACW" } as const,
 
   ring: {
     label:
@@ -29,6 +30,7 @@ export const S = {
     ventNote: "unlocks only when BOTH are HOT",
     ventOpen: "Vent unlocked",
     ventLocked: "Vent locked",
+    notSet: "NOT SET",
   },
 
   landing: {
@@ -57,13 +59,14 @@ export const S = {
 
   plan: {
     kicker: "Strategy huddle",
-    colon: ":",
-    title: "Agree a plan",
-    blind: "Once the batch starts, comms go dark: neither of you can see the other's sensor.",
-    test: "Test this plan",
-    testSub: "1,000 rounds, no live play",
-    tested: (pct: string) => `This plan: ${pct} over 1,000 rounds`,
-    start: (n: number) => `Start batch ${n}`,
+    title: "Last chance to talk",
+    sub: "Lock in a plan. Once it's locked, comms go dark until the batch ends, then reopen.",
+    you: "You",
+    /** The two dialogue boxes: whose plan each one sets. */
+    box: (who: string) => `${who}'s plan`,
+    yourBox: "Your plan",
+    lock: "Lock in the plan",
+    lockSub: (n: number) => `Batch ${n} · comms go dark`,
     last: (pct: string) => `Last batch: ${pct} stable`,
   },
 
@@ -82,15 +85,13 @@ export const S = {
   board: {
     head: "Plan board · 1,000-round tests",
     headExact: "Plan board · exact rates",
-    headChoose: "Plan board · tap to choose",
     rows: "You",
     cols: "Crew",
-    legendExact: "Big: exact rate. Small: your test. Corner: engineering's run.",
+    legendExact: "Exact rates. Corner mark: engineering ran it.",
     cell: (you: string, crew: string, value: string) => `You ${you}, crewmate ${crew}: ${value}`,
-    untested: "not tested",
+    untested: "not tried",
     exact: (pct: string) => `exactly ${pct}`,
-    yourTest: (pct: string) => `your test ${pct}`,
-    yourTestShort: (pct: string) => `you ${pct}`,
+    tried: "you tried it",
     engRun: "run by engineering",
   },
 
@@ -101,24 +102,19 @@ export const S = {
     darkSub: "No talking until the batch ends.",
   },
 
-  /** The station's automatic log after each round: impersonal, both sides, the outcome and its cause. */
+  /** The station's automatic log after each round: one impersonal sentence on why it held or failed. The ring shows
+   *  both sensors and both pumps. */
   telemetry: {
     head: "Station telemetry",
-    line: (r: RoundResult) => {
-      const reading = (l: 0 | 1) => (l === HOT ? "HOT" : "COOL");
-      const sensors = r.x === r.y ? `Both sections ${reading(r.x)}.` : `A ${reading(r.x)} · B ${reading(r.y)}.`;
-      if (r.a === null || r.b === null) return `${sensors} Pump ${r.a === null ? "A" : "B"} not set. Round lost.`;
-      const pumps = r.a === r.b ? "Pumps agreed." : "Pumps fought.";
-      const cause = {
-        circulate: "Coolant circulating. Stable.",
-        carry: "Heat carried to the cool side. Stable.",
-        spike: "Vent locked. Pressure spike.",
-        overheat: "Vent unlocked, no purge. Overheat.",
-        purge: "Vent unlocked. Purge. Stable.",
-        slow: "Round lost.",
-      }[roundCause(r)];
-      return `${sensors} ${pumps} ${cause}`;
-    },
+    why: (r: RoundResult) =>
+      ({
+        circulate: "Both sections COOL and the pumps matched, so the coolant circulated.",
+        carry: "One section HOT and the pumps matched, so the heat was carried to the cool side.",
+        purge: "Both sections HOT and the pumps fought, so the vent opened and purged the heat.",
+        spike: "The pumps fought, but the vent stays locked unless both sections are HOT.",
+        overheat: "Both sections HOT and the pumps matched, so nothing pushed the heat out of the open vent.",
+        slow: r.a === null ? "Your pump wasn't set in time." : `${CREW_NAME}'s pump wasn't set in time.`,
+      })[roundCause(r)],
   },
 
   /** CORA, the solo crewmate: the station's AI, steady and procedural. Speaks only while comms are open (see solo/crew.ts). */
@@ -139,12 +135,6 @@ export const S = {
       "You reverse when you're cool. Copy.",
       "You go anticlockwise every time. Copy.",
     ],
-    tested: (pct: string, rate: number) =>
-      rate >= 0.7
-        ? `${pct} over a thousand. Close, but the core wants 80.`
-        : rate <= 0.3
-          ? `${pct}. Let's not fly that one.`
-          : `${pct}. Middling. The core wants 80.`,
     idea: [
       "Want to go back to standard? Clockwise every time.",
       "Same plan again? What if I reverse when I'm hot?",
@@ -186,6 +176,15 @@ export const S = {
     slow: "Too slow",
     you: "You",
     crewmate: "Crewmate",
+    /** The plan both sides locked in, as a reminder during each round. */
+    agreed: (plan: ClassicalStrategy, crewPlan: ClassicalStrategy) => {
+      const word = (v: 0 | 1) => (v === 0 ? "clockwise" : "anticlockwise");
+      const says = (p: ClassicalStrategy) =>
+        p.onGreen === p.onRed ? `always ${word(p.onGreen)}` : `COOL → ${word(p.onGreen)}, HOT → ${word(p.onRed)}`;
+      return `Agreed: you ${says(plan)} · ${CREW_NAME} ${says(crewPlan)}`;
+    },
+    next: "Next round",
+    nextSub: "Space / Enter",
   },
 
   /** Solo round result titles: what physically happened (see roundCause in shared/fiction.ts). */
@@ -208,7 +207,12 @@ export const S = {
     simulateSub3: "Test your tool settings against 1,000 more sensor readings",
     simLabel: "1,000-round test",
     simResult: (pct: string) => `1,000-round test: ${pct}`,
-    added: (pct: string) => `Added to the plan board: ${pct}`,
+    /** Act II: the plan's exact rate, case by case. */
+    cases: "If we both follow the plan perfectly",
+    casesHead: "Equally likely",
+    casesOrder: "Each card: you · ",
+    caseTotal: (wins: number, pct: string) => `${wins} of 4 cases: ${pct}`,
+    luck: (pct: string) => `Above 80% this time, but this plan's true rate is ${pct}. Twelve rounds is mostly luck.`,
     again2: "Back to the huddle",
     again3: "Retune and go again",
     report: "Call engineering",
@@ -220,6 +224,8 @@ export const S = {
     ceiling: "Ceiling 75",
     limit: "Limit 85.4",
     empty: "No data",
+    min: "0%",
+    max: "100%",
   },
 
   ceiling: {
@@ -227,14 +233,14 @@ export const S = {
     big: "75%",
     /** Event mode (TV): engineering's summary. Solo shows the plan board and `engineering` instead. */
     lead: "We tried every plan your crew could make. Every single one.",
-    engineering: (tested: number, ran: number) =>
-      tested === 0
-        ? `You didn't test any plans. We ran all ${ran}.`
+    engineering: (tried: number, ran: number) =>
+      tried === 0
+        ? `You didn't try any plans. We ran all ${ran}.`
         : ran === 0
-          ? `You tested all ${tested}. We checked your numbers.`
-          : `You tested ${tested}. We ran the other ${ran}.`,
+          ? `You tried all ${tried}. We checked your numbers.`
+          : `You tried ${tried}. We ran the other ${ran}.`,
     /** Solo: the board shows exact rates, so say what a test above 75% means. */
-    truth: "The best plan's true rate is exactly 75%: it loses one round in four. The station needs 80%. A test above 75% is luck.",
+    truth: "The best plan's true rate is exactly 75%: it loses one round in four. The station needs 80%. A batch above 75% is luck.",
     /** Event mode (TV). */
     lines: [
       "None of them holds more than 75% of rounds. The best plan's true rate is exactly 75%; any batch above it is luck.",

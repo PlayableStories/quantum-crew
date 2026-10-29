@@ -1,10 +1,11 @@
 import { CLASSICAL_LIMIT, QUANTUM_LIMIT, SURVIVAL_THRESHOLD } from "../shared/chsh.ts";
 import { S } from "../strings.ts";
 
-// DECISION: the bar spans 50–100%. Every interesting value sits between 60 and 90, and a 0–100 bar
-// would squash the 75 / 80 / 85.4 lines together.
-const MIN = 0.5;
-const pos = (rate: number) => `${(Math.min(1, Math.max(MIN, rate)) - MIN) / (1 - MIN) * 100}%`;
+// DECISION (2026-10-29): the bar spans the full 0–100%, both ends labelled, so a rate reads as what it is. The
+// 75 / 80 / 85.4 lines sit close together, so their labels are placed apart: ceiling above (ending at its line),
+// limit above (right-aligned to the bar's end, so it never runs off a 390px phone), survival below (ending at its
+// line), 0% and 100% below at the ends.
+const pos = (rate: number) => `${Math.min(1, Math.max(0, rate)) * 100}%`;
 
 export const pct = (rate: number) => `${(rate * 100).toFixed(1)}%`;
 
@@ -37,10 +38,13 @@ export function StabilityMeter({ value, label, showCeiling = false, showLimit = 
           <span>{S.meter.survival}</span>
         </div>
         {showLimit && (
-          <div className="meter__line meter__line--limit" style={{ left: pos(QUANTUM_LIMIT) }}>
-            <span>{S.meter.limit}</span>
-          </div>
+          <>
+            <div className="meter__line meter__line--limit" style={{ left: pos(QUANTUM_LIMIT) }} />
+            <span className="meter__label meter__label--limit">{S.meter.limit}</span>
+          </>
         )}
+        <span className="meter__label meter__label--min">{S.meter.min}</span>
+        <span className="meter__label meter__label--max">{S.meter.max}</span>
       </div>
     </div>
   );

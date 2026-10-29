@@ -75,6 +75,17 @@ export function classicalExpectedWinRate(sA: ClassicalStrategy, sB: ClassicalStr
   return wins / 4;
 }
 
+/** One of the four equally likely sensor cases under a pair of plans: each side's pump and whether it holds. */
+export type ClassicalCase = { x: Light; y: Light; a: Valve; b: Valve; win: boolean };
+
+/** The four sensor cases for a pair of plans, exactly (no sampling). The wins / 4 is classicalExpectedWinRate. */
+export function classicalCases(sA: ClassicalStrategy, sB: ClassicalStrategy): ClassicalCase[] {
+  return LIGHT_PAIRS.map(([x, y]) => {
+    const { a, b } = playClassical(sA, sB, x, y);
+    return { x, y, a, b, win: isWin(x, y, a, b) };
+  });
+}
+
 // --- Quantum ------------------------------------------------------------------------------------
 
 /** One player's Entanglement Tool setup: the dial angle (degrees) used for each light. */

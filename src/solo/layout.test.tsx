@@ -58,7 +58,7 @@ describe("solo screen frame", () => {
     s().advance(0);
     expectFrame("act2 live round", /pumpbtn/);
     s().answer(CLOCKWISE, 0);
-    expectFrame("act2 result", null);
+    expectFrame("act2 result", /Next round/); // the result waits for Next round
     s().timeout(ROUND_MS + 1);
     playBatch(() => s().answer(CLOCKWISE, 0));
     expect(s().phase).toBe("act2Readout");
@@ -75,7 +75,7 @@ describe("solo screen frame", () => {
     s().advance(0);
     expectFrame("act3 live round", /measure/);
     s().measure(0);
-    expectFrame("act3 result", null);
+    expectFrame("act3 result", /Next round/);
     s().timeout(ROUND_MS + 1);
     playBatch(() => s().measure(0));
     expect(s().phase).toBe("act3Readout");

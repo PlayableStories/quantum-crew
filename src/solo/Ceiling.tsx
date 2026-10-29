@@ -4,7 +4,7 @@ import { PlanBoard } from "../components/PlanBoard.tsx";
 import { ScreenLayout } from "../components/ScreenLayout.tsx";
 import { S } from "../strings.ts";
 import { CrewRadio } from "./CrewRadio.tsx";
-import { playerTested, useSolo } from "./soloStore.ts";
+import { playerTried, useSolo } from "./soloStore.ts";
 
 export function Ceiling() {
   const s = useSolo((st) => st);
@@ -26,10 +26,10 @@ export function Ceiling() {
       <div className="ceiling__top">
         <div className="huge">{S.ceiling.big}</div>
         <p>
-          <strong>{S.ceiling.engineering(playerTested(s).length, s.engineeringRan ?? 0)}</strong>
+          <strong>{S.ceiling.engineering(playerTried(s).length, s.engineeringRan ?? 0)}</strong>
         </p>
       </div>
-      <PlanBoard board={s.board} plan={s.plan} crewPlan={s.crewPlan} exact className="board--hero" />
+      <PlanBoard board={s.board} plan={s.plan} crewPlan={s.crewPlan} className="board--hero" />
     </ScreenLayout>
   );
 }

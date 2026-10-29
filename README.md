@@ -37,18 +37,18 @@ the core can take one bad round in five, and no more.
 | Both HOT | ✗ **Overheat**: hot coolant goes round in circles | ✓ **Purge**: the vent is unlocked and the hot coolant goes out |
 
 **Comms.** The rule only forbids talking *during* a round, and solo mode shows that with three states:
-- **Comms open** (the huddle, the readout, the engineering report, the tool reveal, tuning): the crewmate talks on the
-  radio. They're a steady veteran who trusts procedure.
+- **Comms open** (the huddle, the readout, the engineering report, the tool reveal, tuning): CORA talks on the
+  radio. The huddle is the last chance to talk before a batch.
 - **Comms dark** (during a batch): the radio shows static and the crewmate says nothing.
-- **Station telemetry** (after each round): an impersonal log of both sensors, both pumps and the outcome, e.g.
-  *"Both sections HOT. Pumps agreed. Vent unlocked, no purge. Overheat."*
+- **Station telemetry** (after each round): one impersonal sentence on why the round held or failed, e.g. *"The
+  pumps fought, but the vent stays locked unless both sections are HOT."* The ring shows both sensors and pumps.
 
 ```mermaid
 flowchart TD
   intro["Intro, 2 steps: station log;<br/>the rule, 80% to survive"] --> plan
   subgraph act2 ["Act II: plans"]
-    plan["Huddle: tap a square on the plan board<br/>(sets both plans), test any pair"] --> batch2["Batch: 12 live rounds<br/>comms dark, telemetry"]
-    batch2 --> read2["Readout: crewmate reacts<br/>+ Run 1,000 rounds"]
+    plan["Huddle: last chance to talk<br/>pick both plans, Lock in the plan"] --> batch2["Batch: 12 live rounds<br/>comms dark, telemetry"]
+    batch2 --> read2["Readout: CORA reacts<br/>+ the plan's four cases (exact)"]
     read2 -- "Back to the huddle" --> plan
   end
   read2 -- "Call engineering<br/>(after 1 batch)" --> ceiling["Engineering report: 75%<br/>fills the rest of the board"]
@@ -63,13 +63,12 @@ flowchart TD
   debrief --> credits["Credits → Play again / Home"]
 ```
 
-1. **Agree a plan (Act II).** The crewmate opens with *"Standard procedure: I always pump clockwise. Your call,
-   though: tap a square to set both our plans."* You set the **whole joint plan** on the **plan board**: your four
-   plans (rows) against theirs (columns), from always clockwise, reverse when HOT, reverse when COOL, and always
-   anticlockwise. Tapping a square sets both plans; the arrow keys and Enter work too. A line under the board spells
-   out the pair with its COOL/HOT moves, and the crewmate agrees with a short comment. **Test this plan** tries the
-   pair over 1,000 rounds without live play, and the result fills that square. The board's shape is the wall:
-   8 pairs reach 75%, 8 reach 25%, and none beats 75%.
+1. **Agree a plan (Act II): the last chance to talk.** Two dialogue boxes, **You** and **CORA [AI]**, each offer
+   the four plans (always clockwise, reverse when HOT, reverse when COOL, always anticlockwise) with their COOL/HOT
+   moves as icons. You pick for both; CORA starts on always clockwise ("standard procedure") and confirms what you
+   pick for her on the radio. **Lock in the plan** starts the batch: comms go dark until it ends. Every pair you play
+   goes on the **plan board**, your four plans against hers. Its shape is the wall: 8 pairs reach 75%, 8 reach 25%,
+   and none beats 75%.
 
    | You ↓ · Crewmate → | Always clockwise | Reverse when HOT | Reverse when COOL | Always anticlockwise |
    |---|---|---|---|---|
@@ -78,11 +77,13 @@ flowchart TD
    | **Reverse when COOL** | 25% | 75% | 25% | 75% |
    | **Always anticlockwise** | 25% | 25% | 75% | 75% |
 
-2. **Play a batch.** Twelve live rounds with **comms dark**. The crewmate plays the plan you set for them. Your
-   plan's direction is tagged "Plan", but you set the pump yourself and can go against it. After each round, the
-   **station telemetry** reports both sensors, both pumps and the outcome (Circulating, Heat carried off, Purge,
-   Pressure spike, Overheat or Too slow). Running out of time counts as a loss. The **coolant ring** plays the round
-   back:
+2. **Play a batch.** Twelve live rounds with **comms dark**. A reminder shows the agreed plan, e.g. *"Agreed: you
+   COOL → clockwise, HOT → anticlockwise · CORA always clockwise"*. CORA plays the plan you set for her. Your plan's
+   direction is tagged "Plan", but you set the pump yourself and can go against it (5 seconds; running out of time
+   is a loss). Each result shows the cause (Circulating, Heat carried off, Purge, Pressure spike, Overheat or Too
+   slow), one sentence of station telemetry on why, and the **coolant ring**, with both sensors and both pumps
+   labelled. The result stays until you tap **Next round** (or press Space / Enter); after 6 seconds it moves on by
+   itself. The ring plays the round back:
    - each half lights up COOL or HOT;
    - each pump spins the way it ran;
    - the vent opens on a double HOT;
@@ -91,17 +92,19 @@ flowchart TD
 
    On a landscape screen the ring sits beside your sensor and stays blank during the round itself, so it never gives
    away your crewmate's sensor. On a phone a smaller ring appears with the result. With reduced motion it's a still
-   picture with the same marks.
+   picture with the same marks. Every stability gauge runs from 0% to 100%.
 3. **Readout.** Comms are back on: CORA reacts to the batch with the facts of one round (e.g. *"Round 7: you were
    hot, I was cool, and our pumps fought."*). She never says who reversed or whose fault it was: with different plans
-   the pumps can fight without anyone going against the plan. Twelve rounds are noisy, so **Run 1,000 rounds** tests the joint *plan* (not your
-   taps) and adds it to the board ("Added to the plan board: 74.5%"). Back in the huddle with the same plan, the crewmate suggests an idea for a pair
-   you haven't tried.
+   the pumps can fight without anyone going against the plan. Twelve rounds are noisy, so **If we both follow the
+   plan perfectly** shows the plan's four sensor combinations (COOL/COOL, COOL/HOT, HOT/COOL, HOT/HOT, each equally
+   likely): each side's pump, the outcome and ✓ or ✗, then the true rate, e.g. *"3 of 4 cases: 75%"*. It's exact,
+   with no sampling. If the batch passed 80% on a plan that can't: *"Above 80% this time, but this plan's true rate
+   is 75%. Twelve rounds is mostly luck."* Back in the huddle with the same plan, CORA suggests a pair you haven't
+   tried.
 4. **Call engineering.** After the first batch you can call engineering (or go back and try more plans). Engineering
-   runs every pair you didn't test (a corner mark on those squares): *"You tested 5. We ran the other 11."* The
-   board then shows every square's **exact** rate, 75% or 25%, with your own test results small underneath:
-   *"The best plan's true rate is exactly 75%: it loses one round in four. The station needs 80%. A test above 75%
-   is luck."* The crewmate: *"So it was never us."* Then: *"Then we need something that isn't a plan."*
+   works out every pair you didn't try (a corner mark on those squares): *"You tried 2. We ran the other 14."* The
+   board shows every square's **exact** rate, 75% or 25%: *"The best plan's true rate is exactly 75%: it loses one
+   round in four. The station needs 80%. A batch above 75% is luck."* The crewmate: *"So it was never us."* Then: *"Then we need something that isn't a plan."*
 5. **Receive the tool.** The game changes look (a live Entanglement Shader, two synced crystals). *Two linked
    crystals have arrived: one in your tool, one in your crewmate's at Table B.* You turn a dial and tap
    **MEASURE**, and the crystal decides your pump direction.
@@ -145,11 +148,12 @@ iPad the type, plan board, dials and ring scale up with the screen, and every sc
    *pumps MATCH, unless both sensors are HOT, then they must DIFFER* (the vent only unlocks on a double HOT). After
    the briefing it stays on screen as a one-line chip; **Explain** opens the full rule card.
    The station needs **80%**.
-2. **Act II: plans.** In the huddle, tap a square on the plan board to set your plan *and* your crewmate's, and
-   test any pair over 1,000 rounds. Then play batches of 12 rounds (comms dark; the station's telemetry reports each round). Between
-   batches the crewmate reacts on the radio. Whatever you try, no pair beats 75%.
+2. **Act II: plans.** In the huddle (the last chance to talk), pick your plan *and* CORA's, then **Lock in the
+   plan**. Then play batches of 12 rounds (comms dark; the station's telemetry reports each round). Between
+   batches CORA reacts on the radio, and the readout shows your plan's exact rate case by case. Whatever you try, no
+   pair beats 75%.
 3. **Engineering report.** After the first batch you can call engineering (or try more plans first): they fill in
-   every pair you didn't test, and none beats 75%.
+   every pair you didn't try, and none beats 75%.
 4. **Act III: the Entanglement Tool.** You get two dials, one for COOL and one for HOT; your crewmate's are locked
    where they set them (**See dials**). In each round, tap
    **MEASURE** and the tool sets your pump. Experiment until the 1,000-round test passes 80%. After a batch under
@@ -270,9 +274,10 @@ pnpm smoke   # real WebSocket server + 1 TV + 4 phones, one Act II batch
 
 ### Screenshots (`pnpm shots`)
 `pnpm shots` plays the whole solo flow like a player in headless Chromium and saves a screenshot of every screen:
-landing, both intro steps, the huddle (first view, after picking a square from the keyboard, after a test, and with
-the rule sheet open), a live round in Acts II and III with the first result of each outcome (circulating, heat
-carried off, purge, pressure spike, overheat, too slow; the last Act II round is left to time out), both readouts, the engineering report, tool reveal, tuning (with the crewmate's dials sheet, and
+landing, both intro steps, the huddle (first view, after picking a plan from the keyboard, and with the rule sheet
+open), a live round in Acts II and III with the first result of each outcome (circulating, heat carried off, purge,
+pressure spike, overheat, too slow; the last Act II round is left to time out; results move on by Next round, Enter
+and the auto-advance), both readouts (Act II also with the four cases open), the engineering report, tool reveal, tuning (with the crewmate's dials sheet, and
 again after a batch under 80% with the hint sheet), every debrief step and credits (with the asset-list sheet).
 
 ```sh
@@ -289,7 +294,7 @@ timers with Playwright's clock. Output goes to the git-ignored `shots/<out>/<siz
 - `NN-name.png` is the first viewport, which is what the player sees.
 - `NN-name.full.png` is the whole page, with a dashed line at the fold.
 
-`report.md` lists, for each screen and size, the page height in screen-heights, whether the main button is visible
+The run fails if any text in a coolant ring renders below 12px. `report.md` lists, for each screen and size, the page height in screen-heights, whether the main button is visible
 without scrolling, and any horizontal overflow. The run also checks that the rule sheet keeps focus inside it,
 closes on Escape and hands focus back. Two runs give the same screens and the same report; a few anti-aliased pixels
 can differ.

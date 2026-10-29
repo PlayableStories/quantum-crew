@@ -1,9 +1,10 @@
-// A batch of fast rounds. Timers live here; the store decides everything else.
+// A batch of rounds. Timers live here; the store decides everything else.
 // Buttons fire on pointer-down for speed; a second event in the same round is ignored by the store.
-// Keyboard: A / ← = ANTICLOCKWISE, C / → = CLOCKWISE in Act II; Space / Enter = MEASURE in Act III.
-import { useEffect, type ReactNode } from "react";
+// Each result stays until the player taps Next round (or after RESULT_AUTO_MS, so a batch can't stall).
+// Keyboard: A / ← = ANTICLOCKWISE, C / → = CLOCKWISE in Act II; Space / Enter = MEASURE in Act III during a round,
+// and Next round on a result.
+import { useEffect } from "react";
 import { playSfx } from "../audio/sfx.ts";
-import { CrewName } from "../components/AiBadge.tsx";
 import { Countdown } from "../components/Countdown.tsx";
 import { Dial } from "../components/Dial.tsx";
 import { PumpIcon } from "../components/PumpIcon.tsx";
@@ -12,7 +13,7 @@ import { ScreenLayout } from "../components/ScreenLayout.tsx";
 import { CommsDark } from "../components/RadioLine.tsx";
 import { SensorLight } from "../components/SensorLight.tsx";
 import { StabilityMeter } from "../components/StabilityMeter.tsx";
-import { BATCH_SIZE, LEAD_MS, RESULT_MS, ROUND_MS } from "../config.ts";
+import { BATCH_SIZE, LEAD_MS, RESULT_AUTO_MS, ROUND_MS } from "../config.ts";
 import { dialFor, type RoundResult, type Valve } from "../shared/chsh.ts";
 import { ANTICLOCKWISE, CLOCKWISE, roundCause } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
@@ -20,7 +21,7 @@ import { actOf, displayedStability, useSolo } from "./soloStore.ts";
 
 export function Batch() {
   const s = useSolo((st) => st);
-  const { round, phase, plan, tuning, advance, timeout, answer, measure } = s;
+  const { round, phase, plan, crewPlan, tuning, advance, timeout, answer, measure } = s;
   const act = actOf(phase);
   const batchNo = (act === 2 ? s.act2Batches : s.act3Batches) + 1;
 
@@ -28,7 +29,7 @@ export function Batch() {
   useEffect(() => {
     let t: ReturnType<typeof setTimeout>;
     if (!round) t = setTimeout(() => advance(Date.now()), LEAD_MS);
-    else if (round.result) t = setTimeout(() => advance(Date.now()), RESULT_MS);
+    else if (round.result) t = setTimeout(() => advance(Date.now()), RESULT_AUTO_MS);
     else t = setTimeout(() => timeout(Date.now()), Math.max(0, round.deadline - Date.now()) + 20);
     return () => clearTimeout(t);
   }, [round, advance, timeout]);
@@ -41,16 +42,20 @@ export function Batch() {
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat) return;
       const k = e.key.toLowerCase();
-      if (act === 2 && (k === "a" || k === "arrowleft")) answer(ANTICLOCKWISE, Date.now());
+      const next = k === " " || k === "enter";
+      if (round?.result && next) {
+        e.preventDefault();
+        advance(Date.now());
+      } else if (act === 2 && (k === "a" || k === "arrowleft")) answer(ANTICLOCKWISE, Date.now());
       else if (act === 2 && (k === "c" || k === "arrowright")) answer(CLOCKWISE, Date.now());
-      else if (act === 3 && (k === " " || k === "enter")) {
+      else if (act === 3 && next) {
         e.preventDefault();
         measure(Date.now());
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [act, answer, measure]);
+  }, [act, round, answer, measure, advance]);
 
   const live = round && !round.result;
   const planned: Valve | null = round ? (round.x === 0 ? plan.onGreen : plan.onRed) : null;
@@ -68,6 +73,12 @@ export function Batch() {
         </div>
       }
       actions={
+        round?.result ? (
+          <button className="btn btn--primary" onClick={() => advance(Date.now())}>
+            {S.batch.next}
+            <small>{S.batch.nextSub}</small>
+          </button>
+        ) : (
         live &&
         (act === 2 ? (
           <div className="pumps">
@@ -88,11 +99,13 @@ export function Batch() {
             {S.batch.measure}
           </button>
         ))
+        )
       }
     >
       <StabilityMeter value={displayedStability(s)} label={S.readout.stability} showCeiling={act === 3} showLimit={act === 3} />
       <Countdown id={round ? round.n : "lead"} ms={round ? ROUND_MS : LEAD_MS} paused={!live} />
       <CommsDark />
+      {act === 2 && !round?.result && <p className="agreed">{S.batch.agreed(plan, crewPlan)}</p>}
 
       {!round && (
         <div className="stack screen--center spacer">
@@ -115,34 +128,19 @@ export function Batch() {
   );
 }
 
-/** The round's outcome, reported by the station's telemetry (not the crewmate: comms are dark). */
+/** The round's outcome: the cause, one sentence of station telemetry on why, and (on phones and portrait) the ring
+ *  with both sensors and both pumps. On landscape the ring is the side column. Comms are dark: no crewmate text. */
 function RoundOutcome({ result }: { result: RoundResult }) {
   const title = S.outcome[roundCause(result)].title;
   return (
     <div className={`result spacer ${result.win ? "result--win" : "result--loss"}`} role="status">
       <div className="result__verdict">{result.win ? "✓ " : "✗ "}{title}</div>
       <p className="telemetry">
-        <span className="telemetry__head">{S.telemetry.head}</span> {S.telemetry.line(result)}
+        <span className="telemetry__head">{S.telemetry.head}</span> {S.telemetry.why(result)}
       </p>
-      <div className="result__pair panel only-split">
-        <Side who={S.batch.you} light={result.x} pump={result.a} />
-        <Side who={<CrewName />} light={result.y} pump={result.b} />
-      </div>
-      {/* Phones and portrait: a small ring replaces the You / Crewmate panel. */}
-      <div className="only-stacked">
+      <div className="only-stacked result__ring">
         <RingDiagram result={result} small />
       </div>
-      <p className="muted small">{S.rule.quick}</p>
-    </div>
-  );
-}
-
-function Side({ who, light, pump }: { who: ReactNode; light: 0 | 1; pump: Valve | null }) {
-  return (
-    <div className="result__side">
-      <span className="kicker">{who}</span>
-      <SensorLight light={light} small />
-      <strong>{pump === null ? "—" : S.pump[pump]}</strong>
     </div>
   );
 }

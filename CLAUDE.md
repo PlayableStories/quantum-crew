@@ -42,9 +42,9 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   and plan screens. Keys: A / ← = ANTICLOCKWISE (left button), C / → = CLOCKWISE.
 - **Solo crewmate (2026-10-16):** the player sets the whole Act II joint plan: their own `plan` and the store's
   `crewPlan` (default `DEFAULT_CREW_PLAN`, always clockwise), chosen by name from `src/solo/plans.ts` (the four
-  `CLASSICAL_STRATEGIES`, same order). `runSimulation` in the huddle or the Act II readout tests the pair and records
-  a cell on the 4×4 **plan board** (`board`, `by: "player"`); `reportCeiling` runs every untested cell
-  (`by: "engineering"`, count in `engineeringRan`). **Comms rule:** the crewmate speaks only while comms are open
+  `CLASSICAL_STRATEGIES`, same order). When an Act II batch ends, the locked pair goes on the 4×4 **plan board** at
+  its exact rate (`board`, `by: "player"` = tried); `reportCeiling` fills every untried pair exactly
+  (`by: "engineering"`, count in `engineeringRan`). Act II never samples: `runSimulation` is Act III only. **Comms rule:** the crewmate speaks only while comms are open
   (huddle, readout, ceiling, tool reveal, tuning). Every line is picked in `src/solo/crew.ts` `crewLines()`, which
   returns nothing in `act2Batch` / `act3Batch`; screens render it through `CrewRadio` → `RadioLine`. Batches show
   `CommsDark` and per-round **station telemetry** (`S.telemetry.line`), never crewmate text (`crew.test.ts`,
@@ -168,6 +168,24 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   `html:has(.solo)` scales the root font with `clamp(16px, 0.6vw + 1.2vh, 22px)`; `--gap` / `--tap` and the
   board, dials, rings and banner scale too; main and side sit centred vertically. Short landscape screens
   (≤ 860px tall) shrink the Act III round's dial and MEASURE so it fits. Phones are unchanged.
+- **CORA Phase 2 (2026-10-29, Act II flow):**
+  - Huddle (`Plan.tsx`): "Last chance to talk". Two dialogue boxes (`PlanBox`, a radio group each, arrow keys) for
+    You and CORA; **Lock in the plan** starts the batch. No test, no board.
+  - Rounds (`Batch.tsx`): an agreed-plan reminder (`S.batch.agreed`). The result is the cause, one
+    `S.telemetry.why` sentence and the ring; there is no You/Crewmate panel. It waits for **Next round** (or
+    Space / Enter) and auto-advances after `RESULT_AUTO_MS` (6 s; `RESULT_MS` is gone). This covers both acts.
+  - The live and idle ring use a wider viewBox with sensor and pump words beside each side, at 15 units, so no ring
+    text renders below 12px. `pnpm shots` fails if any does.
+  - `StabilityMeter` (solo and the TV) runs 0–100% with "0%" / "100%" below the ends:
+    - ceiling above, ending at its line;
+    - limit above, right-aligned to the bar's end;
+    - survival below, ending at its line.
+  - Act II readout:
+    - `FourCases` (from `chsh.ts` `classicalCases`, exact) behind "If we both follow the plan perfectly"; the meter
+      hides while it's open.
+    - The luck line uses `luckLine(batchRate, trueRate)`.
+    - On phones the two buttons sit side by side.
+  - Engineering report: exact board only. "Tried" means played. `playerTried`.
 - **Open questions:** which Atlas sound engine for sfx; event-mode host.
 - **History:** M0–M5 were built during Moth Hack 2026 (submitted 2026-10-06; old demo
   https://quantum-crew-iota.vercel.app/solo) in github.com/WWStoryMode/moth-hack-2026 `apps/quantum-crew`, then moved

@@ -1,6 +1,6 @@
 // Solo mode as a state machine: the player is Table A, an AI crewmate is Table B. No server, no I/O.
-// Act II: the player sets the whole joint plan (their own and the crewmate's) and can test any pair on the plan
-// board; no pair beats 75%, and engineering fills in the untested cells. Act III: both share the Entanglement Tool,
+// Act II: the player locks in the whole joint plan (their own and the crewmate's) and plays it; each pair played
+// goes on the plan board at its exact rate. No pair beats 75%, and engineering fills in the untried cells. Act III: both share the Entanglement Tool,
 // and the crewmate's dials sit at the optimal Table B setting, so the player can reach ≈ 85% by finding their own.
 // What the crewmate says is chosen in crew.ts from this state; the store only records what they're reacting to.
 // Actions take `now` (ms) so tests can drive the clock; the Batch screen calls them from timers.
@@ -20,7 +20,7 @@ import {
 import {
   OPTIMAL_TUNING,
   SURVIVAL_THRESHOLD,
-  classicalStrategyFn,
+  classicalExpectedWinRate,
   classicalValve,
   dialFor,
   drawInputs,
@@ -38,7 +38,7 @@ import {
   type Valve,
 } from "../shared/chsh.ts";
 import { mulberry32, randomSeed, type Rng } from "../shared/rng.ts";
-import { ALL_CELLS, cellKey, planOf, type Board, type CellKey, type PlanId } from "./plans.ts";
+import { ALL_CELLS, cellKey, expectedBoard, type Board, type CellKey } from "./plans.ts";
 
 export type Phase =
   | "intro"
@@ -67,7 +67,7 @@ export type LiveRound = {
 export type SimRun = SimulationResult & { act: Act; rounds: number };
 
 /** What the crewmate is reacting to in the huddle (crew.ts turns it into words). */
-export type CrewCue = "opening" | "agreeCrew" | "agreePlayer" | "tested" | "idea";
+export type CrewCue = "opening" | "agreeCrew" | "agreePlayer" | "idea";
 
 export type SoloData = {
   phase: Phase;
@@ -75,7 +75,7 @@ export type SoloData = {
   plan: ClassicalStrategy;
   /** Act II: the crewmate's half of the joint plan, set by the player in the huddle. */
   crewPlan: ClassicalStrategy;
-  /** Act II plan board: 1,000-round results by (your plan, crewmate's plan). Blank until tested. */
+  /** Act II plan board: exact rates by (your plan, crewmate's plan). Blank until the pair is played in a batch. */
   board: Board;
   /** How many cells engineering ran at the report (null before it). */
   engineeringRan: number | null;
@@ -165,7 +165,15 @@ export function createSoloStore(seed: number = randomSeed()) {
     const finishBatch = () => {
       const s = get();
       if (s.phase === "act2Batch") {
-        set({ phase: "act2Readout", round: null, act2Batches: s.act2Batches + 1, lastSim: null });
+        // The pair just played is now "tried": it goes on the board at its exact rate (no sampling).
+        const tried = { rate: classicalExpectedWinRate(s.plan, s.crewPlan), by: "player" as const };
+        set({
+          phase: "act2Readout",
+          round: null,
+          act2Batches: s.act2Batches + 1,
+          lastSim: null,
+          board: { ...s.board, [cellKey(s.plan, s.crewPlan)]: tried },
+        });
       } else {
         const failed = winRate(s.batch) < SURVIVAL_THRESHOLD;
         set({
@@ -235,15 +243,8 @@ export function createSoloStore(seed: number = randomSeed()) {
 
       runSimulation: () => {
         const s = get();
-        if (s.phase === "act2Plan" || s.phase === "act2Readout") {
-          // Tests the joint plan and records it on the board (a re-test replaces the cell).
-          const result = simulate(classicalStrategyFn(s.plan, s.crewPlan), SIM_ROUNDS, rng);
-          set({
-            lastSim: { ...result, act: 2, rounds: SIM_ROUNDS },
-            board: { ...s.board, [cellKey(s.plan, s.crewPlan)]: { rate: result.winRate, by: "player" } },
-            ...(s.phase === "act2Plan" ? { crewCue: "tested" as const } : {}),
-          });
-        } else if (s.phase === "act3Plan" || s.phase === "act3Readout") {
+        // Act III only: Act II shows exact rates (the four-case view), never a sampled test.
+        if (s.phase === "act3Plan" || s.phase === "act3Readout") {
           const result = simulate(quantumStrategyFn(s.tuning, OPTIMAL_TUNING.B, "A"), SIM_ROUNDS, rng);
           set({ lastSim: { ...result, act: 3, rounds: SIM_ROUNDS }, bestAct3Sim: Math.max(s.bestAct3Sim, result.winRate) });
         }
@@ -259,15 +260,12 @@ export function createSoloStore(seed: number = randomSeed()) {
       reportCeiling: () => {
         const s = get();
         if (s.phase !== "act2Readout") return;
-        // Engineering runs every cell the crew didn't test, 1,000 rounds each.
-        const untested = ALL_CELLS.filter((k) => !s.board[k]);
+        // Engineering works out every pair the crew didn't try, exactly.
+        const exact = expectedBoard();
+        const untried = ALL_CELLS.filter((k) => !s.board[k]);
         const board: Board = { ...s.board };
-        for (const k of untested) {
-          const [p, c] = k.split("-").map(Number) as [PlanId, PlanId];
-          const result = simulate(classicalStrategyFn(planOf(p), planOf(c)), SIM_ROUNDS, rng);
-          board[k] = { rate: result.winRate, by: "engineering" };
-        }
-        set({ phase: "ceiling", board, engineeringRan: untested.length });
+        for (const k of untried) board[k] = { rate: exact[k], by: "engineering" };
+        set({ phase: "ceiling", board, engineeringRan: untried.length });
       },
       revealTool: () => {
         if (get().phase === "ceiling") set({ phase: "toolReveal" });
@@ -292,9 +290,13 @@ export function createSoloStore(seed: number = randomSeed()) {
 
 export const canReportCeiling = (s: SoloData) => s.act2Batches >= ACT2_BATCHES;
 
-/** Cells the player tested themselves (engineering's runs don't count). */
-export const playerTested = (s: Pick<SoloData, "board">): CellKey[] =>
+/** Pairs the player tried: locked in and played in a batch (engineering's don't count). */
+export const playerTried = (s: Pick<SoloData, "board">): CellKey[] =>
   ALL_CELLS.filter((k) => s.board[k]?.by === "player");
+
+/** Act II readout: the batch reached 80% but the plan's true rate can't, so say it was mostly luck. */
+export const luckLine = (batchRate: number, trueRate: number) =>
+  batchRate >= SURVIVAL_THRESHOLD && trueRate < SURVIVAL_THRESHOLD;
 
 export const hintAvailable = (s: SoloData) => s.act3FailedBatches >= HINT_AFTER_FAILED_BATCHES;
 

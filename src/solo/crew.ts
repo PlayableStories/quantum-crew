@@ -12,9 +12,7 @@ export const COMMS_DARK_PHASES: readonly Phase[] = ["act2Batch", "act3Batch"];
 
 export const commsDark = (phase: Phase) => COMMS_DARK_PHASES.includes(phase);
 
-type CrewView = Pick<SoloData, "phase" | "crewCue" | "plan" | "crewPlan" | "board" | "lastSim" | "batch">;
-
-const pct = (rate: number) => `${(rate * 100).toFixed(1)}%`;
+type CrewView = Pick<SoloData, "phase" | "crewCue" | "plan" | "crewPlan" | "board" | "batch">;
 
 export function crewLines(s: CrewView): string[] {
   if (commsDark(s.phase)) return [];
@@ -46,8 +44,6 @@ function huddleLine(s: CrewView): string {
       return C.agreeCrew[planId(s.crewPlan)]!;
     case "agreePlayer":
       return C.agreePlayer[planId(s.plan)]!;
-    case "tested":
-      return s.lastSim ? C.tested(pct(s.lastSim.winRate), s.lastSim.winRate) : C.agreeCrew[planId(s.crewPlan)]!;
     case "idea": {
       const idea = nextIdea(s);
       return idea === null ? C.allTried : C.idea[idea]!;
@@ -55,7 +51,7 @@ function huddleLine(s: CrewView): string {
   }
 }
 
-// Ideas suggest a crewmate plan the crew hasn't tested yet, starting from the closest change to standard.
+// Ideas suggest a crewmate plan the crew hasn't tried yet, starting from the closest change to standard.
 const IDEA_ORDER: readonly PlanId[] = [1, 2, 3, 0];
 
 /** The crewmate plan to suggest next, or null once every cell on the board has been tried. */

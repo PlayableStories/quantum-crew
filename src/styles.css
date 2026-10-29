@@ -471,16 +471,37 @@ p {
 }
 /* The lines sit close together: ceiling and limit label above the track, pointing away from each other;
    survival below. */
-.meter__line--ceiling span,
-.meter__line--limit span {
+.meter__line--ceiling span {
   top: auto;
   bottom: calc(100% + 2px);
-}
-.meter__line--ceiling span {
   transform: translateX(calc(-100% + 2px));
 }
-.meter__line--limit span {
-  transform: translateX(-2px);
+/* Survival sits below the bar, ending at its line, so the 100% label at the end has room. */
+.meter__line--survival span {
+  transform: translateX(calc(-100% + 2px));
+}
+.meter__label {
+  position: absolute;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.meter__label--limit {
+  right: 0;
+  bottom: calc(100% + 8px);
+  color: var(--line-limit);
+}
+.meter__label--min,
+.meter__label--max {
+  top: calc(100% + 8px);
+  color: var(--ink-muted);
+}
+.meter__label--min {
+  left: 0;
+}
+.meter__label--max {
+  right: 0;
 }
 
 .meter__scale {
@@ -2461,5 +2482,183 @@ button.board__cell:focus-visible {
   }
   .solo .batch .measure {
     min-height: calc(var(--tap) * 1.1);
+  }
+}
+
+/* ---------- CORA Phase 2: huddle boxes, round reminder, four cases, luck line ---------- */
+
+.huddle__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.huddle__head p {
+  font-size: var(--fs-s);
+}
+
+/* Two dialogue boxes side by side (they stack only on very narrow screens). */
+.plan-boxes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--gap) * 0.75);
+}
+@media (max-width: 359px) {
+  .plan-boxes {
+    grid-template-columns: 1fr;
+  }
+}
+.plan-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+.plan-box--crew {
+  border-color: var(--radio);
+}
+.plan-box__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.plan-box__options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.plan-option {
+  min-height: 44px;
+  padding: 6px 8px;
+  gap: 4px;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+}
+.plan-option .plan-icons svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* The agreed plan, as a reminder during each round. */
+.agreed {
+  margin: 0;
+  padding: 6px 10px;
+  border-left: 3px solid var(--amber);
+  font-size: var(--fs-s);
+  color: var(--ink-muted);
+}
+
+/* Act II readout: the four sensor combinations. */
+.cases {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cases__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.case {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+}
+.case--win {
+  border-color: var(--green-deep);
+}
+.case--loss {
+  border-color: var(--red-deep);
+}
+.case__sensors {
+  font-weight: 800;
+}
+.case__reading {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.case__reading svg,
+.case__pumps svg {
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
+}
+.case__reading--cool {
+  color: var(--cool);
+}
+.case__reading--hot {
+  color: var(--hot);
+}
+.case__pumps {
+  color: var(--ink-muted);
+}
+.cases__order {
+  margin: 0;
+}
+.case__pumps .ai-badge {
+  font-size: 0.6rem;
+}
+.case--win .case__verdict {
+  color: var(--win);
+  font-weight: 800;
+}
+.case--loss .case__verdict {
+  color: var(--loss);
+  font-weight: 800;
+}
+.cases__total {
+  margin: 0;
+}
+.luck {
+  margin: 0;
+  padding: 6px 10px;
+  border-left: 3px solid var(--line-ceiling);
+  font-size: var(--fs-s);
+}
+
+/* Ring text: never below 12px on screen (pnpm shots checks). Live and idle rings (wider viewBox) use 15 units; the
+   rule diagram 13. */
+.ring--live text,
+.ring--idle text {
+  font-size: 15px;
+}
+.ring__note {
+  font-size: 13px;
+}
+.ring__pump-word {
+  fill: var(--ink);
+  font-weight: 800;
+  letter-spacing: 0;
+}
+/* On a phone the result ring takes the full width, so its labels stay legible. */
+.ring--small {
+  max-width: 380px;
+}
+.result__ring {
+  width: 100%;
+}
+
+@media (max-width: 599px) {
+  .readout__hero {
+    min-height: 104px;
+  }
+}
+@media (max-width: 599px) {
+  .cases {
+    gap: 6px;
+  }
+  .cases__grid {
+    gap: 4px;
+  }
+  .case {
+    padding: 4px 8px;
   }
 }
