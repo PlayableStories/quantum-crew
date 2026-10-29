@@ -124,7 +124,7 @@ describe("readout reactions", () => {
     ];
     expect(act2Reactions(batch)).toEqual([S.crew.readout.overheat(4), S.crew.readout.purge(3)]);
     expect(act2Reactions(batch)).toEqual(act2Reactions(batch));
-    expect(act2Reactions(batch.slice(0, 2))).toEqual([S.crew.readout.youReversed(2)]);
+    expect(act2Reactions(batch.slice(0, 2))).toEqual([S.crew.readout.hotCool(2)]);
   });
 
   it("calls out timeouts and perfect batches", () => {

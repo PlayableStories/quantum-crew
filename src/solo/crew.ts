@@ -77,8 +77,8 @@ type Reaction = { line: (n: number) => string; match: (r: RoundResult) => boolea
 // Losses first, most telling first. The player is Section A (x, a), the crewmate Section B (y, b).
 const LOSS_REACTIONS: readonly Reaction[] = [
   { line: S.crew.readout.overheat, match: (r) => roundCause(r) === "overheat" },
-  { line: S.crew.readout.youReversed, match: (r) => roundCause(r) === "spike" && r.x === HOT && r.y === COOL },
-  { line: S.crew.readout.iReversed, match: (r) => roundCause(r) === "spike" && r.x === COOL && r.y === HOT },
+  { line: S.crew.readout.hotCool, match: (r) => roundCause(r) === "spike" && r.x === HOT && r.y === COOL },
+  { line: S.crew.readout.coolHot, match: (r) => roundCause(r) === "spike" && r.x === COOL && r.y === HOT },
   { line: S.crew.readout.bothCool, match: (r) => roundCause(r) === "spike" && r.x === COOL && r.y === COOL },
   { line: S.crew.readout.timeout, match: (r) => roundCause(r) === "slow" },
 ];

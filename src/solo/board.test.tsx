@@ -76,8 +76,9 @@ describe("exact board on the engineering report", () => {
     const board: Board = Object.fromEntries(ALL_CELLS.map((k) => [k, { rate: 0.5, by: "engineering" as const }]));
     board["0-0"] = { rate: 0.762, by: "player" };
     const markup = renderToString(<PlanBoard board={board} plan={planOf(0)} crewPlan={planOf(0)} exact />);
-    expect(count(markup, /<span>75\.0%<\/span>/g)).toBe(8);
-    expect(count(markup, /<span>25\.0%<\/span>/g)).toBe(8);
+    expect(count(markup, /<span>75%<\/span>/g)).toBe(8);
+    expect(count(markup, /<span>25%<\/span>/g)).toBe(8);
+    expect(markup).not.toContain("75.0%");
     expect(markup).toContain(`<small>${S.board.yourTestShort("76.2%")}</small>`);
     expect(count(markup, /board__cell--eng/g)).toBe(15);
     expect(markup).not.toContain("<button");
@@ -107,7 +108,7 @@ describe("Act II screens", () => {
     expect(markup).not.toContain("board__grid");
   });
 
-  it("the engineering report: exact board, 75% as the true rate, no shift meter; the TV keeps its wording", () => {
+  it("the engineering report: exact board, 75% as the true rate, no shift meter; the TV says the same", () => {
     s().start();
     finishBatch();
     s().reportCeiling();
@@ -116,6 +117,9 @@ describe("Act II screens", () => {
     expect(markup).toContain(esc(S.ceiling.truth));
     expect(markup).not.toContain("Not on average");
     expect(markup).not.toContain(S.readout.actSoFar(BATCH_SIZE));
-    expect(S.ceiling.lines[0]).toContain("Not on average, not ever.");
+    // The TV says the same: 75% is the exact rate, anything above it in a batch is luck.
+    expect(S.ceiling.lines[0]).not.toMatch(/not ever/i);
+    expect(S.ceiling.lines[0]).toContain("exactly 75%");
+    expect(S.ceiling.lines[0]).toContain("luck");
   });
 });

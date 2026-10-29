@@ -1,6 +1,8 @@
 // Act II strategy huddle (comms open): the player sets the whole joint plan, their own and the crewmate's, by tapping
 // a square on the plan board (row = your plan, column = the crewmate's). They can test the pair over 1,000 rounds
 // without live play; every test lands on the board.
+import type { ReactNode } from "react";
+import { CrewName } from "../components/AiBadge.tsx";
 import { PlanBoard } from "../components/PlanBoard.tsx";
 import { PumpIcon } from "../components/PumpIcon.tsx";
 import { RuleChip } from "../components/RuleChip.tsx";
@@ -29,7 +31,7 @@ export function Plan() {
         <>
           <p className="panel pair-line">
             <PairSide who={S.batch.you} plan={s.plan} />
-            <PairSide who={S.batch.crewmate} plan={s.crewPlan} />
+            <PairSide who={<CrewName />} plan={s.crewPlan} />
           </p>
           <button className="btn btn--compact" onClick={s.runSimulation}>
             {S.plan.test}
@@ -59,11 +61,11 @@ export function Plan() {
 }
 
 /** "You: Reverse when HOT ❄↻ 🔥↺": one side of the selected pair, with what it does on COOL and on HOT. */
-function PairSide({ who, plan }: { who: string; plan: ClassicalStrategy }) {
+function PairSide({ who, plan }: { who: ReactNode; plan: ClassicalStrategy }) {
   const id = planId(plan);
   return (
     <span className="pair-line__side">
-      <span className="muted">{S.plan.side(who)}</span>
+      <span className="muted">{who}{S.plan.colon}</span>
       <strong>{S.plans.name[id]}</strong>
       <span className="plan-icons" role="img" aria-label={S.plans.detail[id]}>
         <LightIcon light={COOL} />

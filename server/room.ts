@@ -40,6 +40,7 @@ import type {
   RoundOutcome,
   ServerMsg,
 } from "../src/shared/protocol.ts";
+import { CREW_NAME } from "../src/strings.ts";
 import type { Rng } from "../src/shared/rng.ts";
 
 export type Conn = string;
@@ -84,7 +85,8 @@ const addResult = (r: RateSummary, o: RoundOutcome) => {
   if (o.timedOut) r.timeouts++;
 };
 
-export const BOT_NAME = "AI crewmate";
+/** An empty seat is filled by CORA, the station's AI (the same name as solo's crewmate). */
+export const BOT_NAME = CREW_NAME;
 
 /** Snaps any angle to the nearest of the tool's 8 dial positions (mod 180°). */
 export function snapDial(deg: number): number {

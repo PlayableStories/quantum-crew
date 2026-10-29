@@ -20,6 +20,8 @@ type Props = {
 };
 
 const EXACT = expectedBoard();
+/** Exact rates are whole numbers (every square is 75% or 25%). */
+const whole = (rate: number) => `${Math.round(rate * 100)}%`;
 
 export function PlanBoard({ board, plan, crewPlan, onSelect, exact = false, className = "" }: Props) {
   const current = cellKey(plan, crewPlan);
@@ -73,14 +75,14 @@ export function PlanBoard({ board, plan, crewPlan, onSelect, exact = false, clas
                   shown === undefined
                     ? S.board.untested
                     : exact
-                      ? [S.board.exact(pct(shown)), mine ? S.board.yourTest(pct(cell.rate)) : "", eng ? S.board.engRun : ""]
+                      ? [S.board.exact(whole(shown)), mine ? S.board.yourTest(pct(cell.rate)) : "", eng ? S.board.engRun : ""]
                           .filter(Boolean)
                           .join(", ")
                       : [pct(shown), eng ? S.board.engRun : ""].filter(Boolean).join(", ");
                 const label = S.board.cell(S.plans.name[p]!, S.plans.name[c]!, value);
                 const content = (
                   <>
-                    {shown !== undefined && <span>{pct(shown)}</span>}
+                    {shown !== undefined && <span>{exact ? whole(shown) : pct(shown)}</span>}
                     {exact && mine && <small>{S.board.yourTestShort(pct(cell.rate))}</small>}
                   </>
                 );
