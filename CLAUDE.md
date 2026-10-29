@@ -178,8 +178,10 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     text renders below 12px. `pnpm shots` fails if any does.
   - `StabilityMeter` (solo and the TV) runs 0–100% with "0%" / "100%" below the ends:
     - ceiling above, ending at its line;
-    - limit above, right-aligned to the bar's end;
+    - limit above, right-aligned to the bar's end, and on phones (≤ 599px) one row higher, since the bar is too
+      narrow for both on one row;
     - survival below, ending at its line.
+    - `pnpm shots` fails if any gauge labels overlap.
   - Act II readout:
     - `FourCases` (from `chsh.ts` `classicalCases`, exact) behind "If we both follow the plan perfectly"; the meter
       hides while it's open.

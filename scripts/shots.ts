@@ -51,6 +51,22 @@ const ROOT = resolve(import.meta.dirname, "..");
 const SHOTS = join(ROOT, "shots");
 const SEED = 20261016;
 
+/** Pairs of stability-gauge labels that overlap on screen (each pair as "a / b"). */
+const GAUGE_OVERLAPS = `(() => {
+  const hits = [];
+  for (const meter of document.querySelectorAll(".meter")) {
+    const labels = [...meter.querySelectorAll(".meter__line span, .meter__label")].filter((el) => el.getClientRects().length);
+    for (let i = 0; i < labels.length; i++)
+      for (let j = i + 1; j < labels.length; j++) {
+        const a = labels[i].getBoundingClientRect(), b = labels[j].getBoundingClientRect();
+        const gap = 4; // labels closer than this read as one
+        if (a.left < b.right + gap && b.left < a.right + gap && a.top < b.bottom && b.top < a.bottom)
+          hits.push(labels[i].textContent + " / " + labels[j].textContent);
+      }
+  }
+  return hits;
+})()`;
+
 /** The smallest text in any visible ring, in screen pixels (font size × the SVG's scale). Null if no ring. */
 const RING_TEXT = `(() => {
   let min = Infinity;
@@ -335,6 +351,9 @@ async function checkSheet(
 
 
 async function measure(page: Page, primary: string | null) {
+  const overlaps = (await page.evaluate(GAUGE_OVERLAPS)) as string[];
+  if (overlaps.length)
+    throw new Error(`stability gauge labels overlap at ${page.viewportSize()?.width}px wide: ${overlaps.join(", ")}`);
   const ringPx = (await page.evaluate(RING_TEXT)) as number | null;
   if (ringPx !== null && ringPx < 12) throw new Error(`ring text renders at ${ringPx.toFixed(1)}px (< 12px)`);
   return page.evaluate((sel) => {

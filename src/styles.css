@@ -2980,3 +2980,14 @@ button.board__cell:focus-visible {
     line-height: 1.3;
   }
 }
+
+/* Phones: the bar is too narrow for "Ceiling 75" (ending at its line) and "Limit 85.4" (at the bar's end) to share
+   a row, so the limit label sits one row higher. pnpm shots fails if gauge labels overlap. */
+@media (max-width: 599px) {
+  .meter__label--limit {
+    bottom: calc(100% + 28px);
+  }
+  .meter__track:has(.meter__label--limit) {
+    margin-top: 44px;
+  }
+}
