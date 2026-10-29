@@ -179,8 +179,9 @@ export const roundMs = (act: Act) => (act === 1 ? ACT1_ROUND_MS : act === 2 ? RO
 /** Rounds in a batch: Act I's short night-shift run, else BATCH_SIZE. */
 export const batchSize = (act: Act) => (act === 1 ? ACT1_ROUNDS : BATCH_SIZE);
 
-/** CORA's Act I pump: standard procedure, always clockwise, whatever her reading. */
-const crewAct1 = (y: Light): Valve => classicalValve(DEFAULT_CREW_PLAN, y);
+/** CORA's Act I pump: standard procedure, always clockwise, whatever her reading. She says it on the radio too. */
+export const act1CrewPump = (y: Light): Valve => classicalValve(DEFAULT_CREW_PLAN, y);
+const crewAct1 = act1CrewPump;
 
 /** The exact rate of the player's dials against CORA's, if both follow their crystals. */
 export const dialsRate = (s: Pick<SoloData, "tuning">) => quantumExpectedWinRate(s.tuning, OPTIMAL_TUNING.B);

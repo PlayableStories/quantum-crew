@@ -81,8 +81,8 @@ flowchart TD
 ```
 
 0. **The night shift (Act I).** Six rounds with the radio working. CORA opens with *"Standard procedure: I hold
-   clockwise, every round. Call yours, I'll call mine."*, then calls her reading each round (*"Cool here."* /
-   *"Hot here!"*). You see your own sensor, so with both readings the rule tells you exactly what to do: match her
+   clockwise, every round. Call yours, I'll call mine."*, then calls her reading and which way she's turning each round (*"Cool here. Turning
+   clockwise."* / *"Hot here! Turning clockwise."*). You see your own sensor, so with both readings the rule tells you exactly what to do: match her
    clockwise, unless both are HOT, then reverse to purge. The six rounds include every combination of the two
    sensors, with at least one both-HOT round (never the first), so you see a purge. You have 8 seconds; a mistake or
    a timeout loses the round, explained like any other result. The stability gauge shows the station holding near
@@ -185,7 +185,8 @@ iPad the type, plan board, dials and ring scale up with the screen, and every sc
    *pumps MATCH, unless both sensors are HOT, then they must DIFFER* (the vent only unlocks on a double HOT). After
    the briefing it stays on screen as a one-line chip; **Explain** opens the full rule card.
    The station needs **80%**.
-2. **Act I: the night shift.** Six rounds with the radio working: CORA calls her reading and holds clockwise, so the
+2. **Act I: the night shift.** Six rounds with the radio working: CORA calls her reading and her pump ("Hot here! Turning
+   clockwise."), so the
    rule with both readings wins every round (8 seconds each). Then the storm knocks the radio out.
 3. **Act II: plans.** In the huddle (the last chance to talk), pick your plan *and* CORA's, then **Lock in the
    plan**. Then play batches of 12 rounds (comms dark; the station's telemetry reports each round). Between

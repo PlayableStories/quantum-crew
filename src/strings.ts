@@ -10,6 +10,9 @@ export const CREW_NAME = "CORA";
 /** The station's name in the solo story. PLACEHOLDER: may change. Always "station", never "ship". */
 export const STATION_NAME = "Kestrel Station";
 
+/** Act I: how CORA calls her reading over the radio. */
+const CORA_READING = { 0: "Cool here.", 1: "Hot here!" } as const;
+
 export const S = {
   title: "Quantum Crew",
   rule: {
@@ -151,8 +154,10 @@ export const S = {
     badge: "AI",
     /** Act I, before the first round: standard procedure. */
     act1Opening: "Standard procedure: I hold clockwise, every round. Call yours, I'll call mine.",
-    /** Act I: CORA's reading, called over the radio each round. */
-    reading: { 0: "Cool here.", 1: "Hot here!" } as const,
+    /** Act I: CORA's call over the radio each round: her reading, then which way she's turning her pump. */
+    readingLight: CORA_READING,
+    reading: (light: 0 | 1, pump: 0 | 1) =>
+      `${CORA_READING[light]} Turning ${pump === 0 ? "clockwise" : "anticlockwise"}.`,
     /** The storm: her line breaks off mid-sentence. */
     stormBreak: "Something's coming off the star. Hold the pumps st—",
     opening:

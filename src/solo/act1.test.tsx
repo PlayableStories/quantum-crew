@@ -78,7 +78,9 @@ describe("Act I in the store", () => {
     s().start();
     expect(crewLines(s())).toEqual([S.crew.act1Opening]);
     s().advance(0);
-    expect(crewLines(s())).toEqual([S.crew.reading[s().round!.y]]);
+    // Her reading and which way she's turning (her actual pump: clockwise, standard procedure).
+    expect(crewLines(s())).toEqual([S.crew.reading(s().round!.y, CLOCKWISE)]);
+    expect(crewLines(s())[0]).toMatch(/Turning clockwise\.$/);
     s().answer(rulePump(s().round!.x, s().round!.y), 0);
     expect(displayedStability(s())).toBe(1);
   });
@@ -94,7 +96,7 @@ describe("Act I and the storm on screen", () => {
     s().start();
     s().advance(0);
     const markup = html();
-    expect(markup).toContain(S.crew.reading[s().round!.y]);
+    expect(markup).toContain(S.crew.reading(s().round!.y, CLOCKWISE));
     expect(markup).toContain("radio-line");
     expect(markup).toContain(esc(S.act1.ruleLine));
     expect(markup).toContain('role="meter"');

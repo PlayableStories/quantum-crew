@@ -214,8 +214,8 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     - `ACT1_ROUNDS = 6` rounds of `ACT1_ROUND_MS = 8000`.
     - The order comes from `act1Order(rng)` (`src/solo/act1.ts`): every sensor combination, at least one both-HOT,
       never both-HOT first.
-    - CORA calls her reading over the radio (`crewLines` for `act1Batch`) and always pumps clockwise
-      (`DEFAULT_CREW_PLAN`).
+    - CORA calls her reading and her pump direction over the radio ("Hot here! Turning clockwise.", `crewLines`
+      for `act1Batch`, from her actual pump `act1CrewPump`) and always pumps clockwise (`DEFAULT_CREW_PLAN`).
     - The round reuses `Batch.tsx` with `act === 1`: `CrewRadio` instead of `CommsDark`, a one-line rule reminder, no
       tags.
     - Results are recorded in `act1` for the debrief.

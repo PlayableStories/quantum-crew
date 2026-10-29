@@ -6,7 +6,7 @@ import { SURVIVAL_THRESHOLD, winRate, type RoundResult } from "../shared/chsh.ts
 import { COOL, HOT, roundCause } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
 import { PLAN_IDS, cellKey, planId, planOf, type PlanId } from "./plans.ts";
-import type { Phase, SoloData } from "./soloStore.ts";
+import { act1CrewPump, type Phase, type SoloData } from "./soloStore.ts";
 
 /** Phases where the crewmate can't talk: a batch is under way. */
 export const COMMS_DARK_PHASES: readonly Phase[] = ["act2Batch", "act3Batch"];
@@ -24,7 +24,7 @@ export function crewLines(s: CrewView): string[] {
     case "act1Batch":
       // Act I, radio working: standard procedure before the first round, then her reading each live round.
       if (!s.round) return s.batch.length === 0 ? [C.act1Opening] : [];
-      return s.round.result ? [] : [C.reading[s.round.y]];
+      return s.round.result ? [] : [C.reading(s.round.y, act1CrewPump(s.round.y))];
     case "storm":
       return [C.stormBreak];
     case "act2Plan":

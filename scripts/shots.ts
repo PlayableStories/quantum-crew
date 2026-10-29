@@ -182,7 +182,7 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   await shot("act1-lead-in", null);
   const act1Answer = async () => {
     const x = (await page.locator(".light--1").count()) > 0 ? 1 : 0;
-    const y = (await page.locator(".radio-line__text").textContent())?.includes(S.crew.reading[1]) ? 1 : 0;
+    const y = (await page.locator(".radio-line__text").textContent())?.includes(S.crew.readingLight[1]) ? 1 : 0;
     await page.keyboard.press(((x & y) ^ 0) === 0 ? "c" : "a");
     return true;
   };
