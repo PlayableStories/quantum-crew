@@ -13,15 +13,46 @@ export function levelFor(rate: number | null): number {
   return 0;
 }
 
-export function StationVisual({ rate }: { rate: number | null }) {
-  const level = levelFor(rate);
+type Props = {
+  rate: number | null;
+  /** Solo story: the solar storm is raging. The star flares across the art, static runs over it, and the art drops
+   *  one degradation level. (A still glow and texture with reduced motion.) */
+  storm?: boolean;
+  /** Solo story: the station came through, but damaged (level 1, without the alarm pulse or the storm). */
+  damaged?: boolean;
+  /** Solo story: the storm clears as the screen appears (the overlay fades out; nothing moves with reduced motion). */
+  clearing?: boolean;
+};
+
+export function StationVisual({ rate, storm = false, damaged = false, clearing = false }: Props) {
+  const level = damaged ? 1 : storm ? Math.max(0, levelFor(rate) - 1) : levelFor(rate);
   const levelUrl = atlasUrl(`station-stability-${level}`);
   const baseUrl = atlasUrl("station-base");
-  const alarm = rate !== null && rate < SURVIVAL_THRESHOLD;
+  const alarm = !damaged && !clearing && rate !== null && rate < SURVIVAL_THRESHOLD;
+  const cls = [
+    "station",
+    `station--l${level}`,
+    levelUrl ? "" : "station--css",
+    storm ? "station--storm" : "",
+    damaged ? "station--damaged" : "",
+  ];
   return (
-    <div className={`station station--l${level} ${levelUrl ? "" : "station--css"}`} aria-hidden="true">
+    <div className={cls.filter(Boolean).join(" ")} aria-hidden="true">
       {levelUrl ? <img src={levelUrl} alt="" /> : baseUrl ? <img src={baseUrl} alt="" /> : <StationSvg />}
       {alarm && <div className="station__alarm" />}
+      {storm && (
+        <>
+          <div className="station__flare" />
+          <div className="station__static" />
+        </>
+      )}
+      {/* The storm, fading away as the screen appears. */}
+      {clearing && (
+        <div className="station__clearing">
+          <div className="station__flare" />
+          <div className="station__static" />
+        </div>
+      )}
     </div>
   );
 }

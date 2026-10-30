@@ -113,6 +113,8 @@ export type SoloData = {
   act3FailedBatches: number;
   /** An Act III batch has been played with dials whose exact rate is ≥ 80% (it unlocks the debrief). */
   act3Passed: boolean;
+  /** The dials of the first wave that passed the gate (they saved the station), else null. */
+  savedTuning: TuningConfig | null;
   hintShown: boolean;
 };
 
@@ -171,6 +173,7 @@ const initialData = (): SoloData => ({
   act3Batches: 0,
   act3FailedBatches: 0,
   act3Passed: false,
+  savedTuning: null,
   hintShown: false,
 });
 
@@ -234,6 +237,7 @@ export function createSoloStore(seed: number = randomSeed()) {
           act3Batches: s.act3Batches + 1,
           act3FailedBatches: s.act3FailedBatches + (passed ? 0 : 1),
           act3Passed: s.act3Passed || passed,
+          savedTuning: s.savedTuning ?? (passed ? s.tuning : null),
         });
       }
     };
@@ -380,6 +384,18 @@ export function luckGap(batchRate: number, trueRate: number): "above" | "below" 
 }
 
 export const hintAvailable = (s: SoloData) => s.act3FailedBatches >= HINT_AFTER_FAILED_BATCHES;
+
+/**
+ * Was the station saved? Yes when an Act III wave was played with dials at an exact ≥ 80% (the gate passed). If the
+ * debrief opened only because the last Act III wave was played, it wasn't. The ending and the incident report use this.
+ */
+export const stationSaved = (s: Pick<SoloData, "act3Passed">) => s.act3Passed;
+
+/** The dials the incident report talks about: the ones that saved the station, else the ones last played. */
+export const reportTuning = (s: Pick<SoloData, "savedTuning" | "tuning">) => s.savedTuning ?? s.tuning;
+
+/** The exact rate of those dials against CORA's. */
+export const stationRate = (s: Pick<SoloData, "savedTuning" | "tuning">) => dialsRate({ tuning: reportTuning(s) });
 
 /** The debrief opens after an Act III batch played with dials at an exact ≥ 80%, or after enough batches. */
 export const debriefAvailable = (s: SoloData) => s.act3Passed || s.act3Batches >= DEBRIEF_AFTER_BATCHES;

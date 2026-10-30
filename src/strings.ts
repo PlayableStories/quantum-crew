@@ -159,8 +159,15 @@ export const S = {
     act2Note: "exactly, at best",
     act3: "Act III · crystals",
     act3Note: "your dials, exactly",
+    /** Not saved: the Act III card leads with the best dials, the player's below. */
+    act3Best: "best dials",
+    act3Yours: (pct: string) => `your dials, ${pct}`,
+    /** Saved: the player's crystals beat every plan. */
     story:
       "Talking made every round winnable. No plan could replace talking. The crystals beat every plan without carrying a single message.",
+    /** Not saved: only the best crystal settings did. */
+    storyNotSaved:
+      "Talking made every round winnable. No plan could replace talking. The best crystal settings beat every plan without carrying a single message; yours didn't get there this time.",
     noJam: "That's why the storm couldn't jam them: there was no signal to jam.",
   },
 
@@ -168,7 +175,11 @@ export const S = {
   resolution: {
     kicker: `Station log · ${STATION_NAME}`,
     title: "The storm passes",
+    /** Saved: the gate passed. */
     log: "The last wave rolls past the station. The core is steady, and the radio crackles back to life.",
+    /** Not saved: the debrief opened only because the last wave was played. */
+    logNotSaved:
+      "The last wave rolls past. Engineering held the core together with emergency measures; the station is damaged, but it's still here. The radio crackles back to life.",
     go: "Read the incident report",
   },
 
@@ -187,6 +198,7 @@ export const S = {
     stormBreak: "Something's coming off the star. Hold the pumps st—",
     /** The resolution: the radio is back. */
     resolution: "I couldn't hear you the whole time. But we were in step anyway.",
+    resolutionNotSaved: "We made it, just. Those crystals can do better than that. I'd like to know how.",
     opening:
       "Standard procedure: I always pump clockwise. Your call, though: tap a square to set both our plans.",
     agreeCrew: [

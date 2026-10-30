@@ -2991,3 +2991,72 @@ button.board__cell:focus-visible {
     margin-top: 44px;
   }
 }
+
+/* ---------- The storm on the station art (solo story) ---------- */
+/* storm: the star flares across one edge and static runs over the art. The global prefers-reduced-motion rule stops
+   the animations, leaving a still glow and a still texture. clearing: the same overlay fading out as the resolution
+   appears (with reduced motion it isn't drawn at all). damaged: the scarred art, no alarm. */
+
+.station__flare,
+.station__static,
+.station__clearing {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.station__flare {
+  background: radial-gradient(120% 90% at 100% 0%, rgba(255, 170, 60, 0.55), rgba(255, 110, 30, 0.18) 45%, transparent 70%);
+  mix-blend-mode: screen;
+  animation: station-flare 2.6s ease-in-out infinite alternate;
+}
+.station__static {
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 6px);
+  mix-blend-mode: screen;
+  animation: radio-static 0.2s steps(2) infinite;
+}
+.station__clearing {
+  animation: station-clear 1.6s ease-out forwards;
+}
+.station--damaged img,
+.station--damaged svg {
+  filter: saturate(0.75) sepia(0.15);
+}
+
+@keyframes station-flare {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes station-clear {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .station__clearing {
+    display: none;
+  }
+}
+@media (max-width: 599px) {
+  .three li {
+    padding: 3px 6px;
+  }
+  .three .muted.small {
+    line-height: 1.2;
+  }
+  .three + p.small {
+    font-size: 0.72rem;
+    line-height: 1.3;
+  }
+}
+@media (max-width: 599px) {
+  .debrief .layout__main {
+    line-height: 1.32;
+  }
+}

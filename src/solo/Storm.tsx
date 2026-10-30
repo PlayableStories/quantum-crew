@@ -37,6 +37,7 @@ export function Storm() {
       >
         <h1>{S.storm.title}</h1>
         <CrewRadio interference />
+        <StationVisual rate={displayedStability(s)} storm />
       </ScreenLayout>
     );
 
@@ -64,7 +65,7 @@ export function Storm() {
       }
     >
       <h1>{S.storm.logTitle}</h1>
-      <StationVisual rate={displayedStability(s)} />
+      <StationVisual rate={displayedStability(s)} storm />
     </ScreenLayout>
   );
 }

@@ -50,6 +50,9 @@ type Size = (typeof SIZES)[number] & { mobile?: boolean };
 const ROOT = resolve(import.meta.dirname, "..");
 const SHOTS = join(ROOT, "shots");
 const SEED = 20261016;
+/** The screens the saved run captures (the main run, never tuned, is the not-saved path and captures the rest). */
+const SAVED_SHOTS = new Set(["resolution-saved", "debrief-1-saved"]);
+
 
 /** Pairs of stability-gauge labels that overlap on screen (each pair as "a / b"). */
 const GAUGE_OVERLAPS = `(() => {
@@ -116,6 +119,8 @@ async function capture(browser: Browser, out: string, sizes: Size[]) {
       console.log(`${size.name}…`);
       await mkdir(join(dir, size.name), { recursive: true });
       rows.push(...(await playThrough(browser, base, size, join(dir, size.name))));
+      // The saved path: the same night, but the dials are tuned to 0° / 45°, so the first Act III wave passes.
+      rows.push(...(await playThrough(browser, base, size, join(dir, size.name), true)));
     }
   } finally {
     await server.close();
@@ -124,7 +129,7 @@ async function capture(browser: Browser, out: string, sizes: Size[]) {
   console.log(`Saved ${rows.length} screenshots to shots/${out}/ (report: shots/${out}/report.md)`);
 }
 
-async function playThrough(browser: Browser, base: string, size: Size, dir: string): Promise<Row[]> {
+async function playThrough(browser: Browser, base: string, size: Size, dir: string, saved = false): Promise<Row[]> {
   const context = await browser.newContext({
     viewport: { width: size.width, height: size.height },
     deviceScaleFactor: 1,
@@ -150,8 +155,9 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   await page.clock.pauseAt(new Date("2026-10-16T09:00:01Z"));
 
   const rows: Row[] = [];
-  let n = 0;
+  let n = saved ? 100 : 0;
   const shot = async (name: string, primary: string | null = ".btn--primary", full = true) => {
+    if (saved && !SAVED_SHOTS.has(name)) return;
     await page.evaluate(() => document.fonts.ready);
     await page.evaluate(() => scrollTo(0, 0));
     const file = `${String(++n).padStart(2, "0")}-${name}`;
@@ -236,6 +242,12 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   await click(S.tool.go);
   await shot("tuning");
   await checkSheet(page, S.crew.seeDials, "tuning-crew-dials", shot);
+  if (saved) {
+    // HOT dial (the second) from 0° to 45°: the best setting against CORA's.
+    const right = page.getByRole("button", { name: S.dial.next });
+    await right.nth(1).click();
+    await right.nth(1).click();
+  }
 
   for (let batch = 1; ; batch++) {
     await click(S.tuning.start(0).replace(/ 0$/, "")); // "Ride out wave …": waves count on from Act II
@@ -261,10 +273,16 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   await click(S.readout.crystalCases);
   await shot("act3-readout-cases");
   await click(S.readout.debrief); // "The storm passes"
-  await shot("resolution");
+  await shot(saved ? "resolution-saved" : "resolution-not-saved");
   await click(S.resolution.go);
+  if (saved) {
+    await shot("debrief-1-saved");
+    await context.close();
+    if (errors.length) throw new Error(`page errors at ${size.name} (saved run):\n${errors.join("\n")}`);
+    return rows;
+  }
   for (let step = 0; step < S.debrief.steps.length; step++) {
-    await shot(`debrief-${step + 1}`);
+    await shot(step === 0 ? "debrief-1-not-saved" : `debrief-${step + 1}`);
     if (step < S.debrief.steps.length - 1) await click(S.debrief.next);
   }
   await checkSheet(page, S.credits.how, "debrief-art", shot);

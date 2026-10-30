@@ -10,17 +10,17 @@ import { DEFAULT_CREW_PLAN } from "../config.ts";
 import { navigate } from "../lib/router.ts";
 import {
   OPTIMAL_TUNING,
-  SURVIVAL_THRESHOLD,
   classicalCases,
   exactOpenRates,
   openRatesByPartnerLight,
   quantumCases,
+  quantumExpectedWinRate,
   winRate,
   type Light,
 } from "../shared/chsh.ts";
 import { HOT } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
-import { dialsRate, useSolo } from "./soloStore.ts";
+import { reportTuning, stationRate, stationSaved, useSolo } from "./soloStore.ts";
 
 export function Debrief() {
   const s = useSolo((st) => st);
@@ -35,7 +35,7 @@ export function Debrief() {
       <ThreeNumbers />
     ) : step === 1 && content.stat ? (
       <div className="panel stack">
-        <p>{content.stat(pct(dialsRate(s)))}</p>
+        <p>{content.stat(pct(stationRate(s)))}</p>
         <PlanVsCrystals />
       </div>
     ) : step === 2 ? (
@@ -99,9 +99,9 @@ export function Debrief() {
  */
 function PlanVsCrystals() {
   const s = useSolo((st) => st);
-  const yours = dialsRate(s) >= SURVIVAL_THRESHOLD;
+  const yours = stationSaved(s); // the player's dials only if they saved the station
   const plan = classicalCases(DEFAULT_CREW_PLAN, DEFAULT_CREW_PLAN);
-  const crystals = quantumCases(yours ? s.tuning : OPTIMAL_TUNING.A, OPTIMAL_TUNING.B);
+  const crystals = quantumCases(yours ? reportTuning(s) : OPTIMAL_TUNING.A, OPTIMAL_TUNING.B);
   const C = S.debrief.compare;
   const whole = (p: number) => `${Math.round(p * 100)}%`;
   return (
@@ -181,12 +181,17 @@ function NoSignallingPanel() {
 /**
  * The incident report's first finding: the game's three numbers side by side. Act I with the radio (every round
  * winnable; the player's own Act I score too), Act II's best plan (exactly 75%), and Act III's crystals (the player's
- * dial settings' exact rate, about 85% at best).
+ * dial settings' exact rate, about 85% at best). If the station wasn't saved, the Act III card leads with the best
+ * dials and shows the player's underneath, and the summary says only the best settings beat every plan.
  */
+/** The best dials' exact rate (the Tsirelson bound, ≈ 85.4%). */
+const BEST_RATE = quantumExpectedWinRate(OPTIMAL_TUNING.A, OPTIMAL_TUNING.B);
+
 function ThreeNumbers() {
   const s = useSolo((st) => st);
   const R = S.report;
   const act1 = s.act1.length ? pct(winRate(s.act1)) : null;
+  const saved = stationSaved(s);
   return (
     <div className="panel stack">
       <ul className="three">
@@ -202,11 +207,13 @@ function ThreeNumbers() {
         </li>
         <li>
           <span className="kicker">{R.act3}</span>
-          <b className="three__big">{pct(dialsRate(s))}</b>
-          <span className="muted small">{R.act3Note}</span>
+          {/* Saved: the player's dials. Not saved: the best dials lead, the player's below (no false claim). */}
+          <b className="three__big">{pct(saved ? stationRate(s) : BEST_RATE)}</b>
+          <span className="muted small">{saved ? R.act3Note : R.act3Best}</span>
+          {!saved && <span className="muted small three__yours">{R.act3Yours(pct(stationRate(s)))}</span>}
         </li>
       </ul>
-      <p className="small">{R.story}</p>
+      <p className="small">{saved ? R.story : R.storyNotSaved}</p>
     </div>
   );
 }
