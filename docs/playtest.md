@@ -10,8 +10,10 @@ One sheet per session. Watch, don't help (unless someone is stuck for over a min
 | Moment | Start | End | Notes |
 | --- | --- | --- | --- |
 | Join: first QR scan → last player seated | | | slowest player: |
-| Brief (until the first huddle) | | | |
-| Act II huddle 1 (did they use all 45 s?) | | | |
+| Briefing (Start the night shift → Start the rounds) | | | |
+| Act I: six rounds (how many ended early, when both pumps settled?) | | | |
+| The storm (static → log → the lull) | | | |
+| First lull (did they use all 45 s?) | | | |
 | Act II waves (how many?) | | | |
 | Engineering report | | | |
 | Tool and Act III huddle | | | |
@@ -24,7 +26,10 @@ One sheet per session. Watch, don't help (unless someone is stuck for over a min
 - [ ] Can't scan the QR / types the address wrong / wrong Wi-Fi
 - [ ] Unsure which table to pick, or both partners pick the same table
 - [ ] Doesn't know what their sensor (COOL / HOT) means, or thinks it's the partner's
+- [ ] Act I: reads the partner's reading off the radio, or talks it out loud instead? (note which)
+- [ ] Act I: changes their pump after hearing the partner (good: they're using the radio)
 - [ ] Gets the rule wrong at the first double HOT (both pumps should fight)
+- [ ] Notices the radio is gone in the first wave (or keeps looking for it)
 - [ ] Looks at the TV instead of the phone during a round (or waits for the TV to say something)
 - [ ] Talks across tables during a wave
 - [ ] Too slow: rounds time out (how many in the first wave? ___ )

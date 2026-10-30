@@ -1,5 +1,7 @@
 // The shared TV / projector: room code + QR, the station, pooled stability, per-pair meters, round timer,
 // and the facilitator's host controls. Readable from across a room.
+// The night shift: the briefing (the background, for pairs), Act I's rounds with each pair's cause, then the storm
+// (static, then the storm log) before the first lull.
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { Countdown } from "../components/Countdown.tsx";
@@ -15,12 +17,14 @@ import { MuteToggle } from "../components/MuteToggle.tsx";
 import { QuantumBackdrop } from "../components/QuantumBackdrop.tsx";
 import { OptimalDials, fmt } from "../components/DebriefParts.tsx";
 import { StationVisual } from "../components/StationVisual.tsx";
-import { MP_ROUND_MS } from "../config.ts";
+import { MP_ACT1_ROUND_MS, MP_ROUND_MS } from "../config.ts";
+import { RadioLine } from "../components/RadioLine.tsx";
+import { RingDiagram } from "../components/RingDiagram.tsx";
 import { SURVIVAL_THRESHOLD } from "../shared/chsh.ts";
 import { useHost } from "../net/hostStore.ts";
 import { useRemainingMs } from "../net/useCountdown.ts";
 import { fetchStationInfo, joinUrl, pickJoinOrigin } from "../net/joinOrigin.ts";
-import type { HostCommand, PairInfo, RateSummary, RoomState, StationInfo } from "../shared/protocol.ts";
+import { HOST_COMMANDS, roundIdOf, type HostCommand, type PairInfo, type RateSummary, type RoomState, type RoundOutcome, type StationInfo } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 
 const rate = (r: RateSummary) => (r.rounds ? r.wins / r.rounds : null);
@@ -52,7 +56,10 @@ export function Screen() {
 
   const join = pickJoinOrigin(info, location);
   const url = joinUrl(join.origin, state.room);
-  const actRate = state.act === 2 ? state.stability.act2 : state.stability.act3;
+  const actRate = state.act === 1 ? state.stability.act1 : state.act === 2 ? state.stability.act2 : state.stability.act3;
+  // Act I has its own gauge (every round winnable); the station's rolling gauge starts with the first storm wave.
+  const act1 = state.act === 1;
+  const gauge = act1 ? rate(state.stability.act1) : state.stability.rolling;
   const lobby = state.phase === "lobby";
 
   const quantum = state.act === 3 && state.phase !== "debrief";
@@ -72,19 +79,23 @@ export function Screen() {
       <section className="tv__main">
         {state.phase !== "debrief" && <PhaseBanner state={state} localDeadline={localDeadline} />}
         {hint && state.act === 3 && state.phase !== "debrief" && <p className="tv__hint">{S.tuning.hint}</p>}
-        {state.phase === "ceiling" ? (
+        {state.phase === "briefing" ? (
+          <BriefingPanel />
+        ) : state.phase === "storm" ? (
+          <StormPanel localDeadline={localDeadline} rate={gauge} />
+        ) : state.phase === "ceiling" ? (
           <CeilingPanel />
         ) : state.phase === "tool" ? (
           <ToolPanel />
         ) : state.phase === "debrief" ? (
           <TvDebrief state={state} step={step} setStep={setStep} />
         ) : (
-          <StationVisual rate={state.stability.rolling} />
+          <StationVisual rate={gauge} />
         )}
-        <div className="panel" hidden={state.phase === "debrief"}>
+        <div className="panel" hidden={state.phase === "debrief" || state.phase === "briefing" || state.phase === "storm"}>
           <StabilityMeter
-            value={state.stability.rolling}
-            label={S.tv.pooled}
+            value={gauge}
+            label={act1 ? S.tv.act1Pooled : S.tv.pooled}
             showCeiling={state.ceilingRevealed}
             showLimit={state.toolUnlocked}
           />
@@ -102,7 +113,9 @@ export function Screen() {
         <Pairs
           state={state}
           lastResults={
-            state.phase === "roundResult" && results?.roundId === `${state.batchNo}-${state.roundNo}` ? results.results : null
+            state.phase === "roundResult" && results?.roundId === roundIdOf(state.act, state.batchNo, state.roundNo)
+              ? results.results
+              : null
           }
         />
       </aside>
@@ -144,16 +157,21 @@ function useTvSounds(state: RoomState | null, results: { roundId: string; result
 function PhaseBanner({ state, localDeadline }: { state: RoomState; localDeadline: number | null }) {
   const left = useRemainingMs(localDeadline);
   const inBatch = state.phase === "round" || state.phase === "roundResult";
+  const act1 = inBatch && state.act === 1;
+  const title =
+    state.phase === "storm" && !(left !== null && left > 0) ? S.storm.logTitle : act1 ? S.tv.act1Banner : S.tv.phase[state.phase];
   return (
-    <div className={`tv__banner tv__banner--${state.phase}`}>
-      <h1>{S.tv.phase[state.phase]}</h1>
+    <div className={`tv__banner tv__banner--${state.phase} ${act1 ? "tv__banner--act1" : ""}`}>
+      <h1>{title}</h1>
       {state.phase === "strategy" && left !== null && <div className="tv__clock">{Math.ceil(left / 1000)}</div>}
       {inBatch && (
         <>
-          <p className="kicker">{S.tv.roundOf(state.batchNo, state.roundNo, state.batchSize)}</p>
+          <p className="kicker">
+            {act1 ? S.tv.act1RoundOf(state.roundNo) : S.tv.roundOf(state.batchNo, state.roundNo, state.batchSize)}
+          </p>
           <Countdown
-            id={`${state.batchNo}-${state.roundNo}`}
-            ms={MP_ROUND_MS}
+            id={roundIdOf(state.act, state.batchNo, state.roundNo)}
+            ms={act1 ? MP_ACT1_ROUND_MS : MP_ROUND_MS}
             paused={state.phase !== "round"}
           />
         </>
@@ -161,6 +179,56 @@ function PhaseBanner({ state, localDeadline }: { state: RoomState; localDeadline
       {state.phase === "batchDone" && state.lastBatch && (
         <p className="tv__big">{S.tv.batchHeld(pct(state.lastBatch.wins / Math.max(1, state.lastBatch.rounds)))}</p>
       )}
+    </div>
+  );
+}
+
+/** When the night shift starts: the background for pairs, tonight's routine and the rule's ring. */
+function BriefingPanel() {
+  const B = S.event.briefing;
+  return (
+    <div className="panel tv__briefing">
+      <div className="stack">
+        <p className="kicker">{B.kicker}</p>
+        {B.lines.map((l) => (
+          <p key={l} className="tv__line">
+            {l}
+          </p>
+        ))}
+        <p className="muted">{S.intro.survival}</p>
+      </div>
+      <div className="stack tv__briefing-rule">
+        <RingDiagram labels={{ a: S.event.table("A"), b: S.event.table("B") }} />
+        <p className="tv__line">{S.rule.quick}</p>
+        <p className="tv__line">
+          <strong>{B.routine}</strong>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** The storm: the station log's last words break up under static, then (once the static's deadline passes) the storm
+ *  log. Static flickers only with motion allowed (see .radio-line__static). */
+function StormPanel({ localDeadline, rate: value }: { localDeadline: number | null; rate: number | null }) {
+  const left = useRemainingMs(localDeadline);
+  const static_ = left !== null && left > 0;
+  return (
+    <div className="stack tv__storm">
+      {static_ ? (
+        <RadioLine who={S.event.storm.log} quoted={false} lines={[S.event.storm.logBreak]} interference />
+      ) : (
+        <div className="panel stack">
+          <p className="kicker">{S.storm.logKicker}</p>
+          {S.storm.log.map((l) => (
+            <p key={l} className="tv__line">
+              {l}
+            </p>
+          ))}
+          <p className="muted">{S.event.storm.next}</p>
+        </div>
+      )}
+      <StationVisual rate={value} storm />
     </div>
   );
 }
@@ -323,7 +391,7 @@ function useQr(text: string): string | null {
   return svg;
 }
 
-function Pairs({ state, lastResults }: { state: RoomState; lastResults: { pairId: number; win: boolean; timedOut: boolean }[] | null }) {
+function Pairs({ state, lastResults }: { state: RoomState; lastResults: RoundOutcome[] | null }) {
   const unseated = state.players.filter((p) => p.pairId === null);
   if (state.pairs.length === 0 && unseated.length === 0) return <p className="muted">{S.tv.noPlayers}</p>;
   return (
@@ -340,8 +408,8 @@ function Pairs({ state, lastResults }: { state: RoomState; lastResults: { pairId
   );
 }
 
-function PairCard({ pair, state, result }: { pair: PairInfo; state: RoomState; result: { win: boolean; timedOut: boolean } | null }) {
-  const r = rate(state.act === 2 ? pair.act2 : pair.act3);
+function PairCard({ pair, state, result }: { pair: PairInfo; state: RoomState; result: RoundOutcome | null }) {
+  const r = rate(state.act === 1 ? pair.act1 : state.act === 2 ? pair.act2 : pair.act3);
   const connected = (id: string | null) => id === null || state.players.find((p) => p.id === id)?.connected;
   const seat = (side: "a" | "b") => {
     const s = pair[side];
@@ -364,6 +432,13 @@ function PairCard({ pair, state, result }: { pair: PairInfo; state: RoomState; r
         {seat("a")}
         {seat("b")}
       </div>
+      {/* Act I: what happened, as on the phones (storm waves get causes in E2). */}
+      {result && state.act === 1 && (
+        <p className={`pair__cause ${result.win ? "pair__cause--win" : "pair__cause--loss"}`}>
+          {result.win ? "✓ " : "✗ "}
+          {S.outcome[result.cause].title}
+        </p>
+      )}
       <div className="minimeter">
         <div className={`minimeter__fill ${r !== null && r >= 0.8 ? "minimeter__fill--ok" : ""}`} style={{ width: `${(r ?? 0) * 100}%` }} />
         <div className="minimeter__line" style={{ left: "80%" }} />
@@ -389,7 +464,9 @@ function HostControls({
   const hasPlayers = state.players.length > 0;
   const enabled = useMemo<Record<HostCommand, boolean>>(
     () => ({
-      startStrategy: !inBatch && hasPlayers && !["strategy", "ceiling", "debrief"].includes(state.phase),
+      startNightShift: hasPlayers && state.phase === "lobby",
+      // From the lobby these still skip the night shift and go straight to Act II.
+      startStrategy: !inBatch && hasPlayers && !["briefing", "strategy", "ceiling", "debrief"].includes(state.phase),
       startBatch: !inBatch && hasPlayers && !["ceiling", "debrief"].includes(state.phase),
       revealCeiling: !inBatch && state.act === 2 && state.stability.act2.rounds > 0 && state.phase !== "ceiling",
       // DECISION: the tool unlocks after the ceiling has been revealed, to keep the learning arc in order.
@@ -399,7 +476,7 @@ function HostControls({
     }),
     [inBatch, hasPlayers, state.phase, state.act, state.stability.act2.rounds, state.stability.act3.rounds, state.ceilingRevealed, state.toolUnlocked],
   );
-  const order: HostCommand[] = ["startStrategy", "startBatch", "revealCeiling", "unlockTool", "debrief", "reset"];
+  const order = HOST_COMMANDS;
   return (
     <footer className="tv__controls">
       <span className="kicker">{S.tv.controls}</span>
@@ -410,7 +487,7 @@ function HostControls({
           disabled={!enabled[cmd]}
           onClick={() => (cmd !== "reset" || confirm(S.tv.resetConfirm)) && onCommand(cmd)}
         >
-          {S.tv.cmd[cmd]}
+          {cmd === "startBatch" && state.phase === "briefing" ? S.tv.startRounds : S.tv.cmd[cmd]}
         </button>
       ))}
       {state.act === 3 && state.phase !== "debrief" && (

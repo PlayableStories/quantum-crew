@@ -23,9 +23,10 @@ const PUMPS = [104, 216] as const; // Section A (left), Section B (right)
 const LEFT_HALF = `M${CX} ${CY - R} A${R} ${R} 0 0 0 ${CX} ${CY + R}`;
 const RIGHT_HALF = `M${CX} ${CY - R} A${R} ${R} 0 0 1 ${CX} ${CY + R}`;
 
-type Props = { result?: RoundResult; idle?: boolean; small?: boolean };
+/** `labels`: the two sections' names (default "A · you" / "B · CORA"; event mode names both players). */
+type Props = { result?: RoundResult; idle?: boolean; small?: boolean; labels?: { a: string; b: string } };
 
-export function RingDiagram({ result, idle = false, small = false }: Props) {
+export function RingDiagram({ result, idle = false, small = false, labels }: Props) {
   const R_ = S.ring;
   const id = useId().replace(/:/g, "");
   const live = !!result;
@@ -59,8 +60,8 @@ export function RingDiagram({ result, idle = false, small = false }: Props) {
 
       {/* Bulkhead between the sections */}
       <line className="ring__bulkhead" x1={CX} y1="54" x2={CX} y2="186" />
-      <text className="ring__section" x={LX} y={wide ? 66 : 80} textAnchor="middle">{R_.a}</text>
-      <text className="ring__section" x={RX} y={wide ? 66 : 80} textAnchor="middle">{R_.b}</text>
+      <text className="ring__section" x={LX} y={wide ? 66 : 80} textAnchor="middle">{labels?.a ?? R_.a}</text>
+      <text className="ring__section" x={RX} y={wide ? 66 : 80} textAnchor="middle">{labels?.b ?? R_.b}</text>
 
       {result ? (
         <>

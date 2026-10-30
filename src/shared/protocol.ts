@@ -2,15 +2,47 @@
 // The server is authoritative: clients only send intents. Each phone only ever receives its own light.
 import type { ClassicalStrategy, Light, Table, TuningConfig, Valve } from "./chsh.ts";
 
-export type Act = 2 | 3;
+import type { RoundCause } from "./fiction.ts";
+
+/** 1 = the night shift (radio working), 2 = storm waves with plans, 3 = storm waves with the crystals. */
+export type Act = 1 | 2 | 3;
 
 /**
- * lobby → strategy (huddle, timed) → round ⇄ roundResult (× batch size) → batchDone → … → ceiling (Act II ends)
+ * lobby → briefing (the night shift) → round ⇄ roundResult (Act I, ACT1_ROUNDS) → storm → strategy (the lull, timed)
+ * → round ⇄ roundResult (× batch size, a storm wave) → batchDone → … → ceiling (Act II ends)
  * → tool (Entanglement Tool unlocked, Act III) → strategy → round … → debrief.
+ * From the lobby, startStrategy / startBatch still go straight to Act II (no night shift).
  */
-export type RoomPhase = "lobby" | "strategy" | "round" | "roundResult" | "batchDone" | "ceiling" | "tool" | "debrief";
+export type RoomPhase =
+  | "lobby"
+  | "briefing"
+  | "storm"
+  | "strategy"
+  | "round"
+  | "roundResult"
+  | "batchDone"
+  | "ceiling"
+  | "tool"
+  | "debrief";
 
-export type HostCommand = "startStrategy" | "startBatch" | "revealCeiling" | "unlockTool" | "debrief" | "reset";
+export type HostCommand =
+  | "startNightShift"
+  | "startStrategy"
+  | "startBatch"
+  | "revealCeiling"
+  | "unlockTool"
+  | "debrief"
+  | "reset";
+
+export const HOST_COMMANDS: readonly HostCommand[] = [
+  "startNightShift",
+  "startStrategy",
+  "startBatch",
+  "revealCeiling",
+  "unlockTool",
+  "debrief",
+  "reset",
+];
 
 export type RateSummary = { rounds: number; wins: number; timeouts: number };
 
@@ -23,6 +55,7 @@ export type PairInfo = {
   id: number;
   a: Seat;
   b: Seat;
+  act1: RateSummary;
   act2: RateSummary;
   act3: RateSummary;
   /** Whether each seat has answered the live round (no values, so nothing leaks). */
@@ -36,7 +69,7 @@ export type RoomState = {
   batchNo: number;
   roundNo: number;
   batchSize: number;
-  /** Server clock (ms) when the round or the strategy huddle ends. Compare with `serverNow`. */
+  /** Server clock (ms) when the round, the lull or the storm's static ends. Compare with `serverNow`. */
   deadline: number | null;
   serverNow: number;
   players: PlayerInfo[];
@@ -44,6 +77,7 @@ export type RoomState = {
   stability: {
     /** Win rate of the last ROLLING_WINDOW rounds across all pairs (null before any round). */
     rolling: number | null;
+    act1: RateSummary;
     act2: RateSummary;
     act3: RateSummary;
   };
@@ -73,14 +107,40 @@ export type ClientMsg =
   | { type: "player:measure"; roundId: string }
   | { type: "host:command"; cmd: HostCommand };
 
-export type RoundOutcome = { pairId: number; win: boolean; timedOut: boolean };
+/** A pair's round once it's over: both sensors and pumps (a null pump = not set in time) and what happened. */
+export type RoundOutcome = {
+  pairId: number;
+  win: boolean;
+  timedOut: boolean;
+  x: Light;
+  y: Light;
+  a: Valve | null;
+  b: Valve | null;
+  cause: RoundCause;
+};
+
+/** Act I only: what the radio says about the partner. Their pump is null until they set it. */
+export type PartnerCall = { light: Light; pump: Valve | null };
 
 export type ServerMsg =
   | { type: "host:created"; room: string; token: string }
   | { type: "player:joined"; room: string; playerId: string; name: string; table: Table }
   | { type: "room:state"; state: RoomState }
   /** To one phone: its own light only. */
-  | { type: "round:start"; roundId: string; act: Act; light: Light; deadline: number; serverNow: number; dialDeg?: number }
+  | {
+      type: "round:start";
+      roundId: string;
+      act: Act;
+      light: Light;
+      deadline: number;
+      serverNow: number;
+      dialDeg?: number;
+      /** Act I: the partner's reading (and pump, if set) over the radio, and this phone's own pump after a rejoin. */
+      partner?: PartnerCall;
+      pump?: Valve | null;
+    }
+  /** Act I, to one phone: its partner set (or changed) their pump. */
+  | { type: "round:partner"; roundId: string; pump: Valve }
   /** Act III, to the measuring phone only. */
   | { type: "round:measured"; roundId: string; valve: Valve }
   /** To the two phones of a pair. */
@@ -90,6 +150,10 @@ export type ServerMsg =
   | { type: "error"; code: ErrorCode; message: string };
 
 export type ErrorCode = "no-room" | "table-full" | "bad-request" | "not-host" | "not-now";
+
+/** A round's id: `act1-<n>` for the night shift, `<wave>-<n>` for storm waves (counted across Acts II and III). */
+export const roundIdOf = (act: Act, batchNo: number, roundNo: number) =>
+  act === 1 ? `act1-${roundNo}` : `${batchNo}-${roundNo}`;
 
 export const ROOM_CODE = /^[A-Z]{4}$/;
 export const NAME_MAX = 16;
@@ -137,8 +201,7 @@ export function parseClientMsg(raw: string): ClientMsg | null {
     case "player:measure":
       return str(o.roundId) ? { type: "player:measure", roundId: o.roundId as string } : null;
     case "host:command": {
-      const cmds: HostCommand[] = ["startStrategy", "startBatch", "revealCeiling", "unlockTool", "debrief", "reset"];
-      return cmds.includes(o.cmd as HostCommand) ? { type: "host:command", cmd: o.cmd as HostCommand } : null;
+      return HOST_COMMANDS.includes(o.cmd as HostCommand) ? { type: "host:command", cmd: o.cmd as HostCommand } : null;
     }
     default:
       return null;

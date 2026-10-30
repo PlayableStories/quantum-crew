@@ -59,12 +59,12 @@ describe("storm waves", () => {
     expect(html()).toContain(S.tuning.start(2)); // Act III's first wave is the storm's second
   });
 
-  it("event mode's wording is untouched", () => {
+  it("event mode's own keys are untouched by solo's (event mode counts storm waves too, since E1)", () => {
     expect(S.tool.kicker).toBe("Incoming cargo");
     expect(S.tool.lines[1]).toContain("The crystal decides your pump");
     expect(S.debrief.kicker).toBe("Debrief");
-    expect(S.tv.roundOf(2, 3, 12)).toBe("Batch 2 · round 3/12");
-    expect(S.tv.phase.batchDone).toBe("Batch complete");
+    expect(S.tv.roundOf(2, 3, 12)).toBe("Wave 2 · round 3/12");
+    expect(S.tv.phase.batchDone).toBe("The wave has passed");
   });
 });
 

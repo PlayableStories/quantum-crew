@@ -86,6 +86,21 @@ const GAUGE_OVERLAPS = `(() => {
   return hits;
 })()`;
 
+/** TV regions whose content doesn't fit (the TV never scrolls: .tv is one screen with overflow hidden, so the page
+ *  height can't show it; panels that scroll inside count too). Each as its name plus how many px are hidden. */
+const TV_CLIPPED = `(() => {
+  const hits = [];
+  const regions = [["main", ".tv__main"], ["side", ".tv__side"], ["briefing", ".tv__briefing"], ["report", ".tv__ceiling"],
+    ["tool", ".tv__main > .reveal"], ["debrief", ".tv__debrief"]];
+  for (const [name, sel] of regions) {
+    const el = document.querySelector(sel);
+    if (!el) continue;
+    const cut = el.scrollHeight - el.clientHeight;
+    if (cut > 1) hits.push(name + " " + cut + "px");
+  }
+  return hits;
+})()`;
+
 /** The smallest text in any visible ring, in screen pixels (font size × the SVG's scale). Null if no ring. */
 const RING_TEXT = `(() => {
   let min = Infinity;
@@ -122,7 +137,7 @@ try {
 
 // ---------- capture ----------
 
-type Row = { shot: string; size: string; screens: number; primary: string; overflow: number };
+type Row = { shot: string; size: string; screens: number; primary: string; overflow: number; clipped?: string[] };
 
 async function capture(browser: Browser, out: string, sizes: Size[]) {
   console.log("Building…");
@@ -392,7 +407,8 @@ async function measure(page: Page, primary: string | null) {
     throw new Error(`stability gauge labels overlap at ${page.viewportSize()?.width}px wide: ${overlaps.join(", ")}`);
   const ringPx = (await page.evaluate(RING_TEXT)) as number | null;
   if (ringPx !== null && ringPx < 12) throw new Error(`ring text renders at ${ringPx.toFixed(1)}px (< 12px)`);
-  return page.evaluate((sel) => {
+  const clipped = (await page.evaluate(TV_CLIPPED)) as string[];
+  const fit = await page.evaluate((sel) => {
     const doc = document.documentElement;
     const screens = Math.round((doc.scrollHeight / innerHeight) * 100) / 100;
     const overflow = Math.max(0, doc.scrollWidth - doc.clientWidth);
@@ -404,12 +420,15 @@ async function measure(page: Page, primary: string | null) {
     }
     return { screens, primary: inView, overflow };
   }, primary);
+  return clipped.length ? { ...fit, clipped } : fit;
 }
 
 function report(rows: Row[], sizes: Size[]) {
   const shots = [...new Set(rows.map((r) => r.shot))];
   const cell = (r: Row | undefined) =>
-    !r ? "" : `${r.screens} · ${r.primary}${r.overflow ? ` · ⚠ ${r.overflow}px wide` : ""}`;
+    !r
+      ? ""
+      : `${r.screens} · ${r.primary}${r.overflow ? ` · ⚠ ${r.overflow}px wide` : ""}${r.clipped ? ` · ⚠ cut off: ${r.clipped.join(", ")}` : ""}`;
   return [
     "# Screen report",
     "",
@@ -534,6 +553,20 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
   await tv.page.locator(".pair").first().waitFor();
   await shot("lobby", all(), true);
 
+  // The night shift (since E1; a TV without it goes straight to the huddle): the briefing, Act I, the storm.
+  const nightShift = (S.tv.cmd as Record<string, string>).startNightShift;
+  if (nightShift) {
+    await host(nightShift);
+    await banner("briefing").waitFor();
+    await shot("briefing", all(), true);
+    await host((S.tv as Record<string, unknown>).startRounds as string);
+    await playAct1();
+    await banner("storm").waitFor();
+    await shot("storm-static", all(), true);
+    await tv.page.getByRole("heading", { name: S.storm.logTitle }).waitFor({ timeout: 15_000 });
+    await shot("storm-log", all(), true);
+  }
+
   // Act II: the huddle, then one wave.
   await host(S.tv.cmd.startStrategy);
   await banner("strategy").waitFor();
@@ -569,6 +602,39 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
   for (const v of [tv, a, b]) await v.context.close();
   if (errors.length) throw new Error(`page errors:\n${errors.join("\n")}`);
   return rows.sort((p, q) => p.shot.localeCompare(q.shot));
+
+  /** Act I, radio working: Table A sets clockwise, then Table B does the same (a double HOT overheats, which is fine
+   *  here). Shots: the first round live, Table B's radio once Table A has set a pump, and the first result. */
+  async function playAct1() {
+    const kicker = tv.page.locator(".tv__banner--act1 .kicker");
+    const clockwise = (v: View) => v.page.locator(".pumpbtn").nth(1);
+    let done = 0;
+    let gotResult = false;
+    while (!(await banner("storm").isVisible())) {
+      const text = (await kicker.textContent({ timeout: 200 }).catch(() => null)) ?? "";
+      const n = Number(/round (\d+)/.exec(text)?.[1] ?? 0);
+      const live = await Promise.all([a, b].map((v) => v.page.locator(".pumpbtn").first().isVisible()));
+      if (!n || n <= done || !live.every(Boolean) || !(await banner("round").isVisible())) {
+        await tv.page.waitForTimeout(50);
+        continue;
+      }
+      if (n === 1) await shot("act1-round", all(".pumpbtn"));
+      await clockwise(a).click();
+      if (n === 1) {
+        await b.page.locator(".radio-line__text").filter({ hasText: S.event.radio.turning("Ada", 0) }).waitFor();
+        await shot("act1-radio", [[b, "", ".pumpbtn"], [a, "-a", ".pumpbtn"]]);
+      }
+      await clockwise(b).click();
+      done = n;
+      if (gotResult) continue;
+      // Both set: the round settles after ACT1_SETTLE_MS, and its result shows for MP_ACT1_RESULT_MS.
+      const flash = ".result--win, .result--loss";
+      await Promise.all([banner("roundResult").waitFor(), a.page.locator(flash).waitFor(), b.page.locator(flash).waitFor()]);
+      await shot("act1-result", all());
+      gotResult = true;
+    }
+    if (!gotResult) throw new Error("act1: never caught a result");
+  }
 
   /** Plays a wave to its end: the first round shot live (and, in Act III, Table A's phone once it has measured), the
    *  first result that holds still long enough shot on all three. */

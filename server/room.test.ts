@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { BATCH_SIZE, MP_RESULT_MS, MP_ROUND_MS, ROLLING_WINDOW, STRATEGY_MS } from "../src/config.ts";
+import {
+  ACT1_ROUNDS,
+  ACT1_SETTLE_MS,
+  BATCH_SIZE,
+  MP_ACT1_RESULT_MS,
+  MP_ACT1_ROUND_MS,
+  MP_RESULT_MS,
+  MP_ROUND_MS,
+  ROLLING_WINDOW,
+  STORM_STATIC_MS,
+  STRATEGY_MS,
+} from "../src/config.ts";
 import type { ClientMsg, RoomState, ServerMsg } from "../src/shared/protocol.ts";
 import { OPTIMAL_TUNING, QUANTUM_LIMIT } from "../src/shared/chsh.ts";
 import { mulberry32 } from "../src/shared/rng.ts";
@@ -290,5 +301,153 @@ describe("Act III rounds", () => {
     expect(start.dialDeg).toBe(start.light === 0 ? 45 : 157.5);
     t.advance(MP_ROUND_MS);
     expect(t.last("a1", "round:result")).toMatchObject({ win: false, timedOut: true });
+  });
+});
+
+describe("Act I: the night shift and the storm", () => {
+  type T = ReturnType<typeof setup>;
+  /** The rule with both readings on the radio: match the partner's pump, unless both are HOT (then reverse it). */
+  const byRule = (mine: 0 | 1, partner: { light: 0 | 1; pump: 0 | 1 }) =>
+    (mine === 1 && partner.light === 1 ? 1 - partner.pump : partner.pump) as 0 | 1;
+
+  function toBriefing(t: T, conns: [string, string, "A" | "B"][]) {
+    for (const [conn, name, table] of conns) t.join(conn, name, table);
+    t.host("startNightShift");
+  }
+
+  it("lobby → briefing → Act I rounds → storm → the lull, with the old shortcuts kept", () => {
+    const t = setup(3);
+    toBriefing(t, [["a1", "Ada", "A"]]);
+    expect(t.roomState("tv")).toMatchObject({ phase: "briefing", act: 1 });
+    t.host("startStrategy"); // not from the briefing
+    expect(t.last("tv", "error")!.code).toBe("not-now");
+    t.host("startBatch");
+    expect(t.roomState("tv")).toMatchObject({ phase: "round", act: 1, roundNo: 1, batchNo: 0 });
+    for (let r = 1; r <= ACT1_ROUNDS; r++) {
+      expect(t.last("a1", "round:start")!.roundId).toBe(`act1-${r}`);
+      t.advance(MP_ACT1_ROUND_MS + MP_ACT1_RESULT_MS);
+    }
+    const storm = t.roomState("tv");
+    expect(storm).toMatchObject({ phase: "storm", act: 1 });
+    expect(storm.deadline! - storm.serverNow).toBe(STORM_STATIC_MS);
+    expect(storm.stability.act1.rounds).toBe(ACT1_ROUNDS);
+    expect(storm.stability.rolling).toBeNull(); // the station gauge starts with the first wave
+    t.host("startStrategy");
+    expect(t.roomState("tv")).toMatchObject({ phase: "strategy", act: 2 });
+    t.advance(STRATEGY_MS);
+    expect(t.roomState("tv")).toMatchObject({ phase: "round", act: 2, batchNo: 1 });
+    expect(t.last("a1", "round:start")!.roundId).toBe("1-1");
+
+    // From the lobby, Start the wave still goes straight to Act II.
+    const u = setup(4);
+    u.join("a1", "Ada", "A");
+    u.host("startBatch");
+    expect(u.roomState("tv")).toMatchObject({ phase: "round", act: 2, batchNo: 1 });
+  });
+
+  it("each pair sees every sensor combination, never a double HOT first", () => {
+    const t = setup(11);
+    toBriefing(t, [["a1", "Ada", "A"], ["b1", "Bo", "B"], ["a2", "Cy", "A"], ["b2", "Di", "B"]]);
+    t.host("startBatch");
+    const seen = new Map<string, string[]>();
+    for (let r = 1; r <= ACT1_ROUNDS; r++) {
+      for (const [a, b] of [["a1", "b1"], ["a2", "b2"]] as const) {
+        const sa = t.last(a, "round:start")!;
+        const sb = t.last(b, "round:start")!;
+        // The radio: each phone hears its partner's reading.
+        expect(sa.partner!.light).toBe(sb.light);
+        expect(sb.partner!.light).toBe(sa.light);
+        seen.set(a, [...(seen.get(a) ?? []), `${sa.light}${sb.light}`]);
+      }
+      t.advance(MP_ACT1_ROUND_MS + MP_ACT1_RESULT_MS);
+    }
+    for (const order of seen.values()) {
+      expect(new Set(order)).toEqual(new Set(["00", "01", "10", "11"]));
+      expect(order[0]).not.toBe("11");
+    }
+  });
+
+  it("the partner hears each tap; the last tap counts; the round ends once pumps settle", () => {
+    const t = setup(5);
+    toBriefing(t, [["a1", "Ada", "A"], ["b1", "Bo", "B"]]);
+    t.host("startBatch");
+    const id = t.last("a1", "round:start")!.roundId;
+    const a = t.last("a1", "round:start")!;
+    const b = t.last("b1", "round:start")!;
+    expect(a.partner).toEqual({ light: b.light, pump: null });
+    t.send("a1", { type: "player:valve", roundId: id, valve: 0 });
+    expect(t.last("b1", "round:partner")).toEqual({ type: "round:partner", roundId: id, pump: 0 });
+    // Bo sets the wrong pump, then changes it: the last tap counts.
+    const right = byRule(b.light, { light: a.light, pump: 0 });
+    t.send("b1", { type: "player:valve", roundId: id, valve: (1 - right) as 0 | 1 });
+    t.advance(ACT1_SETTLE_MS - 100);
+    expect(t.roomState("tv").phase).toBe("round"); // not settled yet
+    t.send("b1", { type: "player:valve", roundId: id, valve: right });
+    expect(t.last("a1", "round:partner")!.pump).toBe(right);
+    t.advance(ACT1_SETTLE_MS - 100);
+    expect(t.roomState("tv").phase).toBe("round"); // the change restarted the settle clock
+    t.advance(100);
+    const s = t.roomState("tv");
+    expect(s.phase).toBe("roundResult");
+    const result = t.last("a1", "round:result")!;
+    expect(result).toMatchObject({ win: true, x: a.light, y: b.light, a: 0, b: right });
+    expect(["circulate", "carry", "purge"]).toContain(result.cause);
+    expect(t.last("tv", "round:results")!.results[0]!.cause).toBe(result.cause);
+  });
+
+  it("a pump that isn't set by the deadline is too slow", () => {
+    const t = setup(6);
+    toBriefing(t, [["a1", "Ada", "A"], ["b1", "Bo", "B"]]);
+    t.host("startBatch");
+    const id = t.last("a1", "round:start")!.roundId;
+    t.send("a1", { type: "player:valve", roundId: id, valve: 0 });
+    t.advance(MP_ACT1_ROUND_MS - 1);
+    expect(t.roomState("tv").phase).toBe("round");
+    t.advance(1);
+    expect(t.last("a1", "round:result")).toMatchObject({ win: false, timedOut: true, cause: "slow", b: null });
+  });
+
+  it("CORA in an empty seat calls her reading and a random pump at the start of each round", () => {
+    const t = setup(9);
+    toBriefing(t, [["a1", "Ada", "A"]]);
+    t.host("startBatch");
+    const pumps: (0 | 1)[] = [];
+    for (let r = 1; r <= ACT1_ROUNDS; r++) {
+      const start = t.last("a1", "round:start")!;
+      expect(start.partner!.pump).not.toBeNull();
+      pumps.push(start.partner!.pump!);
+      t.send("a1", { type: "player:valve", roundId: start.roundId, valve: byRule(start.light, start.partner as { light: 0 | 1; pump: 0 | 1 }) });
+      t.advance(ACT1_SETTLE_MS); // only Ada had to set hers
+      expect(t.last("a1", "round:result")!.win).toBe(true);
+      t.advance(MP_ACT1_RESULT_MS);
+    }
+    expect(new Set(pumps).size).toBe(2); // she doesn't always turn the same way (seeded)
+    const s = t.roomState("tv");
+    expect(s.stability.act1).toEqual({ rounds: ACT1_ROUNDS, wins: ACT1_ROUNDS, timeouts: 0 });
+    expect(s.pairs[0]!.act1.wins).toBe(ACT1_ROUNDS);
+  });
+
+  it("a phone that rejoins mid-round gets its reading, the partner's call and its own pump back", () => {
+    const t = setup(12);
+    toBriefing(t, [["a1", "Ada", "A"], ["b1", "Bo", "B"]]);
+    t.host("startBatch");
+    const id = t.last("a1", "round:start")!.roundId;
+    const light = t.last("a1", "round:start")!.light;
+    t.send("a1", { type: "player:valve", roundId: id, valve: 1 });
+    t.send("b1", { type: "player:valve", roundId: id, valve: 0 });
+    t.station.disconnect("a1");
+    t.join("a1b", "Ada", "A");
+    const again = t.last("a1b", "round:start")!;
+    expect(again).toMatchObject({ roundId: id, light, pump: 1, partner: { pump: 0 } });
+  });
+
+  it("reset goes back to the lobby before the night shift", () => {
+    const t = setup(2);
+    toBriefing(t, [["a1", "Ada", "A"]]);
+    t.host("startBatch");
+    t.advance(MP_ACT1_ROUND_MS + MP_ACT1_RESULT_MS);
+    t.host("reset");
+    expect(t.roomState("tv")).toMatchObject({ phase: "lobby", act: 1, roundNo: 0 });
+    expect(t.roomState("tv").stability.act1.rounds).toBe(0);
   });
 });

@@ -118,7 +118,28 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     and tool scroll (1.27 / 1.61 and 1.18 / 1.56 screens).
   - **Docs:** README "Run event mode at a venue" (laptop + travel router; Node host; `Dockerfile`; Fly.io example,
     docs only, nothing deployed), `docs/facilitator.md` (pre-flight, run of show, troubleshooting), `docs/playtest.md`.
-  - **Next:** E1 (Act I and the storm for pairs), then E2 split as E2a (Act II) and E2b (Act III).
+- **Event E1 (2026-10-30, the night shift and the storm for pairs):**
+  - **Flow:** lobby → `briefing` (host `startNightShift`) → Act I rounds (`startBatch` from the briefing; the TV labels
+    it `S.tv.startRounds`) → `storm` (automatic after `ACT1_ROUNDS`; `deadline` = end of the static, `STORM_STATIC_MS`,
+    then the TV shows the storm log) → the lull (`strategy`) → Act II. `protocol.ts` `Act` is `1 | 2 | 3`. From the
+    lobby, `startStrategy` / `startBatch` still jump straight to Act II (smoke relies on it); not from the briefing.
+  - **Act I in the room:** each pair's order is `act1Order` (moved to `src/shared/act1.ts`, re-exported by solo) with
+    the room RNG. `MP_ACT1_ROUND_MS` 8 s; the last tap counts; `round:partner` tells the partner; the round resolves
+    early once every pump is set and none changed for `ACT1_SETTLE_MS`. `round:start` carries `partner` (and the
+    phone's own `pump`, for a rejoin). CORA sets a random pump at round start. Act I has its own `act1` rates (pair
+    and pooled) and stays out of the rolling gauge, which starts with the first wave. Round ids: `act1-n`, else
+    `<wave>-<n>` (`roundIdOf`); `batchNo` counts waves only.
+  - **Results:** `RoundOutcome` carries `x, y, a, b, cause` in every act. Act I shows the cause on phones (with a
+    small ring, `RingDiagram labels`) and on the TV's pair cards; waves still show Stable / Leak until E2.
+  - **Copy:** partner lines take the name (`S.event.radio.*`); CORA keeps `S.crew.reading` / `stormBreak`; a human
+    partner's storm line is `S.event.storm.logBreak` from the station log (`RadioLine who` / `quoted`). Event wording
+    is storm waves now ("Wave n · round", "The wave has passed", "The lull: last chance to talk", "Use the lull",
+    "Start the wave"); `story2.test.tsx` checks the new wording.
+  - **Fit:** the phone lull uses `RuleChip`, the clock beside the heading and compact plan rows (`.lull`,
+    `.plan-picker`, tighter under 700px tall). The host controls stay one row at 1280 wide. `pnpm shots --event` also
+    flags TV regions that are cut off (the TV never scrolls); still cut at 1280×720 and left for E2: the engineering
+    report, the tool, debrief steps 1–3. The phone tool screen still scrolls (1.18 / 1.56).
+  - **Next:** E2 split as E2a (Act II) and E2b (Act III).
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.
