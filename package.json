@@ -21,7 +21,8 @@
     "assets": "node scripts/assets.ts",
     "bake-shader": "node scripts/bake-shader.ts",
     "gen-assets": "tsx scripts/gen-assets.ts",
-    "shots": "node scripts/shots.ts"
+    "shots": "node scripts/shots.ts",
+    "session": "node scripts/session.ts"
   },
   "dependencies": {
     "qrcode": "^1.5.4",

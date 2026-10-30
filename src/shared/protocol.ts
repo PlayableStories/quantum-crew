@@ -95,6 +95,11 @@ export const ROOM_CODE = /^[A-Z]{4}$/;
 export const NAME_MAX = 16;
 export const WS_PATH = "/ws";
 export const HEALTH_PATH = "/healthz";
+/** GET → StationInfo: where phones should go to join (the TV can't tell from its own address). */
+export const STATION_INFO_PATH = "/station-info";
+
+/** `publicUrl` is PUBLIC_URL when the server has it set; `lanUrls` are the server's LAN addresses on its port. */
+export type StationInfo = { publicUrl: string | null; lanUrls: string[] };
 
 /** Parses and checks a client message; returns null if it is malformed. */
 export function parseClientMsg(raw: string): ClientMsg | null {

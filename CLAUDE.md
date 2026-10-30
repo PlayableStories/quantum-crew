@@ -5,7 +5,8 @@ This repo is a Playable Stories example of a game built with an AI coding agent.
 
 ## Workflow
 - One branch + PR per feature or milestone; the user reviews before merge. Never push to `main` directly.
-- Before a PR: `pnpm typecheck && pnpm test && pnpm build` (and `pnpm smoke` when touching event mode). CI
+- Before a PR: `pnpm typecheck && pnpm test && pnpm build` (and `pnpm smoke && pnpm session` when touching event
+  mode, plus `pnpm shots --event` before/after for the event screens touched). CI
   (`.github/workflows/ci.yml`) runs all of these on every PR and push to `main`.
 - All copy goes in `src/strings.ts`; game tuning in `src/config.ts`.
 
@@ -103,6 +104,21 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   the 8 dial stops; the tool unlocks only after the ceiling reveal; hint and debrief step are TV-local state;
   per-seat marginals are sent only in the debrief phase (plus a pooled "whole crew" row).
 - **Deploy:** solo = static build on Vercel (PlayableStories team); event mode needs a Node host with WebSockets (TBD).
+- **Event E0 (2026-10-30, a real session):**
+  - **Join address:** the server answers `/station-info` (`STATION_INFO_PATH`, `StationInfo` in `protocol.ts`) with
+    `PUBLIC_URL` and its LAN IPv4 URLs (`server/joinInfo.ts`; also served by the Vite dev plugin). The TV's
+    `pickJoinOrigin` (`src/net/joinOrigin.ts`) picks, in order: `PUBLIC_URL`; the TV's own origin unless it's
+    localhost (a hosted container's LAN IP is internal); the first LAN URL; else the TV's origin with
+    `S.tv.joinWarning`. `JoinPanel` builds the QR and the printed link from one `url` (`data-join-url`).
+  - **`pnpm session`** (`scripts/session.ts`): the whole session in-process with a fake clock; CI runs it after smoke.
+  - **`pnpm shots --event`:** a TV and two phones (one pair) against the real station on `vite preview`, with a fixed
+    example `/station-info` (192.168.1.20). Two passes: TV 1920×1080 + phones 390×844, TV 1280×720 + phones
+    375×667. Output `shots/<out>/event/<size>/`; `--compare b a --event`. Live rounds and results are
+    viewport-only and retaken if the screen moved on. Known misfits (reported, not fixed in E0): the phone huddle
+    and tool scroll (1.27 / 1.61 and 1.18 / 1.56 screens).
+  - **Docs:** README "Run event mode at a venue" (laptop + travel router; Node host; `Dockerfile`; Fly.io example,
+    docs only, nothing deployed), `docs/facilitator.md` (pre-flight, run of show, troubleshooting), `docs/playtest.md`.
+  - **Next:** E1 (Act I and the storm for pairs), then E2 split as E2a (Act II) and E2b (Act III).
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.
@@ -268,7 +284,7 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     - Storm is used on both storm steps and the readout banner; the intro and Act I stay calm.
   - **`pnpm shots`:** the main run is the not-saved path. A second run tunes to 0° / 45° and captures
     `resolution-saved` and `debrief-1-saved`.
-- **Open questions:** which Atlas sound engine for sfx; event-mode host.
+- **Open questions:** which Atlas sound engine for sfx; event-mode host (a venue laptop is the documented default).
 - **History:** M0–M5 were built during Moth Hack 2026 (submitted 2026-10-06; old demo
   https://quantum-crew-iota.vercel.app/solo) in github.com/WWStoryMode/moth-hack-2026 `apps/quantum-crew`, then moved
   here (2026-10-16) as a standalone repo with the atlas-client vendored. Submission record: `docs/moth-hack-2026/`.

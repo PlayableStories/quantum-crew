@@ -235,11 +235,13 @@ follows the crystal. On a round's result, **Space / Enter** = Next round.
 Two tables of players, one phone each, and a TV or projector. A facilitator runs the session from the TV.
 
 1. Open **/screen** on the TV (landing page → **Host on TV**). It creates a station with a 4-letter code and a QR code.
+   The QR code and the printed link both point at the join address (see
+   [Run event mode at a venue](#run-event-mode-at-a-venue)).
 2. Players scan the QR (or open **/play** and type the code), enter a name and pick **Table A** or **Table B**.
    The server pairs A₁↔B₁, A₂↔B₂… (up to 4 pairs). **CORA**, the AI crewmate (shown with an **AI** badge on the TV
    and on her partner's phone), fills any empty seat.
-3. **Start strategy huddle (45 s):** partners may talk across tables and agree a plan. When the clock runs out, the
-   comms blackout starts and so does the batch (or press **Start batch now**).
+3. **Start huddle (45 s):** partners may talk across tables and agree a plan. When the clock runs out, the
+   comms blackout starts and so does the batch (or press **Start batch**).
 4. Each round, every phone shows only its own sensor, two pump buttons and a countdown. The TV shows the round
    timer, who has answered and each pair's result (Stable or Leak). Stability is pooled over the last 48 rounds across all pairs, and
    each pair also has its own mini-meter.
@@ -252,7 +254,9 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    the best dial settings and the crew's Act III score, then **no-signalling**: every crew member's clockwise rate
    split by what their partner's sensor read (≈ 50/50 both ways, pooled for the whole crew), then credits.
 
-A phone that reloads or drops out rejoins its seat automatically (same name, same table).
+A phone that reloads or drops out rejoins its seat automatically (same name, same table). A refreshed TV resumes
+the same station. Running a session for real: [`docs/facilitator.md`](docs/facilitator.md); watching a playtest:
+[`docs/playtest.md`](docs/playtest.md).
 
 
 **Follow-up (not built yet):** event mode doesn't have Act I or the storm. The TV and phones still start at the Act II
@@ -342,8 +346,15 @@ To test with real phones, open the TV page via the **Network** URL that Vite pri
 so the QR code points somewhere phones can reach. To test alone, use one `/screen` tab and a few `/play` tabs.
 
 ```sh
-pnpm smoke   # real WebSocket server + 1 TV + 4 phones, one Act II batch
+pnpm smoke     # real WebSocket server + 1 TV + 4 phones, one Act II batch
+pnpm session   # a whole session in-process with a fake clock (see below)
 ```
+
+`pnpm session` (`scripts/session.ts`) runs the station in-process with a fake clock and a seeded RNG, so it takes
+about a second and is the same every run. It plays a whole session: 4 pairs join and a 9th player is turned away;
+a player drops out mid-wave and rejoins their seat; the TV disconnects and resumes; one Act II wave; the engineering
+report; the tool; two Act III waves with tuned dials (A 0° / 45°, B 22.5° / 157.5°), whose pooled rate must be
+clearly above 75%; the debrief. CI runs it after `pnpm smoke`.
 
 ### Screenshots (`pnpm shots`)
 `pnpm shots` plays the whole solo flow like a player in headless Chromium and saves a screenshot of every screen:
@@ -369,6 +380,15 @@ timers with Playwright's clock. Output goes to the git-ignored `shots/<out>/<siz
 - `NN-name.png` is the first viewport, which is what the player sees.
 - `NN-name.full.png` is the whole page, with a dashed line at the fold.
 
+**Event mode:** `pnpm shots --event` puts the real station on the preview server and plays a session with a TV and
+two phones (Table A and Table B, one pair): the lobby (empty and seated), joining, the huddle, a live round, a result,
+wave done, the engineering report, the tool, the Act III huddle, an Act III round (and a phone that has measured), a
+result, wave done and every debrief step. It runs the session twice: the TV at 1920×1080 with phones at 390×844, then
+the TV at 1280×720 with phones at 375×667. The server's timers are real, so live rounds and results get viewport
+shots only. `/station-info` answers a made-up `192.168.1.20`, so the shots never show your machine's address. Output
+goes to `shots/<out>/event/<device>-<size>/`, with the same `report.md`; `--compare before after --event` makes the
+contact sheets.
+
 The run fails if any text in a coolant ring renders below 12px, or if any stability-gauge labels overlap. `report.md` lists, for each screen and size, the page height in screen-heights, whether the main button is visible
 without scrolling, and any horizontal overflow. The run also checks that the rule sheet keeps focus inside it,
 closes on Escape and hands focus back. Two runs give the same screens and the same report; a few anti-aliased pixels
@@ -377,13 +397,58 @@ can differ.
 ## Deploy
 - **Solo only (static):** the solo mode needs no server or API key. Deploy `dist/` anywhere; `vercel.json`
   rewrites every route to `index.html`. On a static host, the event-mode buttons stay disabled.
-- **Event mode (one Node process):** `server/index.ts` serves `dist/` and the WebSocket on the same origin.
-  Use any host that supports WebSockets (Render, Railway, Fly…):
-  - build: `pnpm install && pnpm build`
-  - start: `pnpm start` (listens on `$PORT`, default 8787; Node ≥ 22.18 runs
-    the TypeScript directly)
+- **Event mode:** needs one Node process with WebSockets. See [Run event mode at a venue](#run-event-mode-at-a-venue).
 
-  Rooms live in memory, so a restart ends every session. Health check: `/healthz`.
+## Run event mode at a venue
+`server/index.ts` is one Node process: it serves `dist/`, the WebSocket at `/ws`, a health check at `/healthz` and
+`/station-info` (where phones should join). **Rooms live in memory:** run exactly one instance, and never restart it
+during a session, because a restart ends every room. The facilitator's checklist and run of show are in
+[`docs/facilitator.md`](docs/facilitator.md).
+
+**The join address.** The TV's QR code and printed link are built from one address, chosen in this order:
+1. `PUBLIC_URL` on the server, if set (e.g. `PUBLIC_URL=https://crew.example.org`);
+2. the address the TV page itself was opened at, unless that is `localhost`, since phones can reach it too;
+3. the laptop's own network (LAN) address, which the server detects, when the TV is open at `localhost`;
+4. otherwise the TV shows a warning: its link only works on this computer.
+
+### (a) A laptop at the venue (recommended)
+```sh
+pnpm install
+pnpm build && pnpm start   # listens on $PORT (default 8787) and prints "Phones join at: http://192.168.x.x:8787"
+```
+- Open the TV page at `http://localhost:8787/screen` on the laptop (the QR uses the printed network address), or at
+  the printed address itself.
+- **Bring a travel router if you can.** Venue and guest Wi-Fi often stop devices from reaching each other ("client
+  isolation"), and then no phone can join. With your own router, the laptop and every phone are on one network you
+  control; no internet connection is needed during play.
+- Check from a phone before guests arrive: open `http://<printed address>/healthz`; it should say `{"ok":true}`.
+- If the laptop has a name phones can resolve, set it: `PUBLIC_URL=http://crew-laptop.local:8787 pnpm start`.
+
+### (b) A Node host with WebSockets
+Any host that runs a long-lived Node process and passes WebSocket upgrades through works:
+- build: `pnpm install --frozen-lockfile && pnpm build`
+- start: `pnpm start` (listens on `$PORT`; Node ≥ 22.18 runs the TypeScript directly)
+- one instance only, no autoscaling, and no sleeping when idle: a stopped machine loses its rooms.
+- health check: `/healthz`.
+
+Open the TV at the host's public address; the QR code uses it. Set `PUBLIC_URL` only if phones should use a
+different address (e.g. a custom domain).
+
+**Docker.** The minimal [`Dockerfile`](Dockerfile) builds and runs the same server on port 8787:
+```sh
+docker build -t quantum-crew .
+docker run -p 8787:8787 quantum-crew                       # add -e PUBLIC_URL=https://… if needed
+```
+
+**Example host: Fly.io** (not set up for this repo; these are the steps, nothing has been deployed):
+```sh
+fly launch --no-deploy      # detects the Dockerfile; set the internal port to 8787
+fly scale count 1           # one machine: rooms live in its memory
+fly deploy
+```
+In the generated `fly.toml`, keep the machine running during sessions (`auto_stop_machines = "off"`,
+`min_machines_running = 1` under `[http_service]`), so an idle moment doesn't stop it and lose the rooms. Check
+Fly's own docs for the current settings. Open `https://<app>.fly.dev/screen` on the TV.
 
 ## Built with an AI coding agent
 Quantum Crew was designed by a person and written almost entirely by Claude Code, in milestones (M0–M5), one branch

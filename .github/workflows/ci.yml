@@ -26,4 +26,6 @@ jobs:
       - run: pnpm test
       # Real WebSocket station + 1 TV + 4 phones, one Act II batch (~20 s).
       - run: pnpm smoke
+      # A whole event session (in-process, fake clock): joining, a drop-out and rejoin, TV resume, Acts II and III.
+      - run: pnpm session
       - run: pnpm build
