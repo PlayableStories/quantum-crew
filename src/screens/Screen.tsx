@@ -19,7 +19,8 @@ import { MP_ROUND_MS } from "../config.ts";
 import { SURVIVAL_THRESHOLD } from "../shared/chsh.ts";
 import { useHost } from "../net/hostStore.ts";
 import { useRemainingMs } from "../net/useCountdown.ts";
-import type { HostCommand, PairInfo, RateSummary, RoomState } from "../shared/protocol.ts";
+import { fetchStationInfo, joinUrl, pickJoinOrigin } from "../net/joinOrigin.ts";
+import type { HostCommand, PairInfo, RateSummary, RoomState, StationInfo } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 
 const rate = (r: RateSummary) => (r.rounds ? r.wins / r.rounds : null);
@@ -35,6 +36,11 @@ export function Screen() {
     if (!state?.toolUnlocked) setHint(false);
   }, [state?.phase, state?.toolUnlocked]);
   useTvSounds(state, results);
+  // Where phones join: asked from the server once (see net/joinOrigin.ts for the order).
+  const [info, setInfo] = useState<StationInfo | null>(null);
+  useEffect(() => {
+    void fetchStationInfo().then(setInfo);
+  }, []);
 
   if (!state) {
     return (
@@ -44,7 +50,8 @@ export function Screen() {
     );
   }
 
-  const joinUrl = `${location.origin}/play?room=${state.room}`;
+  const join = pickJoinOrigin(info, location);
+  const url = joinUrl(join.origin, state.room);
   const actRate = state.act === 2 ? state.stability.act2 : state.stability.act3;
   const lobby = state.phase === "lobby";
 
@@ -91,7 +98,7 @@ export function Screen() {
       </section>
 
       <aside className="tv__side">
-        <JoinPanel url={joinUrl} code={state.room} big={lobby} />
+        <JoinPanel url={url} code={state.room} big={lobby} warning={join.warning} />
         <Pairs
           state={state}
           lastResults={
@@ -278,17 +285,24 @@ function MarginalTable({ rows, crew }: NonNullable<RoomState["marginals"]>) {
   );
 }
 
-function JoinPanel({ url, code, big }: { url: string; code: string; big: boolean }) {
+/** The QR code and the printed link come from the same `url`, so they always match. */
+export function JoinPanel({ url, code, big, warning = false }: { url: string; code: string; big: boolean; warning?: boolean }) {
   const svg = useQr(url);
   return (
-    <div className={`panel tv__join ${big ? "tv__join--big" : ""}`}>
+    <div className={`panel tv__join ${big ? "tv__join--big" : ""}`} data-join-url={url}>
       {svg && <div className="tv__qr" dangerouslySetInnerHTML={{ __html: svg }} />}
       <div className="stack">
         <p className="kicker">{S.tv.join}</p>
         <p className="tv__code">
           <span className="muted">{S.tv.code}</span> {code}
         </p>
-        {big && <p className="muted small">{S.tv.joinAt(url.replace(/^https?:\/\//, ""))}</p>}
+        {big && <p className="muted small tv__join-link">{S.tv.joinAt(url.replace(/^https?:\/\//, ""))}</p>}
+        {/* The TV is open at localhost and the server has no other address: phones can't use this link. */}
+        {warning && (
+          <p className="tv__join-warning" role="alert">
+            {S.tv.joinWarning}
+          </p>
+        )}
       </div>
     </div>
   );

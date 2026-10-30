@@ -3060,3 +3060,14 @@ button.board__cell:focus-visible {
     line-height: 1.32;
   }
 }
+
+/* The TV's join warning (localhost, no network address): must be readable across the room. */
+.tv__join-warning {
+  margin: 0;
+  padding: 0.5em 0.75em;
+  border: 2px solid var(--hot);
+  border-radius: var(--radius);
+  color: var(--ink);
+  background: rgba(255, 138, 31, 0.12);
+  font-size: var(--fs-s);
+}

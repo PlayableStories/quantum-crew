@@ -1,12 +1,13 @@
 // Production server: one process serves the built app (dist/) and the station WebSocket on the same origin.
-//   pnpm build && pnpm start      (PORT defaults to 8787)
+//   pnpm build && pnpm start      (PORT defaults to 8787; PUBLIC_URL, if set, is the join address the TV shows)
 // Node runs this TypeScript directly (type stripping, Node ≥ 22.18).
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
-import { HEALTH_PATH } from "../src/shared/protocol.ts";
+import { HEALTH_PATH, STATION_INFO_PATH } from "../src/shared/protocol.ts";
 import { attachStation } from "./attach.ts";
+import { stationInfo } from "./joinInfo.ts";
 
 const DIST = fileURLToPath(new URL("../dist/", import.meta.url));
 const PORT = Number(process.env.PORT ?? 8787);
@@ -42,6 +43,10 @@ const server = createServer((req, res) => {
     res.writeHead(200, { "content-type": "application/json" });
     return res.end(JSON.stringify({ ok: true }));
   }
+  if (path === STATION_INFO_PATH) {
+    res.writeHead(200, { "content-type": "application/json", "cache-control": "no-cache" });
+    return res.end(JSON.stringify(stationInfo(PORT)));
+  }
   // Static file if it exists, else the SPA's index.html (routes like /screen and /play).
   const file = normalize(join(DIST, path));
   const isFile = file.startsWith(DIST) && existsSync(file) && statSync(file).isFile();
@@ -54,4 +59,9 @@ const server = createServer((req, res) => {
 });
 
 attachStation(server);
-server.listen(PORT, () => console.log(`Quantum Crew station on http://localhost:${PORT}`));
+server.listen(PORT, () => {
+  const info = stationInfo(PORT);
+  console.log(`Quantum Crew station on http://localhost:${PORT}`);
+  const join = info.publicUrl ? [info.publicUrl] : info.lanUrls;
+  console.log(join.length ? `Phones join at: ${join.join("  ·  ")}` : "No network address found: phones can't reach this laptop.");
+});

@@ -1,5 +1,7 @@
 // pnpm shots [--out <name>] [--all]       screenshot every solo screen, played like a player
 // pnpm shots --compare <before> <after>    per-screen contact sheets: before above after, sizes side by side
+// pnpm shots --event [--out <name>]        event mode: a TV and two phones play a whole session (see captureEvent)
+// pnpm shots --compare <b> <a> --event     contact sheets for the event screenshots
 //
 // Builds the static site, serves it with `vite preview` (no station, like the Vercel deploy) and drives the solo flow
 // in Playwright's Chromium. Reliable without touching production code: Math.random is seeded before the app loads (so
@@ -53,6 +55,20 @@ const SEED = 20261016;
 /** The screens the saved run captures (the main run, never tuned, is the not-saved path and captures the rest). */
 const SAVED_SHOTS = new Set(["resolution-saved", "debrief-1-saved"]);
 
+const EVENT_SIZES = [
+  { name: "tv-1920x1080", width: 1920, height: 1080 },
+  { name: "tv-1280x720", width: 1280, height: 720 },
+  { name: "phone-390x844", width: 390, height: 844, mobile: true },
+  { name: "phone-375x667", width: 375, height: 667, mobile: true },
+];
+/** Each pass is one whole session: a TV and two phones (Table A and Table B, one pair) at these sizes. */
+const EVENT_PASSES = [
+  { tv: EVENT_SIZES[0]!, phone: EVENT_SIZES[2]! },
+  { tv: EVENT_SIZES[1]!, phone: EVENT_SIZES[3]! },
+];
+/** What /station-info says in the screenshots: a made-up LAN address, so they never show this machine's. */
+const EXAMPLE_INFO = { publicUrl: null, lanUrls: ["http://192.168.1.20:4317"] };
+
 
 /** Pairs of stability-gauge labels that overlap on screen (each pair as "a / b"). */
 const GAUGE_OVERLAPS = `(() => {
@@ -94,7 +110,9 @@ try {
   if (flag("--compare")) {
     const [before, after] = args.slice(args.indexOf("--compare") + 1);
     if (!before || !after) throw new Error("usage: pnpm shots --compare <before> <after>");
-    await compare(browser, before, after);
+    await compare(browser, before, after, flag("--event"));
+  } else if (flag("--event")) {
+    await captureEvent(browser, opt("--out") ?? "latest");
   } else {
     await capture(browser, opt("--out") ?? "latest", flag("--all") ? [...SIZES, ...EXTRA_SIZES] : SIZES);
   }
@@ -404,35 +422,231 @@ function report(rows: Row[], sizes: Size[]) {
   ].join("\n");
 }
 
+// ---------- event mode ----------
+
+/** Event mode: builds, puts the real station (server/attach.ts) on the `vite preview` server and plays a session with
+ *  a TV and two phones. The server's timers are real (a round resolves as soon as both phones answer, its result shows
+ *  for MP_RESULT_MS), so live rounds and results get viewport shots only, taken on all three pages at once and
+ *  retaken next round if the screen moved on meanwhile. Output: shots/<out>/event/<device>-<size>/, report.md. */
+async function captureEvent(browser: Browser, out: string) {
+  const { attachStation } = await import("../server/attach.ts");
+  console.log("Building…");
+  await build({ root: ROOT, logLevel: "warn" });
+  const server = await preview({
+    root: ROOT,
+    logLevel: "warn",
+    preview: { port: 4317 },
+    plugins: [
+      {
+        name: "shots-station",
+        configurePreviewServer(preview) {
+          attachStation(preview.httpServer as import("node:http").Server);
+          preview.middlewares.use("/healthz", (_req, res) => res.end(JSON.stringify({ ok: true })));
+          preview.middlewares.use("/station-info", (_req, res) => {
+            res.setHeader("content-type", "application/json");
+            res.end(JSON.stringify(EXAMPLE_INFO));
+          });
+        },
+      },
+    ],
+  });
+  const base = server.resolvedUrls!.local[0]!.replace(/\/$/, "");
+  const dir = join(SHOTS, out, "event");
+  await rm(dir, { recursive: true, force: true });
+  const rows: Row[] = [];
+  try {
+    for (const pass of EVENT_PASSES) {
+      console.log(`${pass.tv.name} + ${pass.phone.name}…`);
+      rows.push(...(await eventSession(browser, base, pass.tv, pass.phone, dir)));
+    }
+  } finally {
+    await server.close();
+  }
+  await writeFile(join(dir, "report.md"), report(rows, EVENT_SIZES));
+  console.log(`Saved ${rows.length} screenshots to shots/${out}/event/ (report: shots/${out}/event/report.md)`);
+}
+
+async function eventSession(browser: Browser, base: string, tvSize: Size, phoneSize: Size, dir: string): Promise<Row[]> {
+  const open = async (size: Size) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      deviceScaleFactor: 1,
+      isMobile: size.mobile ?? false,
+      hasTouch: size.mobile ?? false,
+      reducedMotion: "reduce",
+    });
+    const page = await context.newPage();
+    page.on("pageerror", (e) => errors.push(`${size.name}: ${e}`));
+    await mkdir(join(dir, size.name), { recursive: true });
+    return { page, size, context };
+  };
+  const errors: string[] = [];
+  const tv = await open(tvSize);
+  const a = await open(phoneSize);
+  const b = await open(phoneSize);
+  const rows: Row[] = [];
+  let n = 0;
+
+  type View = Awaited<ReturnType<typeof open>>;
+  /** One screen on several pages at once (phones: a = Table A, b = Table B). Full-page images only for screens that
+   *  wait for the host; live rounds move on too fast. */
+  const shot = async (name: string, views: [View, string, string | null][], full = false) => {
+    const num = String(++n).padStart(2, "0");
+    const files = new Set(views.map(([v, suffix]) => `${v.size.name}/${num}-${name}${suffix}`));
+    for (let i = rows.length - 1; i >= 0; i--) if (files.has(`${rows[i]!.size}/${rows[i]!.shot}`)) rows.splice(i, 1);
+    await Promise.all(
+      views.map(async ([v, suffix, primary]) => {
+        const file = `${num}-${name}${suffix}`;
+        await v.page.evaluate(() => document.fonts.ready);
+        await v.page.screenshot({ path: join(dir, v.size.name, `${file}.png`), animations: "disabled" });
+        rows.push({ shot: file, size: v.size.name, ...(await measure(v.page, primary)) });
+        if (full && rows.at(-1)!.screens > 1)
+          await v.page.screenshot({ path: join(dir, v.size.name, `${file}.full.png`), fullPage: true, animations: "disabled" });
+      }),
+    );
+  };
+  // The TV's primary action is the host controls; a phone's is whatever it should press now.
+  const all = (primary: string | null = null): [View, string, string | null][] => [
+    [tv, "", ".tv__controls .btn"],
+    [a, "-a", primary],
+    [b, "-b", primary],
+  ];
+  const host = async (cmd: string) => tv.page.locator(".tv__controls").getByRole("button", { name: cmd, exact: true }).click();
+  const banner = (phase: string) => tv.page.locator(`.tv__banner--${phase}`);
+
+  // Lobby: the TV first, then each phone joins from the link (the code is prefilled).
+  await tv.page.goto(base + "/screen");
+  const code = ((await tv.page.locator(".tv__code").textContent()) ?? "").replace(S.tv.code, "").trim();
+  // The join link switches to the example address once /station-info answers (a TV without it never does).
+  await tv.page.locator(".tv__join-link").filter({ hasText: "192.168.1.20" }).waitFor({ timeout: 3000 }).catch(() => {});
+  await shot("lobby-empty", [[tv, "", null]], true);
+  for (const [v, name, table] of [
+    [a, "Ada", "A"],
+    [b, "Bo", "B"],
+  ] as const) {
+    await v.page.goto(`${base}/play?room=${code}`);
+    await v.page.getByLabel(S.phone.name).fill(name);
+    await v.page.getByRole("radio", { name: S.event.table(table) }).click();
+    if (v === a) await shot("joining", [[a, "", ".btn--primary"]], true);
+    await v.page.getByRole("button", { name: S.phone.join }).click();
+    await v.page.getByText(S.phone.lobby).waitFor();
+  }
+  await tv.page.locator(".pair").first().waitFor();
+  await shot("lobby", all(), true);
+
+  // Act II: the huddle, then one wave.
+  await host(S.tv.cmd.startStrategy);
+  await banner("strategy").waitFor();
+  await shot("huddle", all(), true);
+  await host(S.tv.cmd.startBatch);
+  await playWave("act2");
+  await shot("wave-done", all(), true);
+  await host(S.tv.cmd.revealCeiling);
+  await banner("ceiling").waitFor();
+  await shot("engineering-report", all(), true);
+  await host(S.tv.cmd.unlockTool);
+  await banner("tool").waitFor();
+  await shot("tool", all(), true);
+
+  // Act III: the huddle (dials on the phones), then one wave.
+  await host(S.tv.cmd.startStrategy);
+  await banner("strategy").waitFor();
+  await shot("act3-huddle", all(), true);
+  await host(S.tv.cmd.startBatch);
+  await playWave("act3");
+  await shot("act3-wave-done", all(), true);
+
+  // The debrief, step by step on the TV.
+  await host(S.tv.cmd.debrief);
+  await tv.page.locator(".tv__debrief").waitFor();
+  for (let step = 1; ; step++) {
+    await shot(`debrief-${step}`, step === 1 ? all() : [[tv, "", null]], true);
+    const next = tv.page.locator(".tv__debrief-nav .btn--primary");
+    if (await next.isDisabled()) break;
+    await next.click();
+  }
+
+  for (const v of [tv, a, b]) await v.context.close();
+  if (errors.length) throw new Error(`page errors:\n${errors.join("\n")}`);
+  return rows.sort((p, q) => p.shot.localeCompare(q.shot));
+
+  /** Plays a wave to its end: the first round shot live (and, in Act III, Table A's phone once it has measured), the
+   *  first result that holds still long enough shot on all three. */
+  async function playWave(prefix: string) {
+    const control = prefix === "act2" ? ".pumpbtn" : ".measure";
+    let gotRound = false;
+    let gotMeasured = prefix === "act2";
+    let gotResult = false;
+    while (!(await banner("batchDone").isVisible())) {
+      const live = await Promise.all([a, b].map((v) => v.page.locator(control).first().isVisible()));
+      if (!live[0] || !live[1]) {
+        await tv.page.waitForTimeout(50);
+        continue;
+      }
+      if (!gotRound) {
+        await shot(`${prefix}-round`, all(control));
+        gotRound = (await Promise.all([a, b].map((v) => v.page.locator(control).first().isVisible()))).every(Boolean);
+        if (!gotRound) n--; // moved on mid-shot: take it again next round, over the same files
+      }
+      await a.page.locator(control).first().click();
+      if (!gotMeasured) {
+        await a.page.locator(".result__verdict").waitFor({ timeout: 2000 }).catch(() => {});
+        await shot(`${prefix}-measured`, [[a, "", null]]);
+        gotMeasured = true;
+      }
+      await b.page.locator(control).first().click().catch(() => {});
+      if (gotResult) continue;
+      // Both answered: the round resolves now and its result shows for MP_RESULT_MS.
+      const flash = ".result--win, .result--loss";
+      const ready = await Promise.all([
+        banner("roundResult").waitFor({ timeout: 3000 }).then(() => true, () => false),
+        a.page.locator(flash).waitFor({ timeout: 3000 }).then(() => true, () => false),
+        b.page.locator(flash).waitFor({ timeout: 3000 }).then(() => true, () => false),
+      ]);
+      if (!ready.every(Boolean)) continue;
+      await shot(`${prefix}-result`, all());
+      gotResult = (await Promise.all([banner("roundResult").isVisible(), a.page.locator(flash).isVisible(), b.page.locator(flash).isVisible()])).every(Boolean);
+      if (!gotResult) n--;
+    }
+    if (!gotRound || !gotResult) throw new Error(`${prefix}: never caught a ${gotRound ? "result" : "live round"} holding still`);
+  }
+}
+
 // ---------- compare ----------
 
-async function compare(browser: Browser, before: string, after: string) {
-  const out = join(SHOTS, `compare-${before}-${after}`);
+async function compare(browser: Browser, before: string, after: string, event = false) {
+  const out = join(SHOTS, `compare-${before}-${after}${event ? "-event" : ""}`);
   await rm(out, { recursive: true, force: true });
   await mkdir(out, { recursive: true });
-  const sizes = SIZES.map((s) => s.name);
-  // One entry per screen: the full-page image (with the fold line) where there is one, else the viewport image.
-  const names = async (d: string) => {
-    const files = await readdir(join(SHOTS, d, sizes[0]!)).catch(() => [] as string[]);
-    return files.filter((f) => f.endsWith(".full.png") || !files.includes(f.replace(/\.png$/, ".full.png")));
+  const sizes = (event ? EVENT_SIZES : SIZES).map((s) => s.name);
+  const sub = event ? "event" : "";
+  // One entry per screen and size: the full-page image (with the fold line) where there is one, else the viewport image.
+  const listing = async (d: string) => {
+    const bySize = new Map<string, string[]>();
+    for (const z of sizes) {
+      const files = await readdir(join(SHOTS, d, sub, z)).catch(() => [] as string[]);
+      bySize.set(z, files.filter((f) => f.endsWith(".full.png") || !files.includes(f.replace(/\.png$/, ".full.png"))));
+    }
+    return bySize;
   };
   const key = (f: string) => f.replace(/^\d+-/, "").replace(/(\.full)?\.png$/, "");
-  const b = await names(before);
-  const a = await names(after);
-  const all = [...new Set([...a, ...b].map(key))];
-  const order = (f: string) => a.map(key).indexOf(f) + 1 || b.map(key).indexOf(f) + 1;
+  const b = await listing(before);
+  const a = await listing(after);
+  const keys = (m: Map<string, string[]>) => [...m.values()].flat().sort().map(key);
+  const all = [...new Set([...keys(a), ...keys(b)])];
+  const order = (f: string) => keys(a).indexOf(f) + 1 || keys(b).indexOf(f) + 1 || 999;
   all.sort((x, y) => order(x) - order(y));
 
   const page = await browser.newPage({ viewport: { width: 1200, height: 800 } });
-  const widths = [380, 340, 180];
+  const widths = event ? [480, 320, 180, 160] : [380, 340, 180];
   for (const [i, name] of all.entries()) {
-    const img = (set: string, files: string[], size: string, w: number) => {
-      const f = files.find((x) => key(x) === name);
+    const img = (set: string, files: Map<string, string[]>, size: string, w: number) => {
+      const f = files.get(size)?.find((x) => key(x) === name);
       return f
-        ? `<img style="width:${w}px" src="${pathToFileURL(join(SHOTS, set, size, f)).href}">`
+        ? `<img style="width:${w}px" src="${pathToFileURL(join(SHOTS, set, sub, size, f)).href}">`
         : `<div class="none" style="width:${w}px">not in ${set}</div>`;
     };
-    const row = (label: string, set: string, files: string[]) =>
+    const row = (label: string, set: string, files: Map<string, string[]>) =>
       `<div class="row"><div class="label">${label}</div>${sizes.map((s, j) => img(set, files, s, widths[j]!)).join("")}</div>`;
     const html = `<!doctype html><meta charset="utf-8"><style>
       body{margin:0;background:#111;color:#ddd;font:14px system-ui;padding:16px}
