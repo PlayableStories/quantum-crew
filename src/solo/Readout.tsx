@@ -97,7 +97,8 @@ export function Readout() {
       }
     >
       <div className="readout__hero">
-        <StationVisual rate={value} />
+        {/* The storm lasts until the resolution. */}
+        <StationVisual rate={value} storm />
         <h1>{S.readout.held(wins, BATCH_SIZE)}</h1>
       </div>
       <CrewRadio />

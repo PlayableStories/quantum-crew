@@ -250,6 +250,24 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - **Debrief = incident report:** kicker `S.report.kicker`. Step 1's side is `ThreeNumbers`: Act I 100% plus your
     score, 75%, and `dialsRate`. The no-signalling step adds `S.report.noJam`.
   - **Landing:** the storm tagline and the "night shift" solo subtitle.
+- **Saved or not (2026-10-30):**
+  - `stationSaved(s)` (= `act3Passed`) is the one value for "the gate passed".
+    - When the debrief opened only after the final Act III wave, the station was not saved.
+    - `savedTuning` records the dials of the first passing wave. `reportTuning` / `stationRate` give the dials the
+      report talks about.
+  - The ending and the report follow `stationSaved`:
+    - **resolution:** `S.resolution.log` / `logNotSaved`; CORA's `crew.resolution` / `resolutionNotSaved`; the art is
+      calm when saved and `damaged` when not, both `clearing`;
+    - **incident report step 1:** the Act III card is the player's rate when saved, else the best 85.4% with
+      `act3Yours`; the summary is `story` / `storyNotSaved`;
+    - **step 2:** `PlanVsCrystals` shows "Your dials" only when saved.
+  - **`StationVisual` props** (all optional, off by default for the TV and the landing):
+    - `storm`: flare + static, one level down;
+    - `damaged`: level 1, no alarm;
+    - `clearing`: the storm overlay fades out on mount.
+    - Storm is used on both storm steps and the readout banner; the intro and Act I stay calm.
+  - **`pnpm shots`:** the main run is the not-saved path. A second run tunes to 0° / 45° and captures
+    `resolution-saved` and `debrief-1-saved`.
 - **Open questions:** which Atlas sound engine for sfx; event-mode host.
 - **History:** M0–M5 were built during Moth Hack 2026 (submitted 2026-10-06; old demo
   https://quantum-crew-iota.vercel.app/solo) in github.com/WWStoryMode/moth-hack-2026 `apps/quantum-crew`, then moved

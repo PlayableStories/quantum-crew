@@ -6,7 +6,7 @@ import { SURVIVAL_THRESHOLD, winRate, type RoundResult } from "../shared/chsh.ts
 import { COOL, HOT, roundCause } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
 import { PLAN_IDS, cellKey, planId, planOf, type PlanId } from "./plans.ts";
-import type { Phase, SoloData } from "./soloStore.ts";
+import { stationSaved, type Phase, type SoloData } from "./soloStore.ts";
 
 /** Phases where the crewmate can't talk: a batch is under way. */
 export const COMMS_DARK_PHASES: readonly Phase[] = ["act2Batch", "act3Batch"];
@@ -14,6 +14,8 @@ export const COMMS_DARK_PHASES: readonly Phase[] = ["act2Batch", "act3Batch"];
 export const commsDark = (phase: Phase) => COMMS_DARK_PHASES.includes(phase);
 
 type CrewView = Pick<SoloData, "phase" | "crewCue" | "plan" | "crewPlan" | "board" | "batch"> & {
+  /** The resolution: was the station saved (see soloStore stationSaved)? */
+  act3Passed?: boolean;
   round?: SoloData["round"];
   batchFollowed?: SoloData["batchFollowed"];
 };
@@ -38,7 +40,7 @@ export function crewLines(s: CrewView): string[] {
     case "act3Readout":
       return [winRate(s.batch) >= SURVIVAL_THRESHOLD ? C.readout.act3Good : C.readout.act3Bad, ...followLine(s)];
     case "resolution":
-      return [C.resolution];
+      return [stationSaved({ act3Passed: !!s.act3Passed }) ? C.resolution : C.resolutionNotSaved];
     case "ceiling":
       return [C.ceiling];
     case "toolReveal":

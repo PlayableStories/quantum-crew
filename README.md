@@ -47,6 +47,11 @@ the core can take one bad round in five, and no more.
 | One HOT | ✓ **Heat carried off** to the cool side | ✗ **Pressure spike**: the vent is still locked |
 | Both HOT | ✗ **Overheat**: hot coolant goes round in circles | ✓ **Purge**: the vent is unlocked and the hot coolant goes out |
 
+**The storm on the art.** From the storm screen until the resolution, the station art shows the solar storm: the star
+flaring across one edge and static over the picture, one degradation level lower. At the resolution it clears, to a
+calm station if you saved it or a damaged one if you didn't. The intro and Act I stay calm. With reduced motion the
+storm is a still glow and texture.
+
 **Comms.** In Act I the radio works; from the storm on, talking is only possible between waves. Solo mode shows that
 with three states:
 - **Comms open** (Act I's night shift, the huddle, the readout, the engineering report, the tool reveal, tuning):
@@ -165,12 +170,23 @@ flowchart TD
    the dials' true rate. A luck line appears when the batch and the true rate disagree about passing 80%. The
    **debrief unlocks after a batch played with dials whose exact rate is 80% or more**, whatever the batch scored.
    Otherwise you ride out another wave (with the hint); after **2** Act III waves it opens either way, so every
-   player reaches the end. **The storm passes** first: the station holds, the radio comes back, and CORA says *"I
-   couldn't hear you the whole time. But we were in step anyway."* **Read the incident report** opens the debrief.
+   player reaches the end. **The storm passes** first, and how it ends depends on whether you **saved the station**
+   (your dials passed the gate):
+   - **Saved:** the station holds, calm and clear, and the radio comes back. CORA: *"I couldn't hear you the whole
+     time. But we were in step anyway."*
+   - **Not saved** (the report opened only because the last wave was played): engineering held the core together
+     with emergency measures, and the station art shows the damage. CORA: *"We made it, just. Those crystals can do
+     better than that. I'd like to know how."*
+
+   **Read the incident report** opens the debrief.
 8. **The incident report (debrief).** The physics words appear only here, in four steps. The first opens with the
    three numbers side by side: Act I with the radio (100% possible, and your own Act I score), Act II's best plan
-   (75%) and Act III's crystals (your dials' exact rate, about 85% at best), with *"Talking made every round
-   winnable. No plan could replace talking. The crystals beat every plan without carrying a single message."*
+   (75%) and Act III's crystals. If you saved the station, that's your dials' exact rate, with *"Talking made every
+   round winnable. No plan could replace talking. The crystals beat every plan without carrying a single
+   message."* If not, the report doesn't pretend: the card leads with the best dials (85.4%) and shows yours
+   underneath (e.g. "your dials, 67.7%"), and the summary says the best crystal settings beat every plan, while
+   yours didn't get there this time. Step 2's side-by-side views also show the best dials unless yours saved the
+   station.
    - **No plan beats 75%:** the fiction mapped back to the game (sensors = input bits, pumps = output bits, "match
      unless both HOT" = the CHSH rule), and the wall was a Bell inequality, with your Act II rate. Mixing plans at
      random only averages cells on the plan board, so it can never beat the best cell.
@@ -335,7 +351,9 @@ landing, both intro steps, the huddle (first view, after picking a plan from the
 open), a live round in Acts II and III with the first result of each outcome (circulating, heat carried off, purge,
 pressure spike, overheat, too slow; the last Act II round is left to time out; results move on by Next round, Enter
 and the auto-advance), both readouts (Act II also with the four cases open), the engineering report, tool reveal, tuning (with the crewmate's dials sheet, and
-again after a batch under 80% with the hint sheet), the crystal's suggestion in Act III, the resolution, every debrief step and credits (with the asset-list sheet).
+again after a batch under 80% with the hint sheet), the crystal's suggestion in Act III, the resolution and every debrief step on the not-saved path (the dials are never
+tuned), then a second short run with the dials tuned to 0° / 45° for the saved resolution and the saved report's
+first step and credits (with the asset-list sheet).
 
 ```sh
 pnpm exec playwright install chromium   # once (or set SHOTS_CHANNEL=chrome to use your installed Chrome)
