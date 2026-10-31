@@ -15,12 +15,14 @@ import { SensorLight } from "../components/SensorLight.tsx";
 import { PumpIcon } from "../components/PumpIcon.tsx";
 import { RadioLine } from "../components/RadioLine.tsx";
 import { RingDiagram } from "../components/RingDiagram.tsx";
+import { PlanBox } from "../components/PlanBox.tsx";
 import { RuleChip } from "../components/RuleChip.tsx";
 import { navigate } from "../lib/router.ts";
 import { usePlayer } from "../net/playerStore.ts";
 import { useRemainingMs } from "../net/useCountdown.ts";
 import type { Light, Table, Valve } from "../shared/chsh.ts";
 import { ANTICLOCKWISE, CLOCKWISE, COOL, HOT } from "../shared/fiction.ts";
+import { planId } from "../shared/plans.ts";
 import { NAME_MAX, ROOM_CODE, type PartnerCall, type Seat as RoomSeat } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 
@@ -151,6 +153,10 @@ function InRoom() {
   const me = state.players.find((pl) => pl.id === playerId);
   const pair = state.pairs.find((pr) => pr.id === me?.pairId);
   const partner = pair ? (seat.table === "A" ? pair.b : pair.a) : null;
+  const mine = seat.table === "A" ? "a" : "b";
+  const theirs = mine === "a" ? "b" : "a";
+  // Act II: the plans locked for this wave (the reminder and the plan tag), and the partner's choice in the lull.
+  const locked = pair?.locked ?? null;
   const otherTable = seat.table === "A" ? "B" : "A";
   const quantum = state.act === 3 && state.phase !== "debrief";
   const wrap = (children: ReactNode) => (
@@ -168,6 +174,9 @@ function InRoom() {
         <Countdown id={round.roundId} ms={round.ms} paused={round.measuring} />
         <SensorLight light={round.light} label={S.batch.yourLight} />
         {round.act === 1 && round.partner && partner && <PartnerRadio seat={partner} call={round.partner} />}
+        {round.act === 2 && locked && partner && (
+          <p className="agreed">{S.event.agreed(locked[mine], partner.name, locked[theirs])}</p>
+        )}
         <div className="spacer" />
         {round.act !== 3 ? (
           <div className="stack">
@@ -185,7 +194,7 @@ function InRoom() {
                     <PumpIcon pump={v} />
                   </span>
                   {S.pump[v]}
-                  {round.act === 2 && plannedPump(plan, round.light) === v && (
+                  {round.act === 2 && plannedPump(locked?.[mine] ?? plan, round.light) === v && (
                     <span className="pumpbtn__plan">{S.batch.planTag}</span>
                   )}
                 </button>
@@ -238,8 +247,8 @@ function InRoom() {
         <div className={`result spacer ${flash.win ? "result--win" : "result--loss"}`} role="status">
           <div className="result__verdict">
             {flash.win ? "✓ " : "✗ "}
-            {/* Act I: what happened, as in solo. Storm waves: Stable / Leak until E2. */}
-            {state.act === 1
+            {/* Acts I and II: what happened, as in solo. Act III: Stable / Leak until E2b. */}
+            {state.act !== 3
               ? S.outcome[flash.cause].title
               : flash.timedOut
                 ? S.batch.slow
@@ -247,10 +256,15 @@ function InRoom() {
                   ? S.batch.stable
                   : S.batch.leak}
           </div>
-          {state.act === 1 && partner && (
-            <div className="result__ring">
-              <RingDiagram result={flash} small labels={ringLabels(seat.table, partner.name)} />
-            </div>
+          {state.act !== 3 && partner && (
+            <>
+              <p className="telemetry">
+                <span className="telemetry__head">{S.telemetry.head}</span> {S.event.why(flash, mine, partner.name)}
+              </p>
+              <div className="result__ring">
+                <RingDiagram result={flash} small labels={ringLabels(seat.table, partner.name)} />
+              </div>
+            </>
           )}
         </div>
       )}
@@ -295,10 +309,18 @@ function InRoom() {
           <p>{state.act === 2 ? S.phone.huddleBody : S.phone.huddleBody3}</p>
           <RuleChip />
           {state.act === 2 ? (
-            <PlanPicker
-              plan={plan}
-              onChange={(light, v) => setPlan(light === COOL ? { ...plan, onGreen: v } : { ...plan, onRed: v })}
-            />
+            <>
+              <PlanBox title={S.phone.plan} label={S.phone.plan} value={plan} onChange={setPlan} className="plan-box--phone" />
+              {pair && partner && (
+                <p className="partner-plan" role="status">
+                  <span className="kicker">
+                    {S.event.partnerPlan(partner.name)}
+                    {partner.playerId === null && <AiBadge />}
+                  </span>{" "}
+                  <strong>{S.plans.name[planId(pair.plans[theirs])]}</strong>
+                </p>
+              )}
+            </>
           ) : (
             tuningPanel
           )}
@@ -354,31 +376,3 @@ function ringLabels(mine: Table, partnerName: string) {
 
 const plannedPump = (plan: { onGreen: Valve; onRed: Valve }, light: Light) => (light === COOL ? plan.onGreen : plan.onRed);
 
-function PlanPicker({ plan, onChange }: { plan: { onGreen: Valve; onRed: Valve }; onChange: (light: Light, v: Valve) => void }) {
-  return (
-    <div className="panel stack plan-picker">
-      <p className="kicker">{S.phone.plan}</p>
-      {([COOL, HOT] as const).map((light) => (
-        <div className="plan-picker__row" key={light}>
-          <div className="dial__label">
-            <SensorLight light={light} small />
-          </div>
-          <div className="row" role="radiogroup" aria-label={S.light[light]}>
-            {[ANTICLOCKWISE, CLOCKWISE].map((v) => (
-              <button
-                key={v}
-                role="radio"
-                aria-checked={plannedPump(plan, light) === v}
-                className={`btn btn--pump ${plannedPump(plan, light) === v ? "btn--selected" : ""}`}
-                onClick={() => onChange(light, v)}
-              >
-                <PumpIcon pump={v} />
-                {S.pump[v]}
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}

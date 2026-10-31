@@ -250,17 +250,25 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    Too slow).
 5. **The storm** follows by itself: every phone's radio breaks up mid-line under static, then the TV shows the
    storm log.
-6. **Use the lull (45 s):** the last chance to talk; partners agree a plan. When the clock runs out the storm wave
-   hits and the radio goes dark (or press **Start the wave**).
-7. Each round of a wave, every phone shows only its own sensor, two pump buttons and a countdown. The TV shows the
-   round timer, who has answered and each pair's result (Stable or Leak). The station's stability is pooled over the
-   last 48 wave rounds across all pairs (Act I has its own rate), and each pair also has its own mini-meter.
-8. Play a few waves, then **Reveal ceiling**: the TV shows the engineering report (no plan beats 75%).
-9. **Unlock tool**: every pair gets the Entanglement Tool. Phones show two dials (one for COOL, one for HOT); use a
+6. **Use the lull (45 s):** the last chance to talk. Each player picks one of solo's four named plans (always
+   clockwise, reverse when HOT, reverse when COOL, always anticlockwise), and the partner's choice shows live on
+   their phone. When the clock runs out the storm wave hits and the radio goes dark (or press **Start the wave**);
+   the plans lock as the wave starts.
+7. Each round of a wave, every phone shows only its own sensor, both locked plans as a reminder, two pump buttons
+   (either can be tapped) and a countdown. A result shows the cause, a small ring with both sensors and pumps, and a
+   line of station telemetry. The TV shows the round timer, who has answered and each pair's cause. The station's
+   stability is pooled over the last 48 wave rounds across all pairs (Act I has its own rate), and each pair also has
+   its own mini-meter (three or four pairs sit two to a row).
+8. After each wave the TV shows every pair's locked plans case by case (the four sensor combinations, each with
+   the pumps, ✓ or ✗ and the cause), the plan's true rate, the wave's score, and a luck line when the wave beat 80%
+   but the plan can't.
+9. Play a few waves, then **Reveal ceiling**: the engineering report shows the 4×4 plan board at exact rates (75% or
+   25%), every pairing the crew played marked as tried and the rest run by engineering. No plan beats 75%.
+10. **Unlock tool**: every pair gets the Entanglement Tool. Phones show two dials (one for COOL, one for HOT); use a
    lull to agree settings. In each round a phone shows its sensor, the dial angle in use and a **MEASURE** button.
    The server decides who measured first: that result is a fair coin, and the partner's result is conditioned on it.
    The TV adds the 85.4% line. **Show hint** puts the engineering hint on the TV.
-10. **Debrief** on the TV (Back / Next): the Bell/CHSH wall with the crew's Act II score, the Tsirelson bound with
+11. **Debrief** on the TV (Back / Next): the Bell/CHSH wall with the crew's Act II score, the Tsirelson bound with
    the best dial settings and the crew's Act III score, then **no-signalling**: every crew member's clockwise rate
    split by what their partner's sensor read (≈ 50/50 both ways, pooled for the whole crew), then credits.
 
@@ -271,8 +279,8 @@ the same station. Running a session for real: [`docs/facilitator.md`](docs/facil
 From the lobby, **Use the lull** or **Start the wave** still skip the night shift and go straight to Act II (for a
 short session).
 
-**Follow-up (E2, not built yet):** Acts II and III in event mode still run the older flow (Stable / Leak results,
-measure-only Act III) and the older tool and debrief copy.
+**Follow-up (E2b, not built yet):** Act III in event mode still runs the older flow (Stable / Leak results on phones,
+measure-only rounds) and the older tool and debrief copy.
 
 ## The physics
 This is the **CHSH game**, a Bell test. Two players who can't talk each get a random bit (the sensor: COOL = 0,
@@ -394,7 +402,8 @@ timers with Playwright's clock. Output goes to the git-ignored `shots/<out>/<siz
 - `NN-name.full.png` is the whole page, with a dashed line at the fold.
 
 **Event mode:** `pnpm shots --event` puts the real station on the preview server and plays a session with a TV and
-two phones (Table A and Table B, one pair): the lobby (empty and seated), joining, the briefing, an Act I round (and
+two phones (Table A and Table B, one pair), plus six more players over plain WebSockets so the TV shows four pairs
+(they answer every round at once and aren't screenshotted): the lobby (empty and seated), joining, the briefing, an Act I round (and
 Table B's radio once Table A has set a pump), an Act I result, the storm's static and its log, the lull, a live round, a result,
 wave done, the engineering report, the tool, the Act III huddle, an Act III round (and a phone that has measured), a
 result, wave done and every debrief step. It runs the session twice: the TV at 1920×1080 with phones at 390×844, then
@@ -402,7 +411,8 @@ the TV at 1280×720 with phones at 375×667. The server's timers are real, so li
 shots only. `/station-info` answers a made-up `192.168.1.20`, so the shots never show your machine's address. Output
 goes to `shots/<out>/event/<device>-<size>/`, with the same `report.md`; `--compare before after --event` makes the
 contact sheets. The TV never scrolls, so for TV screens the report also flags any region whose content is cut off
-(`⚠ cut off: briefing 13px`).
+(`⚠ cut off: briefing 13px`). After a wave it also checks the worst case, every pair with a luck line, and fails if
+that would be cut off.
 
 The run fails if any text in a coolant ring renders below 12px, or if any stability-gauge labels overlap. `report.md` lists, for each screen and size, the page height in screen-heights, whether the main button is visible
 without scrolling, and any horizontal overflow. The run also checks that the rule sheet keeps focus inside it,

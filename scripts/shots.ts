@@ -16,6 +16,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { chromium, type Browser, type Page } from "playwright";
 import { build, preview } from "vite";
+import { WebSocket } from "ws";
 import { ACT1_ROUNDS, BATCH_SIZE, LEAD_MS, RESULT_AUTO_MS, ROUND_MS } from "../src/config.ts";
 import { S } from "../src/strings.ts";
 
@@ -550,7 +551,10 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     await v.page.getByRole("button", { name: S.phone.join }).click();
     await v.page.getByText(S.phone.lobby).waitFor();
   }
-  await tv.page.locator(".pair").first().waitFor();
+  // Six more players over plain WebSockets, so the TV shows a full room of four pairs. They answer every round at
+  // once (Acts I and II: clockwise; Act III: measure) and are never screenshotted.
+  const crowd = joinCrowd(base.replace(/^http/, "ws") + "/ws", code);
+  await tv.page.locator(".pair").nth(3).waitFor();
   await shot("lobby", all(), true);
 
   // The night shift (since E1; a TV without it goes straight to the huddle): the briefing, Act I, the storm.
@@ -570,10 +574,34 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
   // Act II: the huddle, then one wave.
   await host(S.tv.cmd.startStrategy);
   await banner("strategy").waitFor();
+  // Since E2a: Ada picks "Reverse when HOT" from the four plans, and Bo's phone shows it (a TV without the plan list
+  // just skips this).
+  const revHot = a.page.getByRole("radio", { name: new RegExp(`^${S.plans.name[1]}`) });
+  if (await revHot.count()) {
+    await revHot.click();
+    await b.page.locator(".partner-plan").filter({ hasText: S.plans.name[1]! }).waitFor();
+  }
   await shot("huddle", all(), true);
   await host(S.tv.cmd.startBatch);
   await playWave("act2");
   await shot("wave-done", all(), true);
+  // The worst case for fit: every pair's wave beat 80% by luck, so every pair has the luck line.
+  const worst = (await tv.page.evaluate(`(() => {
+    if (!document.querySelector(".tv__pair-cases")) return []; // a TV from before E2a has no case panels
+    const added = [];
+    for (const p of document.querySelectorAll(".tv__pair-cases")) {
+      if (p.querySelector(".tv__luck")) continue;
+      const l = document.createElement("p");
+      l.className = "tv__luck";
+      l.textContent = ${JSON.stringify(S.event.lucky?.("75%") ?? "")};
+      p.appendChild(l);
+      added.push(l);
+    }
+    const cut = ${TV_CLIPPED};
+    for (const l of added) l.remove();
+    return cut;
+  })()`)) as string[];
+  if (worst.length) throw new Error(`wave done at ${tvSize.name}, every pair lucky: cut off ${worst.join(", ")}`);
   await host(S.tv.cmd.revealCeiling);
   await banner("ceiling").waitFor();
   await shot("engineering-report", all(), true);
@@ -599,6 +627,7 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     await next.click();
   }
 
+  for (const ws of crowd) ws.close();
   for (const v of [tv, a, b]) await v.context.close();
   if (errors.length) throw new Error(`page errors:\n${errors.join("\n")}`);
   return rows.sort((p, q) => p.shot.localeCompare(q.shot));
@@ -676,6 +705,32 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     }
     if (!gotRound || !gotResult) throw new Error(`${prefix}: never caught a ${gotRound ? "result" : "live round"} holding still`);
   }
+}
+
+/** Players who aren't on camera: they join over the station's WebSocket and answer each round straight away. */
+function joinCrowd(url: string, room: string) {
+  const seats = [
+    ["Cy", "A"],
+    ["Di", "B"],
+    ["Ed", "A"],
+    ["Flo", "B"],
+    ["Gus", "A"],
+    ["Hal", "B"],
+  ] as const;
+  return seats.map(([name, table]) => {
+    const ws = new WebSocket(url);
+    ws.on("open", () => ws.send(JSON.stringify({ type: "player:join", room, name, table })));
+    ws.on("message", (data) => {
+      const msg = JSON.parse(String(data)) as { type: string; roundId?: string; act?: number };
+      if (msg.type !== "round:start") return;
+      ws.send(
+        JSON.stringify(
+          msg.act === 3 ? { type: "player:measure", roundId: msg.roundId } : { type: "player:valve", roundId: msg.roundId, valve: 0 },
+        ),
+      );
+    });
+    return ws;
+  });
 }
 
 // ---------- compare ----------

@@ -20,6 +20,7 @@ import {
 } from "../src/config.ts";
 import { act1Order, type SensorPair } from "../src/shared/act1.ts";
 import { roundCause } from "../src/shared/fiction.ts";
+import { cellKey, type CellKey } from "../src/shared/plans.ts";
 import {
   DIAL_POSITIONS,
   OPTIMAL_TUNING,
@@ -132,6 +133,11 @@ export function createRoom(code: string, deps: RoomDeps) {
   let pairStats = new Map<number, Record<Act, RateSummary>>();
   let batchStats: RateSummary | null = null;
   let lastBatch: RateSummary | null = null;
+  /** Act II: each pair's plans as locked at the latest wave start, and every pairing the crew has played. */
+  let lockedPlans = new Map<number, { a: ClassicalStrategy; b: ClassicalStrategy }>();
+  let triedPlans = new Set<CellKey>();
+  /** Each pair's rounds in the current (or latest) wave. */
+  let pairWave = new Map<number, RateSummary>();
   /** Keyed by player id, or `bot-<pair>-<side>` for an AI crewmate. */
   let marginals = new Map<string, SeatMarginal>();
 
@@ -154,6 +160,9 @@ export function createRoom(code: string, deps: RoomDeps) {
         act2: stats[2],
         act3: stats[3],
         answered: { a: !!pr && pr.a !== null, b: !!pr && pr.b !== null },
+        plans: pairPlans(pair),
+        locked: lockedPlans.get(pair.id) ?? null,
+        lastWave: pairWave.get(pair.id) ?? null,
       };
     };
     return {
@@ -180,6 +189,7 @@ export function createRoom(code: string, deps: RoomDeps) {
         act3: actStats[3],
       },
       lastBatch,
+      triedPlans: [...triedPlans],
       ceilingRevealed,
       toolUnlocked,
       // Only in the debrief: per-light counts could otherwise hint at a partner's past lights mid-game.
@@ -249,6 +259,9 @@ export function createRoom(code: string, deps: RoomDeps) {
 
   // --- Rounds -----------------------------------------------------------------------------------
 
+  /** A pair's Act II plans: each player's choice, or CORA's standard procedure in an empty seat. */
+  const pairPlans = (pair: Pair) => ({ a: pair.a?.classical ?? BOT_ACT2_PLAN, b: pair.b?.classical ?? BOT_ACT2_PLAN });
+
   /** The AI crewmate's Act II valve for a light. Act I: a random direction, called over the radio (as in solo). */
   const botValve = (light: Light): Valve =>
     act === 1 ? (deps.rng() < 0.5 ? 0 : 1) : classicalValve(BOT_ACT2_PLAN, light);
@@ -286,6 +299,14 @@ export function createRoom(code: string, deps: RoomDeps) {
     batchNo++;
     roundNo = 0;
     batchStats = emptyRate();
+    pairWave = new Map(pairs.map((pair) => [pair.id, emptyRate()]));
+    // Act II: the plans each pair goes into the wave with (a change mid-wave doesn't move the lock).
+    if (act === 2)
+      for (const pair of pairs) {
+        const plans = pairPlans(pair);
+        lockedPlans.set(pair.id, plans);
+        triedPlans.add(cellKey(plans.a, plans.b));
+      }
     nextRound();
   }
 
@@ -428,6 +449,8 @@ export function createRoom(code: string, deps: RoomDeps) {
       addResult(actStats[act], outcome);
       addResult(pairStats.get(pair.id)![act], outcome);
       if (batchStats) addResult(batchStats, outcome);
+      const wave = pairWave.get(pair.id);
+      if (wave && act !== 1) addResult(wave, outcome);
       // DECISION: the station gauge starts with the first storm wave; Act I (every round winnable) has its own rate.
       if (act !== 1) rolling.push(r.win);
       recordMarginal(pair, "a", pr.a, pr.y);
@@ -513,6 +536,9 @@ export function createRoom(code: string, deps: RoomDeps) {
         actStats = emptyActs();
         pairStats = new Map();
         act1Orders = new Map();
+        lockedPlans = new Map();
+        triedPlans = new Set();
+        pairWave = new Map();
         marginals = new Map();
         batchStats = lastBatch = null;
         for (const p of players) {
@@ -583,7 +609,8 @@ export function createRoom(code: string, deps: RoomDeps) {
           if (!player) return;
           if (msg.classical) player.classical = msg.classical;
           if (msg.tuning) player.tuning = { greenDeg: snapDial(msg.tuning.greenDeg), redDeg: snapDial(msg.tuning.redDeg) };
-          return;
+          // The partner sees plans (and, from E2b, dials) change live.
+          return broadcast();
         case "player:valve":
           if (!player || act === 3) return;
           return answer(player, msg.roundId, msg.valve);

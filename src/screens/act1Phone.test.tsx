@@ -2,60 +2,13 @@
 // the storm breaks up mid-line (the station log for a human partner); a result shows its cause and both sections.
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
-import { usePlayer } from "../net/playerStore.ts";
-import type { RoomPhase, RoomState, RoundOutcome } from "../shared/protocol.ts";
+import type { RoundOutcome } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
+import { put, room, seat } from "./eventFixture.ts";
 import { Play } from "./Play.tsx";
 
-const rate = { rounds: 0, wins: 0, timeouts: 0 };
 const esc = (text: string) => text.replace(/'/g, "&#x27;");
-
-/** Ada at Table A, paired with Bo (or CORA when `bot`). */
-function room(phase: RoomPhase, bot = false): RoomState {
-  return {
-    room: "ABCD",
-    phase,
-    act: 1,
-    batchNo: 0,
-    roundNo: 1,
-    batchSize: 12,
-    deadline: null,
-    serverNow: 0,
-    players: [
-      { id: "ada", name: "Ada", table: "A", connected: true, pairId: 1 },
-      ...(bot ? [] : [{ id: "bo", name: "Bo", table: "B" as const, connected: true, pairId: 1 }]),
-    ],
-    pairs: [
-      {
-        id: 1,
-        a: { playerId: "ada", name: "Ada" },
-        b: bot ? { playerId: null, name: S.crew.name } : { playerId: "bo", name: "Bo" },
-        act1: rate,
-        act2: rate,
-        act3: rate,
-        answered: { a: false, b: false },
-      },
-    ],
-    stability: { rolling: null, act1: rate, act2: rate, act3: rate },
-    lastBatch: null,
-    ceilingRevealed: false,
-    toolUnlocked: false,
-    marginals: null,
-  };
-}
-
 const html = () => renderToString(<Play />);
-
-type PlayerState = ReturnType<typeof usePlayer.getState>;
-/** Server rendering reads the store's initial state, so the test writes there (and to the live state). */
-function put(patch: Partial<PlayerState>) {
-  Object.assign(usePlayer.getInitialState(), patch);
-  usePlayer.setState(patch);
-}
-
-function seat(state: RoomState) {
-  put({ seat: { room: "ABCD", name: "Ada", table: "A" }, playerId: "ada", status: "open", state });
-}
 
 const live = (partner: { light: 0 | 1; pump: 0 | 1 | null }, answered: 0 | 1 | null = null) => ({
   roundId: "act1-1",
