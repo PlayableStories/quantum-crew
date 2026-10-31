@@ -1,5 +1,7 @@
 // A phone in event mode: join a room at a table, then show only what the round needs (own sensor, pump
 // buttons or MEASURE with the dial in use, countdown). Everything else is on the TV.
+// Act I (the night shift): the radio works, so the phone also shows the partner's reading and pump, and the pump can
+// change until the round ends. The storm breaks the radio up mid-line.
 import { useEffect, useState, type ReactNode } from "react";
 import { AiBadge } from "../components/AiBadge.tsx";
 import { Countdown } from "../components/Countdown.tsx";
@@ -11,13 +13,15 @@ import { MuteToggle } from "../components/MuteToggle.tsx";
 import { QuantumBackdrop } from "../components/QuantumBackdrop.tsx";
 import { SensorLight } from "../components/SensorLight.tsx";
 import { PumpIcon } from "../components/PumpIcon.tsx";
-import { Rule } from "../components/Rule.tsx";
+import { RadioLine } from "../components/RadioLine.tsx";
+import { RingDiagram } from "../components/RingDiagram.tsx";
+import { RuleChip } from "../components/RuleChip.tsx";
 import { navigate } from "../lib/router.ts";
 import { usePlayer } from "../net/playerStore.ts";
 import { useRemainingMs } from "../net/useCountdown.ts";
 import type { Light, Table, Valve } from "../shared/chsh.ts";
 import { ANTICLOCKWISE, CLOCKWISE, COOL, HOT } from "../shared/fiction.ts";
-import { NAME_MAX, ROOM_CODE } from "../shared/protocol.ts";
+import { NAME_MAX, ROOM_CODE, type PartnerCall, type Seat as RoomSeat } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 
 export function Play() {
@@ -156,24 +160,37 @@ function InRoom() {
     </div>
   );
 
-  // During a live round the phone shows only the light, the control and the countdown.
-  if (round && round.answered === null) {
+  // During a live round the phone shows only the light, the control and the countdown (Act I: and the radio, and the
+  // pump stays changeable until the round ends).
+  if (round && (round.act === 1 || round.answered === null)) {
     return wrap(
       <main className="screen">
         <Countdown id={round.roundId} ms={round.ms} paused={round.measuring} />
         <SensorLight light={round.light} label={S.batch.yourLight} />
+        {round.act === 1 && round.partner && partner && <PartnerRadio seat={partner} call={round.partner} />}
         <div className="spacer" />
-        {round.act === 2 ? (
-          <div className="pumps">
-            {[ANTICLOCKWISE, CLOCKWISE].map((v) => (
-              <button key={v} className="btn pumpbtn" onPointerDown={() => answer(v)} onClick={() => answer(v)}>
-                <span className="pumpbtn__icon">
-                  <PumpIcon pump={v} />
-                </span>
-                {S.pump[v]}
-                {plannedPump(plan, round.light) === v && <span className="pumpbtn__plan">{S.batch.planTag}</span>}
-              </button>
-            ))}
+        {round.act !== 3 ? (
+          <div className="stack">
+            {round.act === 1 && <p className="muted small act1-rule">{S.phone.act1Change}</p>}
+            <div className="pumps">
+              {[ANTICLOCKWISE, CLOCKWISE].map((v) => (
+                <button
+                  key={v}
+                  className={`btn pumpbtn ${round.act === 1 && round.answered === v ? "btn--selected" : ""}`}
+                  aria-pressed={round.act === 1 ? round.answered === v : undefined}
+                  onPointerDown={() => answer(v)}
+                  onClick={() => answer(v)}
+                >
+                  <span className="pumpbtn__icon">
+                    <PumpIcon pump={v} />
+                  </span>
+                  {S.pump[v]}
+                  {round.act === 2 && plannedPump(plan, round.light) === v && (
+                    <span className="pumpbtn__plan">{S.batch.planTag}</span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <>
@@ -221,8 +238,39 @@ function InRoom() {
         <div className={`result spacer ${flash.win ? "result--win" : "result--loss"}`} role="status">
           <div className="result__verdict">
             {flash.win ? "✓ " : "✗ "}
-            {flash.timedOut ? S.batch.slow : flash.win ? S.batch.stable : S.batch.leak}
+            {/* Act I: what happened, as in solo. Storm waves: Stable / Leak until E2. */}
+            {state.act === 1
+              ? S.outcome[flash.cause].title
+              : flash.timedOut
+                ? S.batch.slow
+                : flash.win
+                  ? S.batch.stable
+                  : S.batch.leak}
           </div>
+          {state.act === 1 && partner && (
+            <div className="result__ring">
+              <RingDiagram result={flash} small labels={ringLabels(seat.table, partner.name)} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {!round && state.phase === "briefing" && (
+        <div className="stack spacer">
+          <h2>{S.phone.briefing}</h2>
+          <p>{S.phone.briefingBody}</p>
+          <RuleChip />
+        </div>
+      )}
+
+      {!round && state.phase === "storm" && (
+        <div className="stack spacer">
+          {partner?.playerId === null ? (
+            <RadioLine lines={[S.crew.stormBreak]} interference />
+          ) : (
+            <RadioLine who={S.event.storm.log} quoted={false} lines={[S.event.storm.logBreak]} interference />
+          )}
+          <p>{S.phone.watch}</p>
         </div>
       )}
 
@@ -239,11 +287,13 @@ function InRoom() {
       )}
 
       {!round && state.phase === "strategy" && (
-        <div className="stack">
-          <h2>{S.phone.huddle}</h2>
-          {left !== null && <div className="tv__clock">{Math.ceil(left / 1000)}</div>}
+        <div className="stack lull">
+          <div className="lull__head">
+            <h2>{S.phone.huddle}</h2>
+            {left !== null && <div className="tv__clock">{Math.ceil(left / 1000)}</div>}
+          </div>
           <p>{state.act === 2 ? S.phone.huddleBody : S.phone.huddleBody3}</p>
-          <Rule />
+          <RuleChip />
           {state.act === 2 ? (
             <PlanPicker
               plan={plan}
@@ -269,7 +319,7 @@ function InRoom() {
 
       <div className="spacer" />
       <button
-        className="btn btn--ghost"
+        className="btn btn--ghost phone-leave"
         onClick={() => {
           leave();
           navigate("/");
@@ -281,18 +331,39 @@ function InRoom() {
   );
 }
 
+/** Act I's radio: CORA calls her own reading and pump; a human partner's are reported by the radio. */
+function PartnerRadio({ seat, call }: { seat: RoomSeat; call: PartnerCall }) {
+  if (seat.playerId === null)
+    return <RadioLine lines={[call.pump === null ? S.crew.readingLight[call.light] : S.crew.reading(call.light, call.pump)]} />;
+  const { name } = seat;
+  return (
+    <RadioLine
+      who={name}
+      quoted={false}
+      lines={[S.event.radio.reads(name, call.light), call.pump === null ? S.event.radio.noPump(name) : S.event.radio.turning(name, call.pump)]}
+    />
+  );
+}
+
+/** The result ring names both sections: this phone's side is "you". Long names are cut so the ring stays readable. */
+function ringLabels(mine: Table, partnerName: string) {
+  const short = partnerName.length > 8 ? `${partnerName.slice(0, 7)}…` : partnerName;
+  const name = (t: Table) => (t === mine ? S.event.you : short);
+  return { a: S.event.ringSide("A", name("A")), b: S.event.ringSide("B", name("B")) };
+}
+
 const plannedPump = (plan: { onGreen: Valve; onRed: Valve }, light: Light) => (light === COOL ? plan.onGreen : plan.onRed);
 
 function PlanPicker({ plan, onChange }: { plan: { onGreen: Valve; onRed: Valve }; onChange: (light: Light, v: Valve) => void }) {
   return (
-    <div className="panel stack">
+    <div className="panel stack plan-picker">
       <p className="kicker">{S.phone.plan}</p>
       {([COOL, HOT] as const).map((light) => (
-        <div className="stack" key={light}>
+        <div className="plan-picker__row" key={light}>
           <div className="dial__label">
             <SensorLight light={light} small />
           </div>
-          <div className="row" role="radiogroup">
+          <div className="row" role="radiogroup" aria-label={S.light[light]}>
             {[ANTICLOCKWISE, CLOCKWISE].map((v) => (
               <button
                 key={v}

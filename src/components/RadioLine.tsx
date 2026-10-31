@@ -1,8 +1,20 @@
+import type { ReactNode } from "react";
 import { S } from "../strings.ts";
 import { CrewName } from "./AiBadge.tsx";
 
-/** The crewmate on the radio. Renders nothing when there's nothing to say (always the case while comms are dark). */
-export function RadioLine({ lines, interference = false }: { lines: readonly string[]; interference?: boolean }) {
+/** The crewmate on the radio. Renders nothing when there's nothing to say (always the case while comms are dark).
+ *  Event mode: `who` names another speaker (a human partner, the station log); `quoted` false shows plain reports. */
+export function RadioLine({
+  lines,
+  interference = false,
+  who,
+  quoted = true,
+}: {
+  lines: readonly string[];
+  interference?: boolean;
+  who?: ReactNode;
+  quoted?: boolean;
+}) {
   if (lines.length === 0) return null;
   return (
     <div className={`radio-line panel ${interference ? "radio-line--interference" : ""}`} role="status">
@@ -13,11 +25,11 @@ export function RadioLine({ lines, interference = false }: { lines: readonly str
           <path d="M7 21h10V10H7zM9 10 15 3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           <circle cx="12" cy="15" r="2.4" fill="currentColor" />
         </svg>
-        {S.comms.radio} · <CrewName />
+        {S.comms.radio} · {who ?? <CrewName />}
       </p>
       {lines.map((l) => (
         <p key={l} className="radio-line__text">
-          “{l}”
+          {quoted ? `“${l}”` : l}
         </p>
       ))}
     </div>

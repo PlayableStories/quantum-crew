@@ -240,17 +240,27 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
 2. Players scan the QR (or open **/play** and type the code), enter a name and pick **Table A** or **Table B**.
    The server pairs A₁↔B₁, A₂↔B₂… (up to 4 pairs). **CORA**, the AI crewmate (shown with an **AI** badge on the TV
    and on her partner's phone), fills any empty seat.
-3. **Start huddle (45 s):** partners may talk across tables and agree a plan. When the clock runs out, the
-   comms blackout starts and so does the batch (or press **Start batch**).
-4. Each round, every phone shows only its own sensor, two pump buttons and a countdown. The TV shows the round
-   timer, who has answered and each pair's result (Stable or Leak). Stability is pooled over the last 48 rounds across all pairs, and
-   each pair also has its own mini-meter.
-5. Play a few batches, then **Reveal ceiling**: the TV shows the engineering report (no plan beats 75%).
-6. **Unlock tool**: every pair gets the Entanglement Tool. Phones show two dials (one for COOL, one for HOT); use a
-   huddle to agree settings. In each round a phone shows its sensor, the dial angle in use and a **MEASURE** button.
+3. **Start the night shift:** the TV shows the briefing (Kestrel Station, the star, the two tables, the coolant ring
+   and its rule); phones show the quick rule.
+4. **Start the rounds:** Act I, six rounds with the radio working. Each phone shows its own sensor and, on the radio,
+   the partner's reading, then their pump as soon as they set it (CORA calls hers at the start of the round). Players
+   may talk out loud too. A pump can be changed until the round ends; a round ends after 8 s, or once both pumps
+   are set and have stayed put for 1.5 s. Each pair meets all four sensor combinations, never a double HOT first.
+   Phones and the TV's pair cards show the cause (Circulating, Heat carried off, Purge, Pressure spike, Overheat,
+   Too slow).
+5. **The storm** follows by itself: every phone's radio breaks up mid-line under static, then the TV shows the
+   storm log.
+6. **Use the lull (45 s):** the last chance to talk; partners agree a plan. When the clock runs out the storm wave
+   hits and the radio goes dark (or press **Start the wave**).
+7. Each round of a wave, every phone shows only its own sensor, two pump buttons and a countdown. The TV shows the
+   round timer, who has answered and each pair's result (Stable or Leak). The station's stability is pooled over the
+   last 48 wave rounds across all pairs (Act I has its own rate), and each pair also has its own mini-meter.
+8. Play a few waves, then **Reveal ceiling**: the TV shows the engineering report (no plan beats 75%).
+9. **Unlock tool**: every pair gets the Entanglement Tool. Phones show two dials (one for COOL, one for HOT); use a
+   lull to agree settings. In each round a phone shows its sensor, the dial angle in use and a **MEASURE** button.
    The server decides who measured first: that result is a fair coin, and the partner's result is conditioned on it.
    The TV adds the 85.4% line. **Show hint** puts the engineering hint on the TV.
-7. **Debrief** on the TV (Back / Next): the Bell/CHSH wall with the crew's Act II score, the Tsirelson bound with
+10. **Debrief** on the TV (Back / Next): the Bell/CHSH wall with the crew's Act II score, the Tsirelson bound with
    the best dial settings and the crew's Act III score, then **no-signalling**: every crew member's clockwise rate
    split by what their partner's sensor read (≈ 50/50 both ways, pooled for the whole crew), then credits.
 
@@ -258,9 +268,11 @@ A phone that reloads or drops out rejoins its seat automatically (same name, sam
 the same station. Running a session for real: [`docs/facilitator.md`](docs/facilitator.md); watching a playtest:
 [`docs/playtest.md`](docs/playtest.md).
 
+From the lobby, **Use the lull** or **Start the wave** still skip the night shift and go straight to Act II (for a
+short session).
 
-**Follow-up (not built yet):** event mode doesn't have Act I or the storm. The TV and phones still start at the Act II
-huddle, and their copy doesn't use the Kestrel Station story yet.
+**Follow-up (E2, not built yet):** Acts II and III in event mode still run the older flow (Stable / Leak results,
+measure-only Act III) and the older tool and debrief copy.
 
 ## The physics
 This is the **CHSH game**, a Bell test. Two players who can't talk each get a random bit (the sensor: COOL = 0,
@@ -352,7 +364,8 @@ pnpm session   # a whole session in-process with a fake clock (see below)
 
 `pnpm session` (`scripts/session.ts`) runs the station in-process with a fake clock and a seeded RNG, so it takes
 about a second and is the same every run. It plays a whole session: 4 pairs join and a 9th player is turned away;
-a player drops out mid-wave and rejoins their seat; the TV disconnects and resumes; one Act II wave; the engineering
+the night shift (the briefing, then Act I played by the rule over the radio, with one player changing their mind and
+every round held) and the storm; a player drops out mid-wave and rejoins their seat; the TV disconnects and resumes; one Act II wave; the engineering
 report; the tool; two Act III waves with tuned dials (A 0° / 45°, B 22.5° / 157.5°), whose pooled rate must be
 clearly above 75%; the debrief. CI runs it after `pnpm smoke`.
 
@@ -381,13 +394,15 @@ timers with Playwright's clock. Output goes to the git-ignored `shots/<out>/<siz
 - `NN-name.full.png` is the whole page, with a dashed line at the fold.
 
 **Event mode:** `pnpm shots --event` puts the real station on the preview server and plays a session with a TV and
-two phones (Table A and Table B, one pair): the lobby (empty and seated), joining, the huddle, a live round, a result,
+two phones (Table A and Table B, one pair): the lobby (empty and seated), joining, the briefing, an Act I round (and
+Table B's radio once Table A has set a pump), an Act I result, the storm's static and its log, the lull, a live round, a result,
 wave done, the engineering report, the tool, the Act III huddle, an Act III round (and a phone that has measured), a
 result, wave done and every debrief step. It runs the session twice: the TV at 1920×1080 with phones at 390×844, then
 the TV at 1280×720 with phones at 375×667. The server's timers are real, so live rounds and results get viewport
 shots only. `/station-info` answers a made-up `192.168.1.20`, so the shots never show your machine's address. Output
 goes to `shots/<out>/event/<device>-<size>/`, with the same `report.md`; `--compare before after --event` makes the
-contact sheets.
+contact sheets. The TV never scrolls, so for TV screens the report also flags any region whose content is cut off
+(`⚠ cut off: briefing 13px`).
 
 The run fails if any text in a coolant ring renders below 12px, or if any stability-gauge labels overlap. `report.md` lists, for each screen and size, the page height in screen-heights, whether the main button is visible
 without scrolling, and any horizontal overflow. The run also checks that the rule sheet keeps focus inside it,

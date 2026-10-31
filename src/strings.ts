@@ -1,6 +1,6 @@
 // All player-facing text in one place. Edit freely.
 // In-world copy only, up to the debrief: physics words (qubit, Bell, CHSH…) appear only in `debrief`.
-import { ACT1_ROUND_MS, ACT1_ROUNDS } from "./config.ts";
+import { ACT1_ROUND_MS, ACT1_ROUNDS, MP_ACT1_ROUND_MS } from "./config.ts";
 import type { ClassicalStrategy, RoundResult } from "./shared/chsh.ts";
 import { HOT, roundCause } from "./shared/fiction.ts";
 
@@ -12,6 +12,7 @@ export const STATION_NAME = "Kestrel Station";
 
 /** Act I: how CORA calls her reading over the radio. */
 const CORA_READING = { 0: "Cool here.", 1: "Hot here!" } as const;
+const ROMAN: Record<number, string> = { 1: "I", 2: "II", 3: "III" };
 
 export const S = {
   title: "Quantum Crew",
@@ -462,6 +463,30 @@ export const S = {
     reconnecting: "Signal lost. Reconnecting…",
     table: (t: string) => `Table ${t}`,
     you: "you",
+    /** A section of the ring, named for the result ring: "A · you", "B · Bo". */
+    ringSide: (table: string, name: string) => `${table} · ${name}`,
+    /** The TV's briefing when the night shift starts: the solo background, for pairs. */
+    briefing: {
+      kicker: `Station log · ${STATION_NAME}`,
+      title: "The night shift",
+      lines: [
+        `${STATION_NAME} drifts on the edge of a young, restless star. When it flares, one of the station's two sections heats up without warning, and a coolant ring through both carries the heat away.`,
+        `Tonight you keep the night shift in pairs: one of you at Table A, one at Table B, each running the pump in your own section. ${CREW_NAME}, the station's AI, runs any empty seat.`,
+      ],
+      routine: `Each round: your sensor on your phone, your partner's reading and pump on the radio. Set your pump within ${MP_ACT1_ROUND_MS / 1000} seconds.`,
+    },
+    /** Act I on a phone: the radio with a human partner (CORA speaks her own lines, `crew.reading`). */
+    radio: {
+      reads: (name: string, light: 0 | 1) => `${name} reads ${light === 1 ? "HOT" : "COOL"}.`,
+      turning: (name: string, pump: 0 | 1) => `${name} is turning ${pump === 0 ? "clockwise" : "anticlockwise"}.`,
+      noPump: (name: string) => `${name} hasn't set a pump yet.`,
+    },
+    /** The storm in event mode. With a human partner the radio's last words come from the station log. */
+    storm: {
+      log: "Station log",
+      logBreak: "Flare warning: a surge is coming off the star. Hold the pumps st—",
+      next: "Next: the lull, the last chance to talk before the first wave.",
+    },
   },
 
   tv: {
@@ -475,29 +500,38 @@ export const S = {
     noPlayers: "Nobody aboard yet.",
     phase: {
       lobby: "Scan to join. Pick Table A or Table B.",
-      strategy: "Strategy huddle: talk to your partner now",
-      round: "Comms blackout: no talking between tables",
-      roundResult: "Comms blackout: no talking between tables",
-      batchDone: "Batch complete",
+      briefing: "The night shift",
+      storm: "Static",
+      strategy: "The lull: last chance to talk",
+      round: "Storm wave: radio down, no talking",
+      roundResult: "Storm wave: radio down, no talking",
+      batchDone: "The wave has passed",
       ceiling: "Engineering report",
       tool: "The Entanglement Tool",
       debrief: "Debrief",
     },
+    /** Act I's rounds: the radio works, so the banner says so. */
+    act1Banner: "Night shift: radio working, talk freely",
+    act1RoundOf: (round: number) => `Night shift · round ${round}/${ACT1_ROUNDS}`,
     batchHeld: (pct: string) => `${pct} of rounds held`,
-    roundOf: (batch: number, round: number, size: number) => `Batch ${batch} · round ${round}/${size}`,
+    roundOf: (batch: number, round: number, size: number) => `Wave ${batch} · round ${round}/${size}`,
     pooled: "Station stability · last 48 rounds",
-    allTime: (act: number, pct: string, n: number) => `Act ${act === 2 ? "II" : "III"} so far: ${pct} of ${n} rounds`,
+    act1Pooled: "Night shift · every round so far",
+    allTime: (act: number, pct: string, n: number) => `Act ${ROMAN[act]} so far: ${pct} of ${n} rounds`,
     timeouts: (n: number) => `${n} too slow`,
     pair: (id: number) => `Pair ${id}`,
     controls: "Host controls",
     cmd: {
-      startStrategy: "Start huddle (45 s)",
-      startBatch: "Start batch",
+      startNightShift: "Start the night shift",
+      startStrategy: "Use the lull (45 s)",
+      startBatch: "Start the wave",
       revealCeiling: "Reveal ceiling",
       unlockTool: "Unlock tool",
       debrief: "Debrief",
       reset: "Reset",
     },
+    /** Start batch, during the briefing: starts Act I's rounds. */
+    startRounds: "Start the rounds",
     resetConfirm: "Reset the session? Scores are cleared; players stay.",
     toolLines: [
       "Two linked crystals for every pair: one in each partner's tool, one at each table.",
@@ -506,7 +540,7 @@ export const S = {
     ],
     showHint: "Show hint",
     hideHint: "Hide hint",
-    crewAct: (act: number, pct: string, n: number) => `Your crew in Act ${act === 2 ? "II" : "III"}: ${pct} of ${n} rounds`,
+    crewAct: (act: number, pct: string, n: number) => `Your crew in Act ${ROMAN[act]}: ${pct} of ${n} rounds`,
     wholeCrew: "Whole crew",
     wobble: "A few rounds each makes the numbers wobble. Over many rounds every row settles at 50%, whatever the partner's sensor read.",
     marginalHead: {
@@ -526,10 +560,16 @@ export const S = {
     seat: (table: string, name: string) => `Table ${table} · ${name}`,
     partner: (name: string, table: string) => `Partner: ${name} (Table ${table})`,
     lobby: "You're aboard. Eyes on the big screen.",
-    waitingSeat: "You'll get a partner after this batch.",
-    huddle: "Strategy huddle",
-    huddleBody: "Talk to your partner now. Agree what you'll each do. When the clock runs out, comms go dark.",
-    huddleBody3: "Talk to your partner now. Agree how you'll each set your dials. When the clock runs out, comms go dark.",
+    waitingSeat: "You'll get a partner after this wave.",
+    huddle: "The lull: last chance to talk",
+    huddleBody: "Agree with your partner what you'll each do. When the clock runs out the next wave hits, and the radio goes dark.",
+    huddleBody3:
+      "Agree with your partner how you'll each set your dials. When the clock runs out the next wave hits, and the radio goes dark.",
+    /** The briefing on a phone: the big screen tells the story. */
+    briefing: "The night shift",
+    briefingBody: "The radio works tonight: each round you'll hear your partner's reading and pump. Eyes on the big screen.",
+    /** Act I: the pump can change until the round ends. */
+    act1Change: "You can change it until the round ends.",
     tuneNow: "Set one dial for COOL and one for HOT. Your partner sets theirs. Work out together what holds.",
     retune: "Retune your dials",
     plan: "Your plan",

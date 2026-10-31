@@ -1,7 +1,7 @@
 // A phone's connection: joins a room at a table, receives only its own sensor reading, and sends pump intents (`player:valve` on the wire).
 import { create } from "zustand";
 import type { ClassicalStrategy, Light, Table, TuningConfig, Valve } from "../shared/chsh.ts";
-import type { Act, RoomState } from "../shared/protocol.ts";
+import type { Act, PartnerCall, RoomState, RoundOutcome } from "../shared/protocol.ts";
 import { DEFAULT_PLAN, DEFAULT_TUNING } from "../config.ts";
 import { toLocalDeadline } from "./useCountdown.ts";
 import { connectStation, session, type SocketStatus, type Station } from "./socket.ts";
@@ -11,8 +11,8 @@ const KEY = "qc-player";
 export type Seat = { room: string; name: string; table: Table };
 
 /**
- * `answered`: the pump direction this phone set (Act II) or got back from MEASURE (Act III). `measuring`: MEASURE was tapped
- * and the result hasn't arrived yet.
+ * `answered`: the pump direction this phone set (Acts I and II; Act I can change it until the round ends) or got back
+ * from MEASURE (Act III). `measuring`: MEASURE was tapped and the result hasn't arrived yet. `partner`: Act I's radio.
  */
 type LiveRound = {
   roundId: string;
@@ -22,6 +22,7 @@ type LiveRound = {
   dialDeg: number | null;
   answered: Valve | null;
   measuring: boolean;
+  partner: PartnerCall | null;
 };
 
 type PlayerStore = {
@@ -31,7 +32,8 @@ type PlayerStore = {
   state: RoomState | null;
   localDeadline: number | null;
   round: LiveRound | null;
-  flash: { roundId: string; win: boolean; timedOut: boolean } | null;
+  /** The last round's result for this phone's pair (shown until the next round starts). */
+  flash: ({ roundId: string } & RoundOutcome) | null;
   plan: ClassicalStrategy;
   tuning: TuningConfig;
   error: string | null;
@@ -94,18 +96,27 @@ export const usePlayer = create<PlayerStore>()((set, get) => ({
                 light: msg.light,
                 ms: Math.max(0, msg.deadline - msg.serverNow),
                 dialDeg: msg.dialDeg ?? null,
-                answered: null,
+                answered: msg.pump ?? null,
                 measuring: false,
+                partner: msg.partner ?? null,
               },
               flash: null,
             });
+          case "round:partner": {
+            const { round } = get();
+            if (round?.roundId === msg.roundId && round.partner)
+              set({ round: { ...round, partner: { ...round.partner, pump: msg.pump } } });
+            return;
+          }
           case "round:measured": {
             const { round } = get();
             if (round?.roundId === msg.roundId) set({ round: { ...round, answered: msg.valve, measuring: false } });
             return;
           }
-          case "round:result":
-            return set({ round: null, flash: { roundId: msg.roundId, win: msg.win, timedOut: msg.timedOut } });
+          case "round:result": {
+            const { type: _, ...outcome } = msg;
+            return set({ round: null, flash: outcome });
+          }
           case "error":
             if (msg.code === "no-room" || msg.code === "table-full") {
               station?.close();
@@ -129,7 +140,8 @@ export const usePlayer = create<PlayerStore>()((set, get) => ({
 
   answer(valve) {
     const { round } = get();
-    if (!round || round.act !== 2 || round.answered !== null) return;
+    // Act I: the last tap counts, so a different pump is sent again. Act II: the first tap counts.
+    if (!round || round.act === 3 || round.answered === valve || (round.act === 2 && round.answered !== null)) return;
     station?.send({ type: "player:valve", roundId: round.roundId, valve });
     set({ round: { ...round, answered: valve } });
   },

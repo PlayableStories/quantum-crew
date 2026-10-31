@@ -42,7 +42,15 @@ export const DEBRIEF_AFTER_BATCHES = 2;
 export const MP_ROUND_MS = 3500;
 /** How long the result of a round shows before the next light. */
 export const MP_RESULT_MS = 1500;
-/** Strategy huddle length; the batch starts automatically when it ends. */
+/** Event Act I (the night shift, radio working): time to hear the partner's reading and set the pump. */
+export const MP_ACT1_ROUND_MS = 8000;
+/** Event Act I: a round ends early once every pump is set and none has changed for this long. */
+export const ACT1_SETTLE_MS = 1500;
+/** Event Act I: how long a round's result (its cause and the ring) shows before the next reading. */
+export const MP_ACT1_RESULT_MS = 3500;
+/** Event: the storm's static on the TV and phones before the TV shows the storm log. */
+export const STORM_STATIC_MS = 6000;
+/** Strategy huddle (the lull) length; the wave starts automatically when it ends. */
 export const STRATEGY_MS = 45_000;
 /** Pooled stability on the TV is the win rate of the last this-many rounds across all pairs. */
 export const ROLLING_WINDOW = 48;

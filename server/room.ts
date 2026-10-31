@@ -3,16 +3,23 @@
 // Each phone only ever receives its own light. Clock, randomness, timers and sending are injected, so
 // tests can drive a whole session without sockets or real time.
 import {
+  ACT1_ROUNDS,
+  ACT1_SETTLE_MS,
   BATCH_SIZE,
   BOT_ACT2_PLAN,
   DEFAULT_PLAN,
   DEFAULT_TUNING,
   MAX_PAIRS,
+  MP_ACT1_RESULT_MS,
+  MP_ACT1_ROUND_MS,
   MP_RESULT_MS,
   MP_ROUND_MS,
   ROLLING_WINDOW,
+  STORM_STATIC_MS,
   STRATEGY_MS,
 } from "../src/config.ts";
+import { act1Order, type SensorPair } from "../src/shared/act1.ts";
+import { roundCause } from "../src/shared/fiction.ts";
 import {
   DIAL_POSITIONS,
   OPTIMAL_TUNING,
@@ -40,6 +47,7 @@ import type {
   RoundOutcome,
   ServerMsg,
 } from "../src/shared/protocol.ts";
+import { roundIdOf } from "../src/shared/protocol.ts"; // a value, so not in the type-only import above
 import { CREW_NAME } from "../src/strings.ts";
 import type { Rng } from "../src/shared/rng.ts";
 
@@ -79,6 +87,7 @@ type SeatMarginal = { name: string; table: Table; green: { open: number; n: numb
 type LiveRound = { id: string; deadline: number; byPair: Map<number, PairRound> };
 
 const emptyRate = (): RateSummary => ({ rounds: 0, wins: 0, timeouts: 0 });
+const emptyActs = (): Record<Act, RateSummary> => ({ 1: emptyRate(), 2: emptyRate(), 3: emptyRate() });
 const addResult = (r: RateSummary, o: RoundOutcome) => {
   r.rounds++;
   if (o.win) r.wins++;
@@ -104,18 +113,22 @@ export function createRoom(code: string, deps: RoomDeps) {
   let pairs: Pair[] = [];
 
   let phase: RoomPhase = "lobby";
-  let act: Act = 2;
+  let act: Act = 1;
   let batchNo = 0;
   let roundNo = 0;
   let deadline: number | null = null;
   let live: LiveRound | null = null;
   let cancelTimer: (() => void) | null = null;
+  /** Act I: ends the round early once every pump is set and has stayed put for ACT1_SETTLE_MS. */
+  let cancelSettle: (() => void) | null = null;
+  /** Act I: each pair's sensor order for the night shift (every combination, no double HOT first). */
+  let act1Orders = new Map<number, SensorPair[]>();
   let ceilingRevealed = false;
   let toolUnlocked = false;
 
   // Stats
   let rolling: boolean[] = [];
-  let actStats: Record<Act, RateSummary> = { 2: emptyRate(), 3: emptyRate() };
+  let actStats: Record<Act, RateSummary> = emptyActs();
   let pairStats = new Map<number, Record<Act, RateSummary>>();
   let batchStats: RateSummary | null = null;
   let lastBatch: RateSummary | null = null;
@@ -132,11 +145,12 @@ export function createRoom(code: string, deps: RoomDeps) {
     const seat = (p: Player | null) => ({ playerId: p?.id ?? null, name: p?.name ?? BOT_NAME });
     const pairInfo = (pair: Pair): PairInfo => {
       const pr = live?.byPair.get(pair.id);
-      const stats = pairStats.get(pair.id) ?? { 2: emptyRate(), 3: emptyRate() };
+      const stats = pairStats.get(pair.id) ?? emptyActs();
       return {
         id: pair.id,
         a: seat(pair.a),
         b: seat(pair.b),
+        act1: stats[1],
         act2: stats[2],
         act3: stats[3],
         answered: { a: !!pr && pr.a !== null, b: !!pr && pr.b !== null },
@@ -161,6 +175,7 @@ export function createRoom(code: string, deps: RoomDeps) {
       pairs: pairs.map(pairInfo),
       stability: {
         rolling: rolling.length ? rolling.filter(Boolean).length / rolling.length : null,
+        act1: actStats[1],
         act2: actStats[2],
         act3: actStats[3],
       },
@@ -206,7 +221,7 @@ export function createRoom(code: string, deps: RoomDeps) {
     const bs = byTable("B");
     const n = Math.max(as.length, bs.length);
     pairs = Array.from({ length: n }, (_, i) => ({ id: i + 1, a: as[i] ?? null, b: bs[i] ?? null }));
-    for (const pair of pairs) if (!pairStats.has(pair.id)) pairStats.set(pair.id, { 2: emptyRate(), 3: emptyRate() });
+    for (const pair of pairs) if (!pairStats.has(pair.id)) pairStats.set(pair.id, emptyActs());
   }
 
   const inBatch = () => phase === "round" || phase === "roundResult";
@@ -224,12 +239,19 @@ export function createRoom(code: string, deps: RoomDeps) {
   function clearTimer() {
     cancelTimer?.();
     cancelTimer = null;
+    clearSettle();
+  }
+
+  function clearSettle() {
+    cancelSettle?.();
+    cancelSettle = null;
   }
 
   // --- Rounds -----------------------------------------------------------------------------------
 
-  /** The AI crewmate's Act II valve for a light. */
-  const botValve = (light: Light): Valve => classicalValve(BOT_ACT2_PLAN, light);
+  /** The AI crewmate's Act II valve for a light. Act I: a random direction, called over the radio (as in solo). */
+  const botValve = (light: Light): Valve =>
+    act === 1 ? (deps.rng() < 0.5 ? 0 : 1) : classicalValve(BOT_ACT2_PLAN, light);
 
   /** The dial a seat uses for a light: the player's own tuning, or the optimal one for an AI crewmate. */
   const seatDial = (pair: Pair, side: Side, light: Light) =>
@@ -259,34 +281,58 @@ export function createRoom(code: string, deps: RoomDeps) {
       return broadcast();
     }
     repair();
+    // From the lobby or the storm, a wave starts Act II (Act I is only ever started from the briefing).
+    if (act === 1) act = 2;
     batchNo++;
     roundNo = 0;
     batchStats = emptyRate();
     nextRound();
   }
 
+  /** The night shift's rounds: radio working, each pair on its own sensor order. */
+  function startAct1() {
+    clearTimer();
+    repair();
+    act = 1;
+    roundNo = 0;
+    act1Orders = new Map(pairs.map((pair) => [pair.id, act1Order(deps.rng)]));
+    nextRound();
+  }
+
+  /** After the last Act I round: the radio breaks up (static until `deadline`, then the TV shows the storm log). */
+  function startStorm() {
+    clearTimer();
+    live = null;
+    phase = "storm";
+    deadline = deps.now() + STORM_STATIC_MS;
+    broadcast();
+  }
+
+  const roundMs = () => (act === 1 ? MP_ACT1_ROUND_MS : MP_ROUND_MS);
+
   function nextRound() {
     roundNo++;
-    const id = `${batchNo}-${roundNo}`;
+    const id = roundIdOf(act, batchNo, roundNo);
     const now = deps.now();
     const byPair = new Map<number, PairRound>();
     for (const pair of pairs) {
-      const { x, y } = drawInputs(deps.rng);
+      const planned = act === 1 ? act1Orders.get(pair.id)?.[roundNo - 1] : undefined;
+      const { x, y } = planned ? { x: planned[0], y: planned[1] } : drawInputs(deps.rng);
       const pr: PairRound = { x, y, a: null, b: null, theta: { a: null, b: null } };
       // AI crewmates answer at once. DECISION: in Act III the bot measures at the start of the round, so it is
       // always first and its human partner's result is the conditioned one.
       for (const side of ["a", "b"] as const) {
         if (pair[side]) continue;
-        if (act === 2) pr[side] = botValve(side === "a" ? x : y);
+        if (act !== 3) pr[side] = botValve(side === "a" ? x : y);
         else measureSide(pair, pr, side);
       }
       byPair.set(pair.id, pr);
     }
-    live = { id, deadline: now + MP_ROUND_MS, byPair };
+    live = { id, deadline: now + roundMs(), byPair };
     phase = "round";
     deadline = live.deadline;
     for (const pair of pairs) sendRoundStart(pair);
-    setTimer(resolveRound, MP_ROUND_MS);
+    setTimer(resolveRound, roundMs());
     broadcast();
   }
 
@@ -297,19 +343,41 @@ export function createRoom(code: string, deps: RoomDeps) {
     const base = { type: "round:start" as const, roundId: live.id, act, deadline: live.deadline, serverNow: deps.now() };
     for (const side of ["a", "b"] as const) {
       const p = pair[side];
-      if (!p || (only && only !== p) || pr[side] !== null) continue;
+      // Act I: a pump can change until the round ends, so a rejoining phone gets the round even after setting it.
+      if (!p || (only && only !== p) || (act !== 1 && pr[side] !== null)) continue;
       const light = side === "a" ? pr.x : pr.y;
-      toPlayer(p, { ...base, light, ...(act === 3 ? { dialDeg: seatDial(pair, side, light) } : {}) });
+      const other: Side = side === "a" ? "b" : "a";
+      const radio = { partner: { light: other === "a" ? pr.x : pr.y, pump: pr[other] }, pump: pr[side] };
+      toPlayer(p, {
+        ...base,
+        light,
+        ...(act === 3 ? { dialDeg: seatDial(pair, side, light) } : {}),
+        ...(act === 1 ? radio : {}),
+      });
     }
   }
 
-  /** Act II: a valve tap. Act III: a MEASURE tap (`valve` undefined). */
+  /** Act I: a pump tap, which may change the pump until the round ends; the partner hears it over the radio. The
+   *  round ends early once every pump is set and none has changed for ACT1_SETTLE_MS. */
+  function answerAct1(pair: Pair, pr: PairRound, side: Side, valve: Valve) {
+    if (!live || pr[side] === valve) return;
+    pr[side] = valve;
+    const partner = pair[side === "a" ? "b" : "a"];
+    toPlayer(partner, { type: "round:partner", roundId: live.id, pump: valve });
+    clearSettle();
+    const allSet = [...live.byPair.values()].every((r) => r.a !== null && r.b !== null);
+    if (allSet) cancelSettle = deps.schedule(resolveRound, ACT1_SETTLE_MS);
+    broadcast();
+  }
+
+  /** Act I / II: a valve tap. Act III: a MEASURE tap (`valve` undefined). */
   function answer(player: Player, roundId: string, valve?: Valve) {
     if (phase !== "round" || !live || live.id !== roundId || deps.now() > live.deadline) return;
     const pair = pairs.find((p) => p.a === player || p.b === player);
     const pr = pair && live.byPair.get(pair.id);
     if (!pair || !pr) return;
     const side: Side = pair.a === player ? "a" : "b";
+    if (act === 1) return valve === undefined ? undefined : answerAct1(pair, pr, side, valve);
     if (pr[side] !== null) return;
     if (act === 2) {
       if (valve === undefined) return;
@@ -346,12 +414,22 @@ export function createRoom(code: string, deps: RoomDeps) {
       const pr = live.byPair.get(pair.id);
       if (!pr) continue;
       const r = scoreRound(pr.x, pr.y, pr.a, pr.b);
-      const outcome = { pairId: pair.id, win: r.win, timedOut: r.timedOut };
+      const outcome: RoundOutcome = {
+        pairId: pair.id,
+        win: r.win,
+        timedOut: r.timedOut,
+        x: pr.x,
+        y: pr.y,
+        a: pr.a,
+        b: pr.b,
+        cause: roundCause(pr),
+      };
       results.push(outcome);
       addResult(actStats[act], outcome);
       addResult(pairStats.get(pair.id)![act], outcome);
       if (batchStats) addResult(batchStats, outcome);
-      rolling.push(r.win);
+      // DECISION: the station gauge starts with the first storm wave; Act I (every round winnable) has its own rate.
+      if (act !== 1) rolling.push(r.win);
       recordMarginal(pair, "a", pr.a, pr.y);
       recordMarginal(pair, "b", pr.b, pr.x);
       const msg: ServerMsg = { type: "round:result", roundId: live.id, ...outcome };
@@ -362,7 +440,8 @@ export function createRoom(code: string, deps: RoomDeps) {
     toHost({ type: "round:results", roundId: live.id, results });
     phase = "roundResult";
     deadline = null;
-    setTimer(roundNo < BATCH_SIZE ? nextRound : endBatch, MP_RESULT_MS);
+    if (act === 1) setTimer(roundNo < ACT1_ROUNDS ? nextRound : startStorm, MP_ACT1_RESULT_MS);
+    else setTimer(roundNo < BATCH_SIZE ? nextRound : endBatch, MP_RESULT_MS);
     broadcast();
   }
 
@@ -380,9 +459,18 @@ export function createRoom(code: string, deps: RoomDeps) {
   function command(conn: Conn, cmd: HostCommand) {
     const notNow = () => error(conn, "not-now", `Can't ${cmd} during ${phase}.`);
     switch (cmd) {
+      case "startNightShift":
+        if (phase !== "lobby" || players.length === 0) return notNow();
+        repair();
+        act = 1;
+        phase = "briefing";
+        deadline = null;
+        return broadcast();
       case "startStrategy":
-        if (inBatch() || phase === "debrief") return notNow();
-        if (phase === "lobby") act = 2;
+        // Not from the briefing: once the night shift has started, its rounds come first.
+        if (inBatch() || phase === "debrief" || phase === "briefing") return notNow();
+        // From the lobby, the briefing or the storm: the lull before Act II's first wave.
+        if (act === 1) act = 2;
         phase = "strategy";
         deadline = deps.now() + STRATEGY_MS;
         // DECISION: when the huddle ends, the comms blackout starts with the batch, no extra host tap.
@@ -391,7 +479,7 @@ export function createRoom(code: string, deps: RoomDeps) {
       case "startBatch":
         if (inBatch() || phase === "debrief" || players.length === 0) return notNow();
         if (phase === "ceiling" && !toolUnlocked) return notNow();
-        return startBatch();
+        return phase === "briefing" ? startAct1() : startBatch();
       case "revealCeiling":
         if (inBatch() || act !== 2) return notNow();
         clearTimer();
@@ -416,14 +504,15 @@ export function createRoom(code: string, deps: RoomDeps) {
       case "reset":
         clearTimer();
         phase = "lobby";
-        act = 2;
+        act = 1;
         batchNo = roundNo = 0;
         deadline = null;
         live = null;
         ceilingRevealed = toolUnlocked = false;
         rolling = [];
-        actStats = { 2: emptyRate(), 3: emptyRate() };
+        actStats = emptyActs();
         pairStats = new Map();
+        act1Orders = new Map();
         marginals = new Map();
         batchStats = lastBatch = null;
         for (const p of players) {
@@ -496,7 +585,7 @@ export function createRoom(code: string, deps: RoomDeps) {
           if (msg.tuning) player.tuning = { greenDeg: snapDial(msg.tuning.greenDeg), redDeg: snapDial(msg.tuning.redDeg) };
           return;
         case "player:valve":
-          if (!player || act !== 2) return;
+          if (!player || act === 3) return;
           return answer(player, msg.roundId, msg.valve);
         case "player:measure":
           if (!player || act !== 3) return;
