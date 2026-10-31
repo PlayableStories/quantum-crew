@@ -40,8 +40,9 @@ export const DEBRIEF_AFTER_BATCHES = 2;
 // DECISION: multiplayer rounds get longer than solo ones, to allow for phones and network lag.
 /** Time a phone has to answer a round. */
 export const MP_ROUND_MS = 3500;
-/** How long the result of a round shows before the next light. */
-export const MP_RESULT_MS = 1500;
+/** How long the result of a round shows before the next light (the cause, the ring and a line of telemetry). */
+// DECISION (E2a): 3.5 s, up from 1.5 s, so the cause can be read; tune after the first playtest.
+export const MP_RESULT_MS = 3500;
 /** Event Act I (the night shift, radio working): time to hear the partner's reading and set the pump. */
 export const MP_ACT1_ROUND_MS = 8000;
 /** Event Act I: a round ends early once every pump is set and none has changed for this long. */

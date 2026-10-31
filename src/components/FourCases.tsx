@@ -4,19 +4,33 @@
 import { classicalCases, type ClassicalStrategy } from "../shared/chsh.ts";
 import { HOT, roundCause } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
+import type { ReactNode } from "react";
 import { CrewName } from "./AiBadge.tsx";
 import { PumpIcon } from "./PumpIcon.tsx";
 import { LightIcon } from "./SensorLight.tsx";
 
-export function FourCases({ plan, crewPlan }: { plan: ClassicalStrategy; crewPlan: ClassicalStrategy }) {
+/** `order` says whose reading comes first on each card (default "you · CORA"; the TV says "Table A · Table B"). */
+export function FourCases({
+  plan,
+  crewPlan,
+  order,
+}: {
+  plan: ClassicalStrategy;
+  crewPlan: ClassicalStrategy;
+  order?: ReactNode;
+}) {
   const cases = classicalCases(plan, crewPlan);
   const wins = cases.filter((c) => c.win).length;
   return (
     <div className="cases">
       <p className="kicker">{S.readout.casesHead}</p>
       <p className="muted small cases__order">
-        {S.readout.casesOrder}
-        <CrewName />
+        {order ?? (
+          <>
+            {S.readout.casesOrder}
+            <CrewName />
+          </>
+        )}
       </p>
       <ul className="cases__grid">
         {cases.map((c) => (

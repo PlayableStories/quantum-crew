@@ -1,7 +1,7 @@
 # Running a Quantum Crew session
 
 For whoever runs event mode: one TV or projector, two tables of players with a phone each, and you at the host
-controls along the bottom of the TV. A session takes about 35 minutes for up to 8 players (4 pairs, at most 4
+controls along the bottom of the TV. A session takes about 40 minutes for up to 8 players (4 pairs, at most 4
 players per table; CORA, the AI crewmate, fills any empty seat).
 
 Setting up the server: see [Run event mode at a venue](../README.md#run-event-mode-at-a-venue) in the README.
@@ -35,10 +35,10 @@ The host controls only work at the right moments; the others are greyed out.
 | 0:05 | **Briefing.** The TV shows Kestrel Station, the two tables, the coolant ring and its rule: pumps match, unless both sensors are HOT, then they must differ. Read it aloud. Phones show the quick rule. | **Start the night shift** |
 | 0:07 | **Act I, the night shift.** Six rounds with the radio working: each phone shows the partner's reading and pump, and talking out loud is fine. A pump can change until the round ends; a round ends after 8 s, or as soon as both pumps have settled. Every round is winnable. | **Start the rounds** (then it runs itself) |
 | 0:09 | **The storm.** It follows by itself: the radio breaks up mid-line on every phone, then the TV shows the storm log. Read it aloud: the waves will kill the radio. | nothing |
-| 0:10 | **The lull.** The last chance to talk: partners agree a plan for 45 s. The wave starts when the clock runs out. | **Use the lull (45 s)** (or **Start the wave** to cut it short) |
-| 0:11 | **Act II wave.** 12 rounds, about a minute. The radio is down: phones show only their own sensor and two pump buttons. No talking between tables. | nothing (it runs itself) |
-| 0:12 | **Wave passed.** The TV shows how many rounds held. Run one or two more lulls and waves so they feel the ceiling. | **Use the lull (45 s)**, then waves again |
-| 0:17 | **Engineering report.** No plan beats 75% ("the best plan loses one in four"). | **Reveal ceiling** |
+| 0:10 | **The lull.** The last chance to talk: each player picks one of four named plans for 45 s, and sees their partner's choice live. The plans lock and the wave starts when the clock runs out. | **Use the lull (45 s)** (or **Start the wave** to cut it short) |
+| 0:11 | **Act II wave.** 12 rounds, about 1½ minutes. The radio is down: phones show their own sensor, both locked plans and two pump buttons. No talking between tables. Each result shows what happened (Circulating, Purge, Overheat…). | nothing (it runs itself) |
+| 0:13 | **Wave passed.** The TV shows every pair's plans case by case and their true rate. Point at a ✗ case: that's the round the plan always loses. A "by luck" line means the wave beat 80% but the plan can't. Run one or two more lulls and waves so they feel the ceiling. | **Use the lull (45 s)**, then waves again |
+| 0:18 | **Engineering report.** The plan board: every pairing of plans, exactly 75% or 25%. The crew's pairings are marked as tried; engineering ran the rest. No plan beats 75% ("the best plan loses one in four"). | **Reveal ceiling** |
 | 0:19 | **The tool.** Every pair gets linked crystals. Phones show two dials, one for COOL and one for HOT. | **Unlock tool** |
 | 0:20 | **Act III lull.** Partners agree dial settings. If they're stuck after a wave, show the hint. | **Use the lull (45 s)**; **Show hint** if needed |
 | 0:21 | **Act III waves.** Two or three waves; each round, phones show the sensor, the dial in use and MEASURE. The TV adds the 85.4% line. | **Start the wave** / **Use the lull (45 s)** between waves |
