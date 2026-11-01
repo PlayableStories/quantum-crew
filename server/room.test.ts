@@ -451,3 +451,64 @@ describe("Act I: the night shift and the storm", () => {
     expect(t.roomState("tv").stability.act1.rounds).toBe(0);
   });
 });
+
+describe("Act II plans (E2a)", () => {
+  const always = { onGreen: 0, onRed: 0 } as const;
+  const revHot = { onGreen: 0, onRed: 1 } as const;
+  const revCool = { onGreen: 1, onRed: 0 } as const;
+
+  it("a plan change reaches the partner at once; CORA's seat shows standard procedure", () => {
+    const t = setup(21);
+    t.join("a1", "Ada", "A");
+    t.join("b1", "Bo", "B");
+    t.join("a2", "Cy", "A");
+    t.host("startStrategy");
+    t.clear("b1");
+    t.send("a1", { type: "player:strategy", act: 2, classical: revHot });
+    const s = t.roomState("b1");
+    expect(s.pairs[0]!.plans).toEqual({ a: revHot, b: always });
+    expect(s.pairs[1]!.plans.b).toEqual(always); // CORA
+    expect(s.pairs[0]!.locked).toBeNull();
+  });
+
+  it("plans lock when the wave starts; a change mid-wave doesn't move the lock; pairings are recorded as tried", () => {
+    const t = setup(22);
+    t.join("a1", "Ada", "A");
+    t.join("b1", "Bo", "B");
+    t.send("a1", { type: "player:strategy", act: 2, classical: revHot });
+    t.send("b1", { type: "player:strategy", act: 2, classical: revCool });
+    t.host("startBatch");
+    t.send("a1", { type: "player:strategy", act: 2, classical: always });
+    const s = t.roomState("tv");
+    expect(s.pairs[0]!.locked).toEqual({ a: revHot, b: revCool });
+    expect(s.pairs[0]!.plans.a).toEqual(always);
+    expect(s.triedPlans).toEqual(["1-2"]);
+    for (let r = 1; r <= BATCH_SIZE; r++) t.advance(MP_ROUND_MS + MP_RESULT_MS);
+    const done = t.roomState("tv");
+    expect(done.phase).toBe("batchDone");
+    expect(done.pairs[0]!.lastWave).toEqual({ rounds: BATCH_SIZE, wins: 0, timeouts: BATCH_SIZE });
+    // The next wave locks the new plan and adds its pairing.
+    t.host("startBatch");
+    expect(t.roomState("tv").pairs[0]!.locked).toEqual({ a: always, b: revCool });
+    expect(t.roomState("tv").triedPlans.sort()).toEqual(["0-2", "1-2"]);
+    expect(t.roomState("tv").pairs[0]!.lastWave).toEqual({ rounds: 0, wins: 0, timeouts: 0 });
+  });
+
+  it("results carry the cause and both pumps; reset clears plans, locks and pairings", () => {
+    const t = setup(23);
+    t.join("a1", "Ada", "A");
+    t.host("startBatch");
+    const start = t.last("a1", "round:start")!;
+    t.send("a1", { type: "player:valve", roundId: start.roundId, valve: 0 });
+    const result = t.last("a1", "round:result")!;
+    expect(result.a).toBe(0);
+    expect(result.b).toBe(0); // CORA, always clockwise
+    expect(result.cause).toMatch(/circulate|carry|overheat/);
+    t.advance(MP_RESULT_MS);
+    t.host("reset");
+    const s = t.roomState("tv");
+    expect(s.triedPlans).toEqual([]);
+    expect(s.pairs[0]!.locked).toBeNull();
+    expect(s.pairs[0]!.lastWave).toBeNull();
+  });
+});

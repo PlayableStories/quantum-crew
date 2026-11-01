@@ -13,6 +13,10 @@ export const STATION_NAME = "Kestrel Station";
 /** Act I: how CORA calls her reading over the radio. */
 const CORA_READING = { 0: "Cool here.", 1: "Hot here!" } as const;
 const ROMAN: Record<number, string> = { 1: "I", 2: "II", 3: "III" };
+const pumpWord = (v: 0 | 1) => (v === 0 ? "clockwise" : "anticlockwise");
+/** A plan in a few words: "always clockwise", or "COOL → clockwise, HOT → anticlockwise". */
+const planSays = (p: ClassicalStrategy) =>
+  p.onGreen === p.onRed ? `always ${pumpWord(p.onGreen)}` : `COOL → ${pumpWord(p.onGreen)}, HOT → ${pumpWord(p.onRed)}`;
 
 export const S = {
   title: "Quantum Crew",
@@ -264,12 +268,8 @@ export const S = {
     you: "You",
     crewmate: "Crewmate",
     /** The plan both sides locked in, as a reminder during each round. */
-    agreed: (plan: ClassicalStrategy, crewPlan: ClassicalStrategy) => {
-      const word = (v: 0 | 1) => (v === 0 ? "clockwise" : "anticlockwise");
-      const says = (p: ClassicalStrategy) =>
-        p.onGreen === p.onRed ? `always ${word(p.onGreen)}` : `COOL → ${word(p.onGreen)}, HOT → ${word(p.onRed)}`;
-      return `Agreed: you ${says(plan)} · ${CREW_NAME} ${says(crewPlan)}`;
-    },
+    agreed: (plan: ClassicalStrategy, crewPlan: ClassicalStrategy) =>
+      `Agreed: you ${planSays(plan)} · ${CREW_NAME} ${planSays(crewPlan)}`,
     next: "Next round",
     nextSub: "Space / Enter",
   },
@@ -481,6 +481,31 @@ export const S = {
       turning: (name: string, pump: 0 | 1) => `${name} is turning ${pump === 0 ? "clockwise" : "anticlockwise"}.`,
       noPump: (name: string) => `${name} hasn't set a pump yet.`,
     },
+    /** Act II on a phone: the partner's plan, live in the lull (`name` is the partner's, or CORA's). */
+    partnerPlan: (name: string) => `${name}'s plan`,
+    /** During a wave: both locked plans. */
+    agreed: (plan: ClassicalStrategy, partner: string, partnerPlan: ClassicalStrategy) =>
+      `Agreed: you ${planSays(plan)} · ${partner} ${planSays(partnerPlan)}`,
+    /** A round's telemetry line. Only "too slow" names anyone: whose pump wasn't set. */
+    why: (r: RoundResult, mine: "a" | "b", partner: string) => {
+      if (roundCause(r) !== "slow") return S.telemetry.why(r);
+      const theirs = mine === "a" ? r.b : r.a;
+      const own = mine === "a" ? r.a : r.b;
+      if (own === null && theirs === null) return "Neither pump was set in time.";
+      return own === null ? "Your pump wasn't set in time." : `${partner}'s pump wasn't set in time.`;
+    },
+    /** The TV after a wave: each pair's plans, case by case. */
+    casesOrder: "Each card: Table A · Table B",
+    pairPlans: (a: string, aPlan: string, b: string, bPlan: string) => `${a}: ${aPlan} · ${b}: ${bPlan}`,
+    waveHeld: (wins: number, total: number) => `This wave: ${wins} of ${total} held`,
+    /** The TV's luck line, one line per pair: the wave beat 80%, the plan can't. */
+    lucky: (pct: string) => `Above 80% by luck: this plan's true rate is ${pct}.`,
+    /** The engineering report's board: Table A's plan (rows) × Table B's (columns). */
+    board: {
+      rows: "Table A",
+      cols: "Table B",
+      cell: (a: string, b: string, value: string) => `Table A ${a}, Table B ${b}: ${value}`,
+    },
     /** The storm in event mode. With a human partner the radio's last words come from the station log. */
     storm: {
       log: "Station log",
@@ -562,7 +587,7 @@ export const S = {
     lobby: "You're aboard. Eyes on the big screen.",
     waitingSeat: "You'll get a partner after this wave.",
     huddle: "The lull: last chance to talk",
-    huddleBody: "Agree with your partner what you'll each do. When the clock runs out the next wave hits, and the radio goes dark.",
+    huddleBody: "Agree on your plans. When the clock runs out the wave hits, and the radio goes dark.",
     huddleBody3:
       "Agree with your partner how you'll each set your dials. When the clock runs out the next wave hits, and the radio goes dark.",
     /** The briefing on a phone: the big screen tells the story. */

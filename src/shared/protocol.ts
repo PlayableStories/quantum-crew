@@ -3,6 +3,7 @@
 import type { ClassicalStrategy, Light, Table, TuningConfig, Valve } from "./chsh.ts";
 
 import type { RoundCause } from "./fiction.ts";
+import type { CellKey } from "./plans.ts";
 
 /** 1 = the night shift (radio working), 2 = storm waves with plans, 3 = storm waves with the crystals. */
 export type Act = 1 | 2 | 3;
@@ -60,6 +61,12 @@ export type PairInfo = {
   act3: RateSummary;
   /** Whether each seat has answered the live round (no values, so nothing leaks). */
   answered: { a: boolean; b: boolean };
+  /** Act II: each seat's plan as chosen now (partners see it live in the lull; CORA's is BOT_ACT2_PLAN). */
+  plans: { a: ClassicalStrategy; b: ClassicalStrategy };
+  /** Act II: the plans locked when the latest Act II wave started (null before the first). */
+  locked: { a: ClassicalStrategy; b: ClassicalStrategy } | null;
+  /** The pair's rounds in the current or latest wave (null before the first wave). */
+  lastWave: RateSummary | null;
 };
 
 export type RoomState = {
@@ -82,6 +89,8 @@ export type RoomState = {
     act3: RateSummary;
   };
   lastBatch: RateSummary | null;
+  /** Act II: every plan pairing (Table A plan × Table B plan) any pair has played, for the engineering report. */
+  triedPlans: CellKey[];
   ceilingRevealed: boolean;
   toolUnlocked: boolean;
   /** Act III no-signalling data, sent only during the debrief. `crew` pools every seat (bigger sample, closer to 50%). */

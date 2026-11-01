@@ -3200,8 +3200,221 @@ button.board__cell:focus-visible {
     padding-block: 10px;
   }
 
+  .lull .plan-box--phone .plan-box__options {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .lull .plan-box--phone .plan-option {
+    min-height: 36px;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .plan-box--phone {
+    gap: 6px;
+  }
+
   .phone-leave {
     min-height: 44px;
     padding-block: 6px;
   }
+}
+
+/* Event TV, after an Act II wave: each pair's plans case by case. One pair takes the column; two sit side by side;
+   three or four make a 2×2 grid. Sizes follow the TV's own font (em), not the phone-sized rem. */
+.tv__cases {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  gap: var(--gap);
+  grid-template-columns: 1fr;
+  align-content: start;
+}
+
+.tv__cases--2,
+.tv__cases--3,
+.tv__cases--4 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.tv__cases-head {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* Wave done (Act II): the main column takes the whole width; the join panel and pair list step aside. */
+@media (min-width: 900px) {
+  .tv--cases {
+    grid-template-areas: "head head" "main main" "controls controls";
+  }
+}
+
+.tv--cases .tv__side {
+  display: none;
+}
+
+/* Each pair's four cases in one row; the "Equally likely · Each card" line is said once, above all pairs. */
+.tv__pair-cases .cases > .kicker,
+.tv__pair-cases .cases__order {
+  display: none;
+}
+
+.tv__pair-cases .cases__grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.tv__pair-cases .cases__total {
+  display: inline;
+}
+
+.tv__pair-cases {
+  gap: 6px;
+  min-width: 0;
+}
+
+.tv__pair-cases .kicker {
+  margin: 0;
+}
+
+.tv .case {
+  font-size: 0.8em;
+}
+
+.tv .case__reading svg,
+.tv .case__pumps svg {
+  width: 1em;
+  height: 1em;
+}
+
+.tv .cases__order,
+.tv .cases__total,
+.tv__pair-cases p {
+  margin: 0;
+}
+
+.tv__cases--3 .case,
+.tv__cases--4 .case {
+  padding: 4px 6px;
+}
+
+.tv__luck {
+  color: var(--amber);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Event TV, the engineering report: the summary beside the board. */
+.tv__ceiling {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: var(--gap);
+  align-items: start;
+}
+
+.tv__ceiling .board {
+  border: 0;
+  padding: 0;
+  background: none;
+}
+
+.tv__ceiling .board::before,
+.tv__ceiling .board::after {
+  content: none;
+}
+
+.tv__ceiling .board__grid {
+  font-size: 0.75em;
+}
+
+.tv__ceiling .board__cell {
+  font-size: 1.3em;
+}
+
+/* Event phone, the lull: your plan as one compact list, and your partner's choice below it. */
+.plan-box--phone .plan-option {
+  flex-direction: row;
+  justify-content: space-between;
+  min-height: 40px;
+}
+
+.partner-plan {
+  margin: 0;
+  padding: 6px 10px;
+  border-left: 3px solid var(--radio);
+}
+
+.partner-plan .kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Event TV, three or four pairs: compact pair cards, two to a row, seats stacked. */
+.pairs--crowded {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.pairs--crowded > p {
+  grid-column: 1 / -1;
+}
+
+.pairs--crowded .pair {
+  gap: 4px;
+  padding: 8px 10px;
+  font-size: 0.85em;
+}
+
+.pairs--crowded .pair__seats {
+  grid-template-columns: 1fr;
+  gap: 2px;
+}
+
+.pairs--crowded .pair__head strong {
+  font-size: 1.15em;
+}
+
+/* Wave done: a one-line banner, and each pair's true rate and wave score on one line. */
+.tv--cases .tv__banner {
+  flex-direction: row;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 24px;
+}
+
+.tv--cases .tv__banner h1 {
+  font-size: clamp(1.4rem, 2.4vw, 2.6rem);
+}
+
+.tv__pair-cases .cases {
+  display: block;
+}
+
+.tv__pair-cases .cases__grid {
+  margin-bottom: 0;
+}
+
+.tv__pair-cases .cases__total {
+  display: none;
+}
+
+/* Lobby with three or four pairs: a smaller QR so the pair cards fit beside it. */
+.tv__side:has(.pairs--crowded) .tv__join--big .tv__qr {
+  width: clamp(130px, 11vw, 240px);
+}
+
+.tv__pair-cases .case__verdict {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tv__cases--3 .case,
+.tv__cases--4 .case {
+  font-size: 0.75em;
 }

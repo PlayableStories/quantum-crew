@@ -38,8 +38,8 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   `partnerGreen/partnerRed`, `player:valve`. `src/shared/fiction.ts` aliases them (COOL = GREEN = 0, HOT = RED = 1,
   CLOCKWISE = OPEN = 0, ANTICLOCKWISE = CLOSED = 1) and has `roundCause()`; UI code uses the aliases. Never rename in
   `chsh.ts`, protocol or tests for the story's sake. Lights are blue/orange with snowflake/flame icons (`--cool` /
-  `--hot` tokens), never colour alone; win/loss keeps green/red. Solo results name the cause; event phones and TV
-  only get win/timeout from the server, so they show Stable / Leak. `RingDiagram` sits in the rule on the solo intro
+  `--hot` tokens), never colour alone; win/loss keeps green/red. Solo results name the cause; so do event results (the
+  server sends the round and its `cause`), except Act III on phones until E2b (Stable / Leak). `RingDiagram` sits in the rule on the solo intro
   and plan screens. Keys: A / ← = ANTICLOCKWISE (left button), C / → = CLOCKWISE.
 - **Solo crewmate (2026-10-16):** the player sets the whole Act II joint plan: their own `plan` and the store's
   `crewPlan` (default `DEFAULT_CREW_PLAN`, always clockwise), chosen by name from `src/solo/plans.ts` (the four
@@ -139,7 +139,23 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     `.plan-picker`, tighter under 700px tall). The host controls stay one row at 1280 wide. `pnpm shots --event` also
     flags TV regions that are cut off (the TV never scrolls); still cut at 1280×720 and left for E2: the engineering
     report, the tool, debrief steps 1–3. The phone tool screen still scrolls (1.18 / 1.56).
-  - **Next:** E2 split as E2a (Act II) and E2b (Act III).
+- **Event E2a (2026-10-31, Act II at parity):**
+  - `src/solo/plans.ts` moved to `src/shared/plans.ts` (solo re-exports). `PlanBox` (the four named plans as a radio
+    group) moved from `solo/Plan.tsx` to `components/PlanBox.tsx`; an event phone's lull has one (`plan-box--phone`).
+  - **Room:** `PairInfo.plans` (live; a `player:strategy` now broadcasts), `locked` (frozen at each Act II wave start),
+    `lastWave` (the pair's rounds in the current or latest wave); `RoomState.triedPlans` (cell keys, Table A plan ×
+    Table B plan). `MP_RESULT_MS` is 3.5 s.
+  - **Phones:** the lull shows the partner's choice (`S.event.partnerPlan`); a wave shows `S.event.agreed`; Act I and
+    II results show the cause, `S.event.why` (telemetry; "too slow" names whose pump) and the ring. Act III phone
+    results stay Stable / Leak until E2b.
+  - **TV:** pair cards show the cause in every act (in place of the mini-meter while it shows; no meter before a
+    round); three or four pairs are compact, two to a row (`.pairs--crowded`). Wave done (Act II) is `WaveCases`:
+    full width (`.tv--cases` hides the side), each pair's `FourCases` in one row, the total and wave score on one
+    line, `S.event.lucky` when the wave beat 80% and the plan can't (above only). The report is `CeilingPanel`:
+    big 75%, `S.ceiling.engineering` for the crew, `S.ceiling.truth`, `PlanBoard` with `labels` (`S.event.board`).
+  - **Shots:** six crowd players over WebSockets make four pairs; a worst-case check (every pair lucky) after wave
+    done. Still cut at 1280×720, for E2b: the tool and debrief steps 1–3.
+  - **Next:** E2b (Act III).
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.

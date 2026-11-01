@@ -156,6 +156,11 @@ advance(STORM_STATIC_MS);
 // The lull, then Act II: one wave. Bo drops out in round 4 and rejoins (same name and table) in round 7.
 host("startStrategy");
 check(state().phase === "strategy" && state().act === 2, "the lull before the first wave");
+// In the lull, Ada (pair 1) picks "reverse when HOT" and Cy (pair 2) "reverse when COOL"; Bo sees Ada's at once.
+send("phone0", { type: "player:strategy", act: 2, classical: { onGreen: 0, onRed: 1 } });
+send("phone2", { type: "player:strategy", act: 2, classical: { onGreen: 1, onRed: 0 } });
+const boSees = last("phone1", "room:state")!.state.pairs[0]!.plans.a;
+check(boSees.onGreen === 0 && boSees.onRed === 1, "Bo sees Ada's plan live in the lull");
 host("startBatch");
 let dropped = false;
 let rejoined = false;
@@ -175,6 +180,12 @@ const reached = playUntil("batchDone", (round) => {
 });
 check(reached, "one full Act II wave");
 check(state().lastBatch?.rounds === 4 * BATCH_SIZE, `the wave scored ${state().lastBatch?.rounds} pair-rounds`);
+const tried = [...state().triedPlans].sort().join(" ");
+check(tried === "0-0 1-0 2-0", `the plans locked at the wave start are recorded as tried (${tried})`);
+check(
+  state().pairs.every((p) => p.locked !== null && p.lastWave?.rounds === BATCH_SIZE),
+  "every pair has its locked plans and its own wave score",
+);
 const back = last("phone1b", "player:joined");
 check(!!back && back.playerId === boId, "Bo dropped out mid-wave and rejoined the same seat");
 check(state().players.find((p) => p.id === boId)?.connected === true, "Bo is connected again");

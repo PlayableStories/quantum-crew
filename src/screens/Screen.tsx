@@ -20,7 +20,10 @@ import { StationVisual } from "../components/StationVisual.tsx";
 import { MP_ACT1_ROUND_MS, MP_ROUND_MS } from "../config.ts";
 import { RadioLine } from "../components/RadioLine.tsx";
 import { RingDiagram } from "../components/RingDiagram.tsx";
-import { SURVIVAL_THRESHOLD } from "../shared/chsh.ts";
+import { SURVIVAL_THRESHOLD, classicalExpectedWinRate } from "../shared/chsh.ts";
+import { ALL_CELLS, expectedBoard, planId, type Board } from "../shared/plans.ts";
+import { FourCases } from "../components/FourCases.tsx";
+import { PlanBoard } from "../components/PlanBoard.tsx";
 import { useHost } from "../net/hostStore.ts";
 import { useRemainingMs } from "../net/useCountdown.ts";
 import { fetchStationInfo, joinUrl, pickJoinOrigin } from "../net/joinOrigin.ts";
@@ -64,7 +67,8 @@ export function Screen() {
 
   const quantum = state.act === 3 && state.phase !== "debrief";
   return (
-    <main className={`tv ${quantum ? "quantum" : ""}`}>
+    // After an Act II wave the pairs' four cases take the whole width (the join panel and pair list step aside).
+    <main className={`tv ${quantum ? "quantum" : ""} ${state.phase === "batchDone" && state.act === 2 ? "tv--cases" : ""}`}>
       {quantum && <QuantumBackdrop />}
       <header className="tv__head">
         <p className="kicker">{S.title}</p>
@@ -83,8 +87,10 @@ export function Screen() {
           <BriefingPanel />
         ) : state.phase === "storm" ? (
           <StormPanel localDeadline={localDeadline} rate={gauge} />
+        ) : state.phase === "batchDone" && state.act === 2 ? (
+          <WaveCases state={state} />
         ) : state.phase === "ceiling" ? (
-          <CeilingPanel />
+          <CeilingPanel state={state} />
         ) : state.phase === "tool" ? (
           <ToolPanel />
         ) : state.phase === "debrief" ? (
@@ -92,7 +98,13 @@ export function Screen() {
         ) : (
           <StationVisual rate={gauge} />
         )}
-        <div className="panel" hidden={state.phase === "debrief" || state.phase === "briefing" || state.phase === "storm"}>
+        <div
+          className="panel"
+          hidden={
+            ["debrief", "briefing", "storm", "ceiling"].includes(state.phase) ||
+            (state.phase === "batchDone" && state.act === 2) // the pairs' four cases need the room
+          }
+        >
           <StabilityMeter
             value={gauge}
             label={act1 ? S.tv.act1Pooled : S.tv.pooled}
@@ -233,15 +245,65 @@ function StormPanel({ localDeadline, rate: value }: { localDeadline: number | nu
   );
 }
 
-function CeilingPanel() {
+/** After an Act II wave: each pair's locked plans, case by case (exact), with the true rate, this wave's score and,
+ *  when the wave beat 80% but the plan can't, the luck line. */
+export function WaveCases({ state }: { state: RoomState }) {
   return (
-    <div className="panel stack tv__ceiling">
-      <div className="huge">{S.ceiling.big}</div>
-      {[S.ceiling.lead, ...S.ceiling.lines].map((l) => (
-        <p key={l} className="tv__line">
-          {l}
+    <div className={`tv__cases tv__cases--${Math.min(state.pairs.length, 4)}`}>
+      <p className="muted tv__cases-head">
+        {S.readout.casesHead} · {S.event.casesOrder}
+      </p>
+      {state.pairs.map((pair) => {
+        if (!pair.locked) return null;
+        const wave = pair.lastWave;
+        const waveRate = wave && wave.rounds ? wave.wins / wave.rounds : null;
+        const trueRate = classicalExpectedWinRate(pair.locked.a, pair.locked.b);
+        const lucky = waveRate !== null && waveRate >= SURVIVAL_THRESHOLD && trueRate < SURVIVAL_THRESHOLD;
+        return (
+          <div key={pair.id} className="panel stack tv__pair-cases">
+            <p className="kicker">
+              {S.tv.pair(pair.id)} ·{" "}
+              {S.event.pairPlans(
+                pair.a.name,
+                S.plans.short[planId(pair.locked.a)]!,
+                pair.b.name,
+                S.plans.short[planId(pair.locked.b)]!,
+              )}
+            </p>
+            <FourCases plan={pair.locked.a} crewPlan={pair.locked.b} order={S.event.casesOrder} />
+            <p className="tv__pair-total">
+              <strong>{S.readout.caseTotal(Math.round(trueRate * 4), whole(trueRate))}</strong>
+              {wave && <span className="muted"> · {S.event.waveHeld(wave.wins, wave.rounds)}</span>}
+            </p>
+            {lucky && <p className="tv__luck">{S.event.lucky(whole(trueRate))}</p>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Exact rates are whole numbers (25%, 50%, 75%, 100%). */
+const whole = (r: number) => `${Math.round(r * 100)}%`;
+
+/** The engineering report: the 4×4 board at exact rates, every pairing the crew played marked as tried and
+ *  engineering's corner mark on the rest. The same copy as solo, which reads as plural for a crew. */
+export function CeilingPanel({ state }: { state: RoomState }) {
+  const exact = expectedBoard();
+  const tried = new Set(state.triedPlans);
+  const board: Board = Object.fromEntries(
+    ALL_CELLS.map((k) => [k, { rate: exact[k], by: tried.has(k) ? "player" : "engineering" }]),
+  );
+  return (
+    <div className="panel tv__ceiling">
+      <div className="stack">
+        <div className="huge">{S.ceiling.big}</div>
+        <p className="tv__line">
+          <strong>{S.ceiling.engineering(tried.size, ALL_CELLS.length - tried.size)}</strong>
         </p>
-      ))}
+        <p className="tv__line">{S.ceiling.truth}</p>
+      </div>
+      <PlanBoard board={board} labels={S.event.board} />
     </div>
   );
 }
@@ -394,8 +456,9 @@ function useQr(text: string): string | null {
 function Pairs({ state, lastResults }: { state: RoomState; lastResults: RoundOutcome[] | null }) {
   const unseated = state.players.filter((p) => p.pairId === null);
   if (state.pairs.length === 0 && unseated.length === 0) return <p className="muted">{S.tv.noPlayers}</p>;
+  // Three or four pairs: compact cards, two to a row, so the side column never scrolls.
   return (
-    <div className="stack">
+    <div className={`stack pairs ${state.pairs.length >= 3 ? "pairs--crowded" : ""}`}>
       {state.pairs.map((pair) => (
         <PairCard key={pair.id} pair={pair} state={state} result={lastResults?.find((r) => r.pairId === pair.id) ?? null} />
       ))}
@@ -432,17 +495,20 @@ function PairCard({ pair, state, result }: { pair: PairInfo; state: RoomState; r
         {seat("a")}
         {seat("b")}
       </div>
-      {/* Act I: what happened, as on the phones (storm waves get causes in E2). */}
-      {result && state.act === 1 && (
+      {/* What happened, as on the phones; it takes the mini-meter's place while it shows (no meter before a round). */}
+      {result ? (
         <p className={`pair__cause ${result.win ? "pair__cause--win" : "pair__cause--loss"}`}>
           {result.win ? "✓ " : "✗ "}
           {S.outcome[result.cause].title}
         </p>
+      ) : (
+        r !== null && (
+          <div className="minimeter">
+            <div className={`minimeter__fill ${r >= 0.8 ? "minimeter__fill--ok" : ""}`} style={{ width: `${r * 100}%` }} />
+            <div className="minimeter__line" style={{ left: "80%" }} />
+          </div>
+        )
       )}
-      <div className="minimeter">
-        <div className={`minimeter__fill ${r !== null && r >= 0.8 ? "minimeter__fill--ok" : ""}`} style={{ width: `${(r ?? 0) * 100}%` }} />
-        <div className="minimeter__line" style={{ left: "80%" }} />
-      </div>
     </div>
   );
 }
