@@ -264,11 +264,20 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    but the plan can't.
 9. Play a few waves, then **Reveal ceiling**: the engineering report shows the 4×4 plan board at exact rates (75% or
    25%), every pairing the crew played marked as tried and the rest run by engineering. No plan beats 75%.
-10. **Unlock tool**: every pair gets the Entanglement Tool. Phones show two dials (one for COOL, one for HOT); use a
-   lull to agree settings. In each round a phone shows its sensor, the dial angle in use and a **MEASURE** button.
-   The server decides who measured first: that result is a fair coin, and the partner's result is conditioned on it.
-   The TV adds the 85.4% line. **Show hint** puts the engineering hint on the TV.
-11. **Debrief** on the TV (Back / Next): the Bell/CHSH wall with the crew's Act II score, the Tsirelson bound with
+10. **Unlock tool**: a supply pod from engineering brings every pair linked crystals; engineering's note says they
+   carry no messages, so the storm can't jam them. Phones explain how the tool behaves, naming the partner (the
+   closer your dials, the more often your crystals agree). In the lull each player sets two dials (one for COOL, one
+   for HOT) and sees the partner's dials live; **How it works** brings the explanation back.
+11. Each Act III round, a phone shows its sensor, the dial in use and **MEASURE**. The crystal then suggests a pump,
+   highlighted; the player sets the pump and may go against it (Enter follows). Rounds last 7 s. The server decides
+   who measured first: that result is a fair coin, and the partner's result is conditioned on it. Scoring uses the
+   pump actually set, and the room records who followed. CORA in an empty seat always follows. **Show hint** puts the
+   engineering hint on the TV.
+12. After each Act III wave the TV shows every pair's locked dials case by case (each case's exact chance of
+   holding), their true rate (pairs at 80% or more are highlighted), the wave's score and who followed, plus the
+   crew's followed count and its dials' average. **Saved or not:** once a wave ends with that average at 80% or
+   more, the station counts as saved (it stays saved; the ending itself is a later phase).
+13. **Debrief** on the TV (Back / Next): the Bell/CHSH wall with the crew's Act II score, the Tsirelson bound with
    the best dial settings and the crew's Act III score, then **no-signalling**: every crew member's clockwise rate
    split by what their partner's sensor read (≈ 50/50 both ways, pooled for the whole crew), then credits.
 
@@ -279,8 +288,8 @@ the same station. Running a session for real: [`docs/facilitator.md`](docs/facil
 From the lobby, **Use the lull** or **Start the wave** still skip the night shift and go straight to Act II (for a
 short session).
 
-**Follow-up (E2b, not built yet):** Act III in event mode still runs the older flow (Stable / Leak results on phones,
-measure-only rounds) and the older tool and debrief copy.
+**Follow-up (not built yet):** event mode has no ending for the crew (the station saved or not) and keeps the older
+debrief copy; on a 1280×720 TV, debrief steps 1–3 don't fit yet.
 
 ## The physics
 This is the **CHSH game**, a Bell test. Two players who can't talk each get a random bit (the sensor: COOL = 0,
@@ -410,7 +419,8 @@ result, wave done and every debrief step. It runs the session twice: the TV at 1
 the TV at 1280×720 with phones at 375×667. The server's timers are real, so live rounds and results get viewport
 shots only. `/station-info` answers a made-up `192.168.1.20`, so the shots never show your machine's address. Output
 goes to `shots/<out>/event/<device>-<size>/`, with the same `report.md`; `--compare before after --event` makes the
-contact sheets. The TV never scrolls, so for TV screens the report also flags any region whose content is cut off
+contact sheets. `--quick` runs only the tight pass (TV 1280×720 with phones 375×667), for fit work. In Act III,
+Table A and B tune to the best dials, so wave done shows a pair that holds. The TV never scrolls, so for TV screens the report also flags any region whose content is cut off
 (`⚠ cut off: briefing 13px`). After a wave it also checks the worst case, every pair with a luck line, and fails if
 that would be cut off.
 

@@ -3418,3 +3418,77 @@ button.board__cell:focus-visible {
 .tv__cases--4 .case {
   font-size: 0.75em;
 }
+
+/* Event TV, after an Act III wave: the crew's line on top, and pairs whose dials reach 80% highlighted. */
+.tv__crew-line {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 1.1em;
+}
+
+.tv__crew-line--saved strong {
+  color: var(--win);
+}
+
+.tv__pair-cases--holds {
+  border-color: var(--win);
+  box-shadow: 0 0 14px rgba(57, 217, 138, 0.25);
+}
+
+.tv__holds {
+  color: var(--win);
+  font-weight: 700;
+}
+
+/* Event phone, the tool reveal: smaller crystals so the note and the explanation fit. */
+.reveal--phone .crystals {
+  max-height: 96px;
+}
+
+.reveal--phone .reveal__title {
+  margin: 0;
+}
+
+/* Event phone, the Act III lull: the partner's dials with the "How it works" button beside them. */
+.partner-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.partner-row .partner-plan {
+  flex: 1;
+  min-width: 0;
+}
+
+.how-tool__btn {
+  min-height: 40px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+}
+
+@media (max-height: 700px) {
+  .reveal--phone .crystals {
+    display: none;
+  }
+
+  .reveal--phone .reveal__title {
+    font-size: 1.4rem;
+  }
+
+  .partner-row .partner-plan {
+    font-size: 0.85rem;
+  }
+
+  .lull .dial svg {
+    max-width: 72px;
+  }
+
+  .lull .rule-chip {
+    padding-block: 4px;
+  }
+
+  .lull .rule-chip__text {
+    font-size: 0.72rem;
+  }
+}

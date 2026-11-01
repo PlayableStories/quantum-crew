@@ -2,13 +2,14 @@
 // buttons or MEASURE with the dial in use, countdown). Everything else is on the TV.
 // Act I (the night shift): the radio works, so the phone also shows the partner's reading and pump, and the pump can
 // change until the round ends. The storm breaks the radio up mid-line.
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AiBadge } from "../components/AiBadge.tsx";
 import { Countdown } from "../components/Countdown.tsx";
 import { playSfx } from "../audio/sfx.ts";
 import { CrewIcon } from "../components/CrewIcon.tsx";
 import { Crystals } from "../components/EntanglementSurface.tsx";
-import { Dial } from "../components/Dial.tsx";
+import { Dial, formatDeg } from "../components/Dial.tsx";
+import { Sheet } from "../components/Sheet.tsx";
 import { MuteToggle } from "../components/MuteToggle.tsx";
 import { QuantumBackdrop } from "../components/QuantumBackdrop.tsx";
 import { SensorLight } from "../components/SensorLight.tsx";
@@ -121,23 +122,29 @@ function JoinForm({ error }: { error: string | null }) {
 
 function InRoom() {
   const p = usePlayer();
-  const { state, seat, playerId, round, flash, plan, tuning, status, localDeadline, answer, measure, setPlan, setTuning, leave } = p;
+  const { state, seat, playerId, round, flash, plan, tuning, status, localDeadline, answer, measure, followCrystal, setPlan, setTuning, leave } =
+    p;
   const left = useRemainingMs(localDeadline);
 
-  // Keyboard for laptop testing: A / ← = ANTICLOCKWISE, C / → = CLOCKWISE in Act II, Space / Enter = MEASURE in Act III.
+  // Keyboard: A / ← = ANTICLOCKWISE, C / → = CLOCKWISE. Act III: Space / Enter = MEASURE, then Enter follows the
+  // crystal (A / C go your own way).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.repeat) return;
       const k = e.key.toLowerCase();
       if (k === "a" || k === "arrowleft") answer(ANTICLOCKWISE);
       if (k === "c" || k === "arrowright") answer(CLOCKWISE);
       if (k === " " || k === "enter") {
+        const r = usePlayer.getState().round;
+        if (r?.act !== 3) return;
         e.preventDefault();
-        measure();
+        if (r.crystal === null) measure();
+        else if (k === "enter") followCrystal();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [answer, measure]);
+  }, [answer, measure, followCrystal]);
 
   // Phone sounds (off by default in a room; see audio/sfx.ts).
   useEffect(() => {
@@ -177,41 +184,64 @@ function InRoom() {
         {round.act === 2 && locked && partner && (
           <p className="agreed">{S.event.agreed(locked[mine], partner.name, locked[theirs])}</p>
         )}
+        {round.act === 3 && round.dialDeg !== null && <Dial value={round.dialDeg} small />}
+        {round.act === 3 &&
+          (round.crystal === null ? (
+            <p className="muted crystal-hint">{S.batch.measureHint}</p>
+          ) : (
+            <div className="crystal-says" role="status">
+              <strong>{S.batch.crystalSays(S.pump[round.crystal])}</strong>
+              <span className="muted small crystal-keys">{S.batch.follow}</span>
+            </div>
+          ))}
         <div className="spacer" />
-        {round.act !== 3 ? (
+        {round.act === 3 && round.crystal === null ? (
+          <button className="btn measure" disabled={round.measuring} onPointerDown={measure} onClick={measure}>
+            {S.batch.measure}
+          </button>
+        ) : (
           <div className="stack">
             {round.act === 1 && <p className="muted small act1-rule">{S.phone.act1Change}</p>}
             <div className="pumps">
-              {[ANTICLOCKWISE, CLOCKWISE].map((v) => (
-                <button
-                  key={v}
-                  className={`btn pumpbtn ${round.act === 1 && round.answered === v ? "btn--selected" : ""}`}
-                  aria-pressed={round.act === 1 ? round.answered === v : undefined}
-                  onPointerDown={() => answer(v)}
-                  onClick={() => answer(v)}
-                >
-                  <span className="pumpbtn__icon">
-                    <PumpIcon pump={v} />
-                  </span>
-                  {S.pump[v]}
-                  {round.act === 2 && plannedPump(locked?.[mine] ?? plan, round.light) === v && (
-                    <span className="pumpbtn__plan">{S.batch.planTag}</span>
-                  )}
-                </button>
-              ))}
+              {[ANTICLOCKWISE, CLOCKWISE].map((v) => {
+                // The tag: the plan's direction (Act II) or the crystal's suggestion (Act III).
+                const tagged =
+                  round.act === 2
+                    ? plannedPump(locked?.[mine] ?? plan, round.light) === v
+                    : round.act === 3 && round.crystal === v;
+                return (
+                  <button
+                    key={v}
+                    className={`btn pumpbtn ${round.act === 1 && round.answered === v ? "btn--selected" : ""} ${round.act === 3 && tagged ? "pumpbtn--suggested" : ""}`}
+                    aria-pressed={round.act === 1 ? round.answered === v : undefined}
+                    onPointerDown={() => answer(v)}
+                    onClick={() => answer(v)}
+                  >
+                    <span className="pumpbtn__icon">
+                      <PumpIcon pump={v} />
+                    </span>
+                    {S.pump[v]}
+                    {tagged && <span className="pumpbtn__plan">{round.act === 2 ? S.batch.planTag : S.batch.crystalTag}</span>}
+                  </button>
+                );
+              })}
             </div>
           </div>
-        ) : (
-          <>
-            {round.dialDeg !== null && <Dial value={round.dialDeg} small />}
-            <button className="btn measure" disabled={round.measuring} onPointerDown={measure} onClick={measure}>
-              {S.batch.measure}
-            </button>
-          </>
         )}
       </main>,
     );
   }
+
+  // Act III: the partner's dials, live (read-only).
+  const partnerDials = pair && partner && (
+    <p className="partner-plan" role="status">
+      <span className="kicker">
+        {S.event.partnerDials(partner.name)}
+        {partner.playerId === null && <AiBadge />}
+      </span>{" "}
+      <strong>{S.event.dialsLine(formatDeg(pair.dials[theirs].greenDeg), formatDeg(pair.dials[theirs].redDeg))}</strong>
+    </p>
+  );
 
   const tuningPanel = (
     <div className="row panel">
@@ -247,16 +277,10 @@ function InRoom() {
         <div className={`result spacer ${flash.win ? "result--win" : "result--loss"}`} role="status">
           <div className="result__verdict">
             {flash.win ? "✓ " : "✗ "}
-            {/* Acts I and II: what happened, as in solo. Act III: Stable / Leak until E2b. */}
-            {state.act !== 3
-              ? S.outcome[flash.cause].title
-              : flash.timedOut
-                ? S.batch.slow
-                : flash.win
-                  ? S.batch.stable
-                  : S.batch.leak}
+            {/* What happened, as in solo. */}
+            {S.outcome[flash.cause].title}
           </div>
-          {state.act !== 3 && partner && (
+          {partner && (
             <>
               <p className="telemetry">
                 <span className="telemetry__head">{S.telemetry.head}</span> {S.event.why(flash, mine, partner.name)}
@@ -288,15 +312,19 @@ function InRoom() {
         </div>
       )}
 
+      {/* The supply pod: engineering's note, then (the first time) how the tool behaves, named for the partner. The
+          dials come in the lull that follows. */}
       {!round && state.phase === "tool" && (
-        <div className="stack reveal">
+        <div className="stack reveal reveal--phone">
           <Crystals />
-          <h2 className="reveal__title">{S.tool.title}</h2>
-          {S.tool.lines.slice(0, 2).map((l) => (
-            <p key={l}>{l}</p>
-          ))}
-          <p>{S.phone.tuneNow}</p>
-          {tuningPanel}
+          <h2 className="reveal__title">{S.event.pod.title}</h2>
+          <p>{S.event.pod.lines[1]}</p>
+          {partner && (
+            <div className="panel how-tool">
+              <p className="kicker">{S.event.tuning.head}</p>
+              <p>{S.event.tuning.explain(partner.name)}</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -322,7 +350,13 @@ function InRoom() {
               )}
             </>
           ) : (
-            tuningPanel
+            <>
+              {tuningPanel}
+              <div className="partner-row">
+                {partnerDials}
+                {partner && <HowTool partner={partner.name} />}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -350,6 +384,25 @@ function InRoom() {
         {S.phone.leave}
       </button>
     </main>,
+  );
+}
+
+/** After the tool reveal, "How the tool works" sits behind a button (a Sheet), named for the partner. */
+function HowTool({ partner }: { partner: string }) {
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  return (
+    <>
+      <button className="btn btn--ghost how-tool__btn" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+        {S.event.tuning.howButton}
+      </button>
+      <Sheet open={open} onClose={close} label={S.event.tuning.head}>
+        <div className="stack">
+          <p className="kicker">{S.event.tuning.head}</p>
+          <p>{S.event.tuning.explain(partner)}</p>
+        </div>
+      </Sheet>
+    </>
   );
 }
 

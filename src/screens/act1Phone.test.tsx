@@ -19,6 +19,7 @@ const live = (partner: { light: 0 | 1; pump: 0 | 1 | null }, answered: 0 | 1 | n
   answered,
   measuring: false,
   partner,
+  crystal: null,
 });
 
 beforeEach(() => put({ round: null, flash: null }));

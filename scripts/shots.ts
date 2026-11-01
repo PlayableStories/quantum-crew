@@ -1,6 +1,7 @@
 // pnpm shots [--out <name>] [--all]       screenshot every solo screen, played like a player
 // pnpm shots --compare <before> <after>    per-screen contact sheets: before above after, sizes side by side
 // pnpm shots --event [--out <name>]        event mode: a TV and two phones play a whole session (see captureEvent)
+// pnpm shots --event --quick               event mode, the tight pass only (TV 1280×720 + phones 375×667)
 // pnpm shots --compare <b> <a> --event     contact sheets for the event screenshots
 //
 // Builds the static site, serves it with `vite preview` (no station, like the Vercel deploy) and drives the solo flow
@@ -67,6 +68,8 @@ const EVENT_PASSES = [
   { tv: EVENT_SIZES[0]!, phone: EVENT_SIZES[2]! },
   { tv: EVENT_SIZES[1]!, phone: EVENT_SIZES[3]! },
 ];
+/** Worst-case fit checks that failed (written into the report, then the run fails). */
+const fitFailures: string[] = [];
 /** What /station-info says in the screenshots: a made-up LAN address, so they never show this machine's. */
 const EXAMPLE_INFO = { publicUrl: null, lanUrls: ["http://192.168.1.20:4317"] };
 
@@ -273,7 +276,7 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   await shot("engineering-report");
   await click(S.ceiling.go);
   await shot("tool-reveal");
-  await click(S.tool.go);
+  await click(S.pod.go);
   await shot("tuning");
   await checkSheet(page, S.crew.seeDials, "tuning-crew-dials", shot);
   if (saved) {
@@ -475,15 +478,17 @@ async function captureEvent(browser: Browser, out: string) {
   await rm(dir, { recursive: true, force: true });
   const rows: Row[] = [];
   try {
-    for (const pass of EVENT_PASSES) {
+    // --quick: only the tight pass (TV 1280×720 + phones 375×667), for fit work.
+    for (const pass of flag("--quick") ? EVENT_PASSES.slice(1) : EVENT_PASSES) {
       console.log(`${pass.tv.name} + ${pass.phone.name}…`);
       rows.push(...(await eventSession(browser, base, pass.tv, pass.phone, dir)));
     }
   } finally {
     await server.close();
   }
-  await writeFile(join(dir, "report.md"), report(rows, EVENT_SIZES));
+  await writeFile(join(dir, "report.md"), report(rows, EVENT_SIZES) + fitFailures.map((f) => `\n⚠ ${f}`).join("") + "\n");
   console.log(`Saved ${rows.length} screenshots to shots/${out}/event/ (report: shots/${out}/event/report.md)`);
+  if (fitFailures.length) throw new Error(`worst-case fit:\n${fitFailures.join("\n")}`);
 }
 
 async function eventSession(browser: Browser, base: string, tvSize: Size, phoneSize: Size, dir: string): Promise<Row[]> {
@@ -586,22 +591,7 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
   await playWave("act2");
   await shot("wave-done", all(), true);
   // The worst case for fit: every pair's wave beat 80% by luck, so every pair has the luck line.
-  const worst = (await tv.page.evaluate(`(() => {
-    if (!document.querySelector(".tv__pair-cases")) return []; // a TV from before E2a has no case panels
-    const added = [];
-    for (const p of document.querySelectorAll(".tv__pair-cases")) {
-      if (p.querySelector(".tv__luck")) continue;
-      const l = document.createElement("p");
-      l.className = "tv__luck";
-      l.textContent = ${JSON.stringify(S.event.lucky?.("75%") ?? "")};
-      p.appendChild(l);
-      added.push(l);
-    }
-    const cut = ${TV_CLIPPED};
-    for (const l of added) l.remove();
-    return cut;
-  })()`)) as string[];
-  if (worst.length) throw new Error(`wave done at ${tvSize.name}, every pair lucky: cut off ${worst.join(", ")}`);
+  await worstCase("tv__luck", S.event.lucky?.("75%") ?? "", "every pair lucky");
   await host(S.tv.cmd.revealCeiling);
   await banner("ceiling").waitFor();
   await shot("engineering-report", all(), true);
@@ -612,10 +602,20 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
   // Act III: the huddle (dials on the phones), then one wave.
   await host(S.tv.cmd.startStrategy);
   await banner("strategy").waitFor();
+  // Pair 1 tunes to the best dials (Ada 0° / 45°, Bo 22.5° / 157.5°), so wave done shows a pair that holds; the
+  // crowd stays at 0°, so the crew's average stays under 80%. Each dial step is 22.5°; Bo sees Ada's dials live.
+  const turn = async (v: View, dial: 0 | 1, name: string, times: number) => {
+    for (let i = 0; i < times; i++) await v.page.getByRole("button", { name }).nth(dial).click();
+  };
+  await turn(a, 1, S.dial.next, 2);
+  await turn(b, 0, S.dial.next, 1);
+  await turn(b, 1, S.dial.prev, 1);
+  await b.page.locator(".partner-plan").filter({ hasText: "45°" }).waitFor({ timeout: 3000 }).catch(() => {});
   await shot("act3-huddle", all(), true);
   await host(S.tv.cmd.startBatch);
   await playWave("act3");
   await shot("act3-wave-done", all(), true);
+
 
   // The debrief, step by step on the TV.
   await host(S.tv.cmd.debrief);
@@ -631,6 +631,27 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
   for (const v of [tv, a, b]) await v.context.close();
   if (errors.length) throw new Error(`page errors:\n${errors.join("\n")}`);
   return rows.sort((p, q) => p.shot.localeCompare(q.shot));
+
+  /** Fit's worst case on a wave-done screen: give every pair the optional line `cls` (the luck line, the 80%+ line),
+   *  measure, take the lines out again, and fail if anything is cut off. A TV without case panels is skipped. */
+  async function worstCase(cls: string, text: string, what: string) {
+    const cut = (await tv.page.evaluate(`(() => {
+      if (!document.querySelector(".tv__pair-cases")) return [];
+      const added = [];
+      for (const p of document.querySelectorAll(".tv__pair-cases")) {
+        if (p.querySelector(".${cls}")) continue;
+        const l = document.createElement("p");
+        l.className = ${JSON.stringify(cls)};
+        l.textContent = ${JSON.stringify(text)};
+        p.appendChild(l);
+        added.push(l);
+      }
+      const cut = ${TV_CLIPPED};
+      for (const l of added) l.remove();
+      return cut;
+    })()`)) as string[];
+    if (cut.length) fitFailures.push(`wave done at ${tvSize.name}, ${what}: cut off ${cut.join(", ")}`);
+  }
 
   /** Act I, radio working: Table A sets clockwise, then Table B does the same (a double HOT overheats, which is fine
    *  here). Shots: the first round live, Table B's radio once Table A has set a pump, and the first result. */
@@ -667,6 +688,13 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
 
   /** Plays a wave to its end: the first round shot live (and, in Act III, Table A's phone once it has measured), the
    *  first result that holds still long enough shot on all three. */
+  /** Act III since E2b: after MEASURE, set the pump the crystal suggested (an older phone set it on MEASURE). */
+  async function followCrystal(v: View) {
+    const suggested = v.page.locator(".pumpbtn--suggested");
+    const shown = await suggested.waitFor({ timeout: 1500 }).then(() => true, () => false);
+    if (shown) await suggested.click().catch(() => {});
+  }
+
   async function playWave(prefix: string) {
     const control = prefix === "act2" ? ".pumpbtn" : ".measure";
     let gotRound = false;
@@ -685,11 +713,14 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
       }
       await a.page.locator(control).first().click();
       if (!gotMeasured) {
-        await a.page.locator(".result__verdict").waitFor({ timeout: 2000 }).catch(() => {});
-        await shot(`${prefix}-measured`, [[a, "", null]]);
+        // Since E2b the crystal only suggests a pump (the round waits for Table A's pump, so this holds still).
+        await a.page.locator(".crystal-says, .result__verdict").first().waitFor({ timeout: 2000 }).catch(() => {});
+        await shot(`${prefix}-measured`, [[a, "", ".pumpbtn"]]);
         gotMeasured = true;
       }
+      await followCrystal(a);
       await b.page.locator(control).first().click().catch(() => {});
+      await followCrystal(b);
       if (gotResult) continue;
       // Both answered: the round resolves now and its result shows for MP_RESULT_MS.
       const flash = ".result--win, .result--loss";
@@ -721,7 +752,10 @@ function joinCrowd(url: string, room: string) {
     const ws = new WebSocket(url);
     ws.on("open", () => ws.send(JSON.stringify({ type: "player:join", room, name, table })));
     ws.on("message", (data) => {
-      const msg = JSON.parse(String(data)) as { type: string; roundId?: string; act?: number };
+      const msg = JSON.parse(String(data)) as { type: string; roundId?: string; act?: number; crystal?: number };
+      // Act III: the crystal's suggestion arrives after MEASURE; follow it.
+      if (msg.type === "round:measured" && msg.crystal !== undefined)
+        return ws.send(JSON.stringify({ type: "player:valve", roundId: msg.roundId, valve: msg.crystal }));
       if (msg.type !== "round:start") return;
       ws.send(
         JSON.stringify(

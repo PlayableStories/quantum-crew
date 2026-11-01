@@ -40,6 +40,8 @@ export const DEBRIEF_AFTER_BATCHES = 2;
 // DECISION: multiplayer rounds get longer than solo ones, to allow for phones and network lag.
 /** Time a phone has to answer a round. */
 export const MP_ROUND_MS = 3500;
+/** Event Act III: time to tap MEASURE, read the crystal's suggestion and set the pump. */
+export const MP_ACT3_ROUND_MS = 7000;
 /** How long the result of a round shows before the next light (the cause, the ring and a line of telemetry). */
 // DECISION (E2a): 3.5 s, up from 1.5 s, so the cause can be read; tune after the first playtest.
 export const MP_RESULT_MS = 3500;

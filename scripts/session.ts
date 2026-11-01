@@ -4,9 +4,10 @@
 //   four pairs join and a 9th player is turned away; the night shift (briefing, Act I by the rule over the radio, with
 //   one player changing their mind; every round held) and the storm; a player drops out mid-wave and rejoins their seat; the TV
 //   disconnects and resumes with its token; one Act II wave; the engineering report; the tool; two Act III waves with
-//   tuned dials (A 0° / 45°, B 22.5° / 157.5°), whose pooled rate must be clearly above 75%; the debrief.
+//   tuned dials (A 0° / 45°, B 22.5° / 157.5°): each phone measures, then sets the pump its crystal suggests; the
+//   pooled rate must be clearly above 75%, and the crew's dials average 85.4%, which saves the station; the debrief.
 import { ACT1_ROUNDS, BATCH_SIZE, MP_RESULT_MS, MP_ROUND_MS, STORM_STATIC_MS } from "../src/config.ts";
-import { OPTIMAL_TUNING } from "../src/shared/chsh.ts";
+import { OPTIMAL_TUNING, QUANTUM_LIMIT } from "../src/shared/chsh.ts";
 import type { ClientMsg, HostCommand, RoomState, ServerMsg } from "../src/shared/protocol.ts";
 import { mulberry32 } from "../src/shared/rng.ts";
 import { createStation } from "../server/station.ts";
@@ -109,10 +110,19 @@ function answerAll() {
         if (sent.get(key) !== want) setPump(conn, m.roundId, want);
         continue;
       }
+      if (m.act === 3) {
+        // Act III: MEASURE, then set the pump the crystal suggested.
+        if (!answered.has(key)) {
+          answered.add(key);
+          send(conn, { type: "player:measure", roundId: m.roundId });
+        }
+        const measured = msgs(conn).find((r) => r.type === "round:measured" && r.roundId === m.roundId);
+        if (measured?.type === "round:measured" && !sent.has(key)) setPump(conn, m.roundId, measured.crystal);
+        continue;
+      }
       if (answered.has(key)) continue;
       answered.add(key);
-      if (m.act === 2) send(conn, { type: "player:valve", roundId: m.roundId, valve: 0 });
-      else send(conn, { type: "player:measure", roundId: m.roundId });
+      send(conn, { type: "player:valve", roundId: m.roundId, valve: 0 });
     }
   }
 }
@@ -214,6 +224,10 @@ const act3 = state().stability.act3;
 const rate = act3.rounds ? act3.wins / act3.rounds : 0;
 check(act3.rounds === 2 * 4 * BATCH_SIZE, `Act III scored ${act3.rounds} pair-rounds`);
 check(rate >= 0.78, `pooled Act III rate ${(rate * 100).toFixed(1)}% is clearly above 75%`);
+const crew = state().crewDialsRate ?? 0;
+check(Math.abs(crew - QUANTUM_LIMIT) < 1e-9 && state().stationSaved, `the crew's dials average ${(crew * 100).toFixed(1)}%: saved`);
+const followed = state().act3Followed;
+check(!!followed && followed.of === 8 * BATCH_SIZE && followed.n === followed.of, "every player followed their crystal (latest wave)");
 
 // The debrief.
 host("debrief");

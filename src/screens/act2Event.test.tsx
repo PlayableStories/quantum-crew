@@ -37,7 +37,7 @@ describe("Act II on a phone", () => {
 
   it("a wave: both locked plans as a reminder", () => {
     seat(act2("round"));
-    put({ round: { roundId: "1-1", act: 2, light: 1, ms: 3500, dialDeg: null, answered: null, measuring: false, partner: null } });
+    put({ round: { roundId: "1-1", act: 2, light: 1, ms: 3500, dialDeg: null, answered: null, measuring: false, partner: null, crystal: null } });
     expect(html()).toContain(S.event.agreed(always, "Bo", revHot));
   });
 

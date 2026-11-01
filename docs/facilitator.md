@@ -1,7 +1,7 @@
 # Running a Quantum Crew session
 
 For whoever runs event mode: one TV or projector, two tables of players with a phone each, and you at the host
-controls along the bottom of the TV. A session takes about 40 minutes for up to 8 players (4 pairs, at most 4
+controls along the bottom of the TV. A session takes about 45 minutes for up to 8 players (4 pairs, at most 4
 players per table; CORA, the AI crewmate, fills any empty seat).
 
 Setting up the server: see [Run event mode at a venue](../README.md#run-event-mode-at-a-venue) in the README.
@@ -39,10 +39,11 @@ The host controls only work at the right moments; the others are greyed out.
 | 0:11 | **Act II wave.** 12 rounds, about 1½ minutes. The radio is down: phones show their own sensor, both locked plans and two pump buttons. No talking between tables. Each result shows what happened (Circulating, Purge, Overheat…). | nothing (it runs itself) |
 | 0:13 | **Wave passed.** The TV shows every pair's plans case by case and their true rate. Point at a ✗ case: that's the round the plan always loses. A "by luck" line means the wave beat 80% but the plan can't. Run one or two more lulls and waves so they feel the ceiling. | **Use the lull (45 s)**, then waves again |
 | 0:18 | **Engineering report.** The plan board: every pairing of plans, exactly 75% or 25%. The crew's pairings are marked as tried; engineering ran the rest. No plan beats 75% ("the best plan loses one in four"). | **Reveal ceiling** |
-| 0:19 | **The tool.** Every pair gets linked crystals. Phones show two dials, one for COOL and one for HOT. | **Unlock tool** |
-| 0:20 | **Act III lull.** Partners agree dial settings. If they're stuck after a wave, show the hint. | **Use the lull (45 s)**; **Show hint** if needed |
-| 0:21 | **Act III waves.** Two or three waves; each round, phones show the sensor, the dial in use and MEASURE. The TV adds the 85.4% line. | **Start the wave** / **Use the lull (45 s)** between waves |
-| 0:27 | **Debrief.** Step through with Back / Next on the TV: the 75% wall, the 85.4% bound with the best dials, then why the crystals can't send a message (every row ≈ 50%), then credits. | **Debrief**, then **Next** |
+| 0:19 | **The tool.** A supply pod brings every pair linked crystals; engineering's note says they carry no messages, so the storm can't jam them. Read it aloud. Phones explain how the tool behaves. | **Unlock tool** |
+| 0:20 | **Act III lull.** Each player sets two dials (COOL and HOT) and sees their partner's live. If they're stuck after a wave, show the hint. | **Use the lull (45 s)**; **Show hint** if needed |
+| 0:21 | **Act III waves.** Rounds last 7 s: tap MEASURE, the crystal suggests a pump, then set the pump (following it or not). | **Start the wave** / **Use the lull (45 s)** between waves |
+| 0:23 | **Act III wave passed.** The TV shows every pair's dials case by case and their true rate; pairs at 80% or more glow green. The top line says whether the crew's dials average 80% (the station holds) and how often the crew followed the crystal. Play another lull and wave if it says "Not yet". | **Use the lull (45 s)**, then **Start the wave** |
+| 0:28 | **Debrief.** Step through with Back / Next on the TV: the 75% wall, the 85.4% bound with the best dials, then why the crystals can't send a message (every row ≈ 50%), then credits. | **Debrief**, then **Next** |
 | 0:33 | Done. For a new group, **Reset** clears the scores and keeps the players (and goes back to the lobby, before the night shift); for a new crowd, open a fresh `/screen`. | **Reset** (asks to confirm) |
 
 Short on time? From the lobby, **Use the lull (45 s)** skips the night shift and the storm and starts Act II.

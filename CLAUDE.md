@@ -39,7 +39,7 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   CLOCKWISE = OPEN = 0, ANTICLOCKWISE = CLOSED = 1) and has `roundCause()`; UI code uses the aliases. Never rename in
   `chsh.ts`, protocol or tests for the story's sake. Lights are blue/orange with snowflake/flame icons (`--cool` /
   `--hot` tokens), never colour alone; win/loss keeps green/red. Solo results name the cause; so do event results (the
-  server sends the round and its `cause`), except Act III on phones until E2b (Stable / Leak). `RingDiagram` sits in the rule on the solo intro
+  server sends the round and its `cause`). `RingDiagram` sits in the rule on the solo intro
   and plan screens. Keys: A / ← = ANTICLOCKWISE (left button), C / → = CLOCKWISE.
 - **Solo crewmate (2026-10-16):** the player sets the whole Act II joint plan: their own `plan` and the store's
   `crewPlan` (default `DEFAULT_CREW_PLAN`, always clockwise), chosen by name from `src/solo/plans.ts` (the four
@@ -145,9 +145,8 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - **Room:** `PairInfo.plans` (live; a `player:strategy` now broadcasts), `locked` (frozen at each Act II wave start),
     `lastWave` (the pair's rounds in the current or latest wave); `RoomState.triedPlans` (cell keys, Table A plan ×
     Table B plan). `MP_RESULT_MS` is 3.5 s.
-  - **Phones:** the lull shows the partner's choice (`S.event.partnerPlan`); a wave shows `S.event.agreed`; Act I and
-    II results show the cause, `S.event.why` (telemetry; "too slow" names whose pump) and the ring. Act III phone
-    results stay Stable / Leak until E2b.
+  - **Phones:** the lull shows the partner's choice (`S.event.partnerPlan`); a wave shows `S.event.agreed`; Results
+    show the cause, `S.event.why` (telemetry; "too slow" names whose pump) and the ring.
   - **TV:** pair cards show the cause in every act (in place of the mini-meter while it shows; no meter before a
     round); three or four pairs are compact, two to a row (`.pairs--crowded`). Wave done (Act II) is `WaveCases`:
     full width (`.tv--cases` hides the side), each pair's `FourCases` in one row, the total and wave score on one
@@ -155,7 +154,27 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     big 75%, `S.ceiling.engineering` for the crew, `S.ceiling.truth`, `PlanBoard` with `labels` (`S.event.board`).
   - **Shots:** six crowd players over WebSockets make four pairs; a worst-case check (every pair lucky) after wave
     done. Still cut at 1280×720, for E2b: the tool and debrief steps 1–3.
-  - **Next:** E2b (Act III).
+- **Event E2b (2026-11-01, Act III at parity):**
+  - **Room:** MEASURE reads the crystal (`PairRound.crystal`) and sends `round:measured { crystal }`; the pump is a
+    separate `player:valve`, accepted only after MEASURE, and scoring uses it. CORA measures at round start and
+    follows. `MP_ACT3_ROUND_MS` 7 s. `PairInfo.dials` (live), `lockedDials` (each Act III wave start), `followed`
+    (players only, no timeouts); `RoomState.act3Followed`, `crewDialsRate` (average of the pairs' exact rates for
+    their locked dials, set when an Act III wave ends) and `stationSaved` (true once that average is ≥ 80%; it
+    latches like solo's `act3Passed`). Marginals still record the pump set.
+  - **Phones:** the tool reveal is `S.event.pod` (engineering's note) plus `S.event.tuning.explain(name)`; the dials
+    live in the lull, with the partner's (`S.event.partnerDials`) and a **How it works** Sheet. Rounds: MEASURE
+    (Space / Enter) → "Crystal says" + both pumps, the suggested one tagged (`pumpbtn--suggested`), Enter follows.
+    `playerStore` has `round.crystal` and `followCrystal`. `S.tool` and `S.tv.toolLines` are gone.
+  - **TV:** `ToolPanel` shows `S.event.pod`; the meter hides on the tool screen. Act III wave done is `CrystalWave`
+    (full width like Act II): the crew line (`S.event.wave3.saved` / `notSaved`, crystal followed), each pair's
+    `CrystalCases` (optional `order`), true rate with "80%+ holds" inline and a green border, wave score, followed.
+    **Start the night shift** shows only in the lobby, so the controls stay one row with **Show hint**.
+  - **Shots:** `--quick` (TV 1280×720 + phones 375×667 only); phones and the crowd measure then follow; pair 1 tunes
+    to the best dials in the lull. A failed worst-case check is written into the report and fails the run at the
+    end. Still cut at 1280×720: debrief steps 1–3 (not in E2's scope).
+  - **Working style (2026-11-01, user request):** phases run in checkpoints of about 10–15 minutes; stop after each
+    and report (built, checked, unexpected), and wait for "go".
+  - **Next:** the crew's ending (saved or not) and the debrief.
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.

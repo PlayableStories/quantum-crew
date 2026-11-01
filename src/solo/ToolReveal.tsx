@@ -1,5 +1,5 @@
 // The emotional peak: during a lull, a supply pod from engineering brings the Entanglement Tool, in a look the game
-// hasn't used before. (Solo copy is S.pod; the event phone keeps S.tool.)
+// hasn't used before. (Solo copy is S.pod; event mode has S.event.pod.)
 // Background: William's Entanglement Shader asset if present, else a slow conic shimmer.
 import { useEffect } from "react";
 import { atlasUrl, isVideo } from "../assets/atlas/manifest.ts";

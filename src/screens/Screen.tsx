@@ -20,7 +20,9 @@ import { StationVisual } from "../components/StationVisual.tsx";
 import { MP_ACT1_ROUND_MS, MP_ROUND_MS } from "../config.ts";
 import { RadioLine } from "../components/RadioLine.tsx";
 import { RingDiagram } from "../components/RingDiagram.tsx";
-import { SURVIVAL_THRESHOLD, classicalExpectedWinRate } from "../shared/chsh.ts";
+import { SURVIVAL_THRESHOLD, classicalExpectedWinRate, quantumExpectedWinRate, type TuningConfig } from "../shared/chsh.ts";
+import { CrystalCases } from "../components/CrystalCases.tsx";
+import { formatDeg } from "../components/Dial.tsx";
 import { ALL_CELLS, expectedBoard, planId, type Board } from "../shared/plans.ts";
 import { FourCases } from "../components/FourCases.tsx";
 import { PlanBoard } from "../components/PlanBoard.tsx";
@@ -67,8 +69,8 @@ export function Screen() {
 
   const quantum = state.act === 3 && state.phase !== "debrief";
   return (
-    // After an Act II wave the pairs' four cases take the whole width (the join panel and pair list step aside).
-    <main className={`tv ${quantum ? "quantum" : ""} ${state.phase === "batchDone" && state.act === 2 ? "tv--cases" : ""}`}>
+    // After a wave the pairs' four cases take the whole width (the join panel and pair list step aside).
+    <main className={`tv ${quantum ? "quantum" : ""} ${state.phase === "batchDone" && state.act !== 1 ? "tv--cases" : ""}`}>
       {quantum && <QuantumBackdrop />}
       <header className="tv__head">
         <p className="kicker">{S.title}</p>
@@ -89,6 +91,8 @@ export function Screen() {
           <StormPanel localDeadline={localDeadline} rate={gauge} />
         ) : state.phase === "batchDone" && state.act === 2 ? (
           <WaveCases state={state} />
+        ) : state.phase === "batchDone" && state.act === 3 ? (
+          <CrystalWave state={state} />
         ) : state.phase === "ceiling" ? (
           <CeilingPanel state={state} />
         ) : state.phase === "tool" ? (
@@ -101,8 +105,8 @@ export function Screen() {
         <div
           className="panel"
           hidden={
-            ["debrief", "briefing", "storm", "ceiling"].includes(state.phase) ||
-            (state.phase === "batchDone" && state.act === 2) // the pairs' four cases need the room
+            ["debrief", "briefing", "storm", "ceiling", "tool"].includes(state.phase) ||
+            (state.phase === "batchDone" && state.act !== 1) // the pairs' four cases need the room
           }
         >
           <StabilityMeter
@@ -308,17 +312,59 @@ export function CeilingPanel({ state }: { state: RoomState }) {
   );
 }
 
-function ToolPanel() {
+/** The tool reveal: the supply pod from engineering, with its note (the crystals carry no messages). */
+export function ToolPanel() {
   const art = atlasUrl("entanglement-reveal");
   return (
     <div className="panel stack reveal">
       <RevealField art={art} />
       <Crystals />
-      {S.tv.toolLines.map((l) => (
+      <p className="kicker">{S.event.pod.kicker}</p>
+      {S.event.pod.lines.map((l) => (
         <p key={l} className="tv__line">
           {l}
         </p>
       ))}
+    </div>
+  );
+}
+
+/** After an Act III wave: each pair's locked dials case by case (each case's exact chance if both follow their
+ *  crystals), the true rate (highlighted at 80% or more), the wave's score and who followed; then the crew's
+ *  followed count, its dials' average and whether that saves the station. */
+export function CrystalWave({ state }: { state: RoomState }) {
+  const W = S.event.wave3;
+  const dials = (t: TuningConfig) => W.dials(formatDeg(t.greenDeg), formatDeg(t.redDeg));
+  const crew = state.crewDialsRate;
+  const followed = state.act3Followed;
+  return (
+    <div className={`tv__cases tv__cases--${Math.min(state.pairs.length, 4)}`}>
+      <p className={`tv__crew-line ${state.stationSaved ? "tv__crew-line--saved" : ""}`}>
+        {crew !== null && <strong>{crew >= SURVIVAL_THRESHOLD ? W.saved(pct(crew)) : W.notSaved(pct(crew))}</strong>}
+        {followed && followed.of > 0 && <span className="muted"> · {W.crewFollowed(followed.n, followed.of)}</span>}
+      </p>
+      {state.pairs.map((pair) => {
+        if (!pair.lockedDials) return null;
+        const { a, b } = pair.lockedDials;
+        const trueRate = quantumExpectedWinRate(a, b);
+        const holds = trueRate >= SURVIVAL_THRESHOLD;
+        const wave = pair.lastWave;
+        const f = pair.followed;
+        return (
+          <div key={pair.id} className={`panel stack tv__pair-cases ${holds ? "tv__pair-cases--holds" : ""}`}>
+            <p className="kicker">
+              {S.tv.pair(pair.id)} · {W.pairDials(pair.a.name, dials(a), pair.b.name, dials(b))}
+            </p>
+            <CrystalCases tuning={a} crew={b} order={S.event.casesOrder} />
+            <p className="tv__pair-total">
+              <strong>{S.readout.trueRate(pct(trueRate))}</strong>
+              {holds && <span className="tv__holds"> · {W.holds}</span>}
+              {wave && <span className="muted"> · {W.wave(wave.wins, wave.rounds)}</span>}
+              {f && f.of > 0 && <span className="muted"> · {W.followed(f.n, f.of)}</span>}
+            </p>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -542,7 +588,8 @@ function HostControls({
     }),
     [inBatch, hasPlayers, state.phase, state.act, state.stability.act2.rounds, state.stability.act3.rounds, state.ceilingRevealed, state.toolUnlocked],
   );
-  const order = HOST_COMMANDS;
+  // Start the night shift only matters in the lobby; after that it steps aside so the row fits (Show hint joins it).
+  const order = HOST_COMMANDS.filter((cmd) => cmd !== "startNightShift" || state.phase === "lobby");
   return (
     <footer className="tv__controls">
       <span className="kicker">{S.tv.controls}</span>
