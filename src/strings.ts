@@ -352,16 +352,6 @@ export const S = {
     go: "Pick up the tool",
   },
 
-  tool: {
-    kicker: "Incoming cargo",
-    title: "The Entanglement Tool",
-    lines: [
-      `Two linked crystals have arrived. One sits in your tool. The other is in ${CREW_NAME}'s tool at Table B.`,
-      "Turn the dial. Tap MEASURE. The crystal decides your pump: CLOCKWISE or ANTICLOCKWISE.",
-      `${CREW_NAME} has already set hers. Set one dial for COOL and one for HOT, and find what holds.`,
-    ],
-    go: "Pick up the tool",
-  },
 
   tuning: {
     kicker: "Tool tuning",
@@ -506,6 +496,36 @@ export const S = {
       cols: "Table B",
       cell: (a: string, b: string, value: string) => `Table A ${a}, Table B ${b}: ${value}`,
     },
+    /** The tool reveal, on the TV and phones: the supply pod and engineering's note (names no single partner). */
+    pod: {
+      kicker: "Supply pod · during the lull",
+      title: "The Entanglement Tool",
+      lines: [
+        "A supply pod docks from engineering with linked crystals: for every pair, one in each partner's tool.",
+        "Engineering's note: the crystals don't carry messages, so the storm can't jam them. Measure one and it gives a direction, linked to its partner in a way no plan can copy.",
+        "Turn your dial, tap MEASURE, and the crystal suggests a pump. You decide whether to follow it.",
+      ],
+    },
+    /** The TV after an Act III wave: each pair's dials case by case, who followed, and the crew's saved-or-not. */
+    wave3: {
+      pairDials: (a: string, aDials: string, b: string, bDials: string) => `${a}: ${aDials} · ${b}: ${bDials}`,
+      dials: (cool: string, hot: string) => `${cool} / ${hot}`,
+      holds: "80%+ holds",
+      followed: (n: number, of: number) => `followed ${n}/${of}`,
+      wave: (wins: number, rounds: number) => `wave ${wins}/${rounds}`,
+      crewFollowed: (n: number, of: number) => `crystal followed ${n}/${of}`,
+      saved: (pct: string) => `Dials average ${pct}: the station holds.`,
+      notSaved: (pct: string) => `Not yet: dials average ${pct}, the station needs 80%.`,
+    },
+    /** Act III on a phone: the partner's dials (live in the lull) and how the tool behaves, named for the partner. */
+    partnerDials: (name: string) => `${name}'s dials`,
+    dialsLine: (cool: string, hot: string) => `COOL ${cool} · HOT ${hot}`,
+    tuning: {
+      head: "How the tool works",
+      explain: (name: string) =>
+        `The closer your dial points to ${name}'s, the more often your crystals give the same direction. Need your pumps to match? Point close to ${name}'s. Need them to differ? Point far away.`,
+      howButton: "How it works",
+    },
     /** The storm in event mode. With a human partner the radio's last words come from the station log. */
     storm: {
       log: "Station log",
@@ -558,11 +578,6 @@ export const S = {
     /** Start batch, during the briefing: starts Act I's rounds. */
     startRounds: "Start the rounds",
     resetConfirm: "Reset the session? Scores are cleared; players stay.",
-    toolLines: [
-      "Two linked crystals for every pair: one in each partner's tool, one at each table.",
-      "Turn the dial. Tap MEASURE. The crystal decides your pump: CLOCKWISE or ANTICLOCKWISE.",
-      "Each of you sets one dial for COOL and one for HOT. Use the huddle to work out what holds.",
-    ],
     showHint: "Show hint",
     hideHint: "Hide hint",
     crewAct: (act: number, pct: string, n: number) => `Your crew in Act ${ROMAN[act]}: ${pct} of ${n} rounds`,
@@ -588,14 +603,12 @@ export const S = {
     waitingSeat: "You'll get a partner after this wave.",
     huddle: "The lull: last chance to talk",
     huddleBody: "Agree on your plans. When the clock runs out the wave hits, and the radio goes dark.",
-    huddleBody3:
-      "Agree with your partner how you'll each set your dials. When the clock runs out the next wave hits, and the radio goes dark.",
+    huddleBody3: "Agree on your dials. When the clock runs out the wave hits, and the radio goes dark.",
     /** The briefing on a phone: the big screen tells the story. */
     briefing: "The night shift",
     briefingBody: "The radio works tonight: each round you'll hear your partner's reading and pump. Eyes on the big screen.",
     /** Act I: the pump can change until the round ends. */
     act1Change: "You can change it until the round ends.",
-    tuneNow: "Set one dial for COOL and one for HOT. Your partner sets theirs. Work out together what holds.",
     retune: "Retune your dials",
     plan: "Your plan",
     pumpSet: (v: string) => `Pump set: ${v}. Hold…`,

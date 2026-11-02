@@ -1,6 +1,7 @@
 // "If we both follow the crystals": the four sensor combinations (each equally likely) with both dial angles and the
 // exact chance the round holds if both follow their crystals; then the settings' true rate. Exact, from chsh.ts
 // quantumCases: no sampling.
+import type { ReactNode } from "react";
 import { quantumCases, type TuningConfig } from "../shared/chsh.ts";
 import { HOT } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
@@ -10,17 +11,22 @@ import { LightIcon } from "./SensorLight.tsx";
 
 const whole = (p: number) => `${Math.round(p * 100)}%`;
 
-type Props = { tuning: TuningConfig; crew: TuningConfig; title?: string };
+/** `order` says whose dial comes first on each card (default "dials you · CORA"; the TV says Table A · Table B). */
+type Props = { tuning: TuningConfig; crew: TuningConfig; title?: string; order?: ReactNode };
 
-export function CrystalCases({ tuning, crew, title }: Props) {
+export function CrystalCases({ tuning, crew, title, order }: Props) {
   const cases = quantumCases(tuning, crew);
   const rate = cases.reduce((sum, c) => sum + c.pWin, 0) / 4;
   return (
     <div className="cases cases--crystal">
       {title && <p className="kicker">{title}</p>}
       <p className="muted small cases__order">
-        {S.readout.crystalCasesHead}
-        <CrewName />
+        {order ?? (
+          <>
+            {S.readout.crystalCasesHead}
+            <CrewName />
+          </>
+        )}
       </p>
       <ul className="cases__grid">
         {cases.map((c) => (

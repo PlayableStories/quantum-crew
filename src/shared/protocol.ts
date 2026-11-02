@@ -67,7 +67,16 @@ export type PairInfo = {
   locked: { a: ClassicalStrategy; b: ClassicalStrategy } | null;
   /** The pair's rounds in the current or latest wave (null before the first wave). */
   lastWave: RateSummary | null;
+  /** Act III: each seat's dials as set now (partners see them live; CORA's are OPTIMAL_TUNING.B, or .A at Table A). */
+  dials: { a: TuningConfig; b: TuningConfig };
+  /** Act III: the dials locked when the latest Act III wave started (null before the first). */
+  lockedDials: { a: TuningConfig; b: TuningConfig } | null;
+  /** Act III: in the current or latest wave, how many pumps the pair's players set the way their crystal said, of
+   *  the pumps they set (CORA always follows and isn't counted; timeouts aren't counted). */
+  followed: Followed | null;
 };
+
+export type Followed = { n: number; of: number };
 
 export type RoomState = {
   room: string;
@@ -91,6 +100,13 @@ export type RoomState = {
   lastBatch: RateSummary | null;
   /** Act II: every plan pairing (Table A plan × Table B plan) any pair has played, for the engineering report. */
   triedPlans: CellKey[];
+  /** Act III, the latest wave: the whole crew's followed count, and the average of the pairs' exact rates for their
+   *  locked dials (null before the first Act III wave ends). */
+  act3Followed: Followed | null;
+  crewDialsRate: number | null;
+  /** True once an Act III wave ends with the crew's dials averaging 80% or more; it stays true (like solo's
+   *  act3Passed). The ending comes in a later phase. */
+  stationSaved: boolean;
   ceilingRevealed: boolean;
   toolUnlocked: boolean;
   /** Act III no-signalling data, sent only during the debrief. `crew` pools every seat (bigger sample, closer to 50%). */
@@ -147,11 +163,13 @@ export type ServerMsg =
       /** Act I: the partner's reading (and pump, if set) over the radio, and this phone's own pump after a rejoin. */
       partner?: PartnerCall;
       pump?: Valve | null;
+      /** Act III, after a rejoin: the crystal this phone already measured. */
+      crystal?: Valve | null;
     }
   /** Act I, to one phone: its partner set (or changed) their pump. */
   | { type: "round:partner"; roundId: string; pump: Valve }
-  /** Act III, to the measuring phone only. */
-  | { type: "round:measured"; roundId: string; valve: Valve }
+  /** Act III, to the measuring phone only: the crystal's suggestion. The pump is still the player's to set. */
+  | { type: "round:measured"; roundId: string; crystal: Valve }
   /** To the two phones of a pair. */
   | ({ type: "round:result"; roundId: string } & RoundOutcome)
   /** To the TV: every pair's outcome. */

@@ -12,6 +12,7 @@ import {
   MAX_PAIRS,
   MP_ACT1_RESULT_MS,
   MP_ACT1_ROUND_MS,
+  MP_ACT3_ROUND_MS,
   MP_RESULT_MS,
   MP_ROUND_MS,
   ROLLING_WINDOW,
@@ -24,11 +25,13 @@ import { cellKey, type CellKey } from "../src/shared/plans.ts";
 import {
   DIAL_POSITIONS,
   OPTIMAL_TUNING,
+  SURVIVAL_THRESHOLD,
   classicalValve,
   dialFor,
   drawInputs,
   measureFirst,
   measureSecond,
+  quantumExpectedWinRate,
   scoreRound,
   type ClassicalStrategy,
   type Light,
@@ -80,7 +83,15 @@ type Side = "a" | "b";
  * One pair's part of the live round. A null valve = not answered yet. In Act III, `theta` records the dial angle
  * each side measured at, so the second measurement can be conditioned on the first.
  */
-type PairRound = { x: Light; y: Light; a: Valve | null; b: Valve | null; theta: { a: number | null; b: number | null } };
+type PairRound = {
+  x: Light;
+  y: Light;
+  a: Valve | null;
+  b: Valve | null;
+  theta: { a: number | null; b: number | null };
+  /** Act III: what each side's crystal said when they measured (a suggestion; the pump is `a` / `b`). */
+  crystal: { a: Valve | null; b: Valve | null };
+};
 
 /** Act III no-signalling record for one seat: its OPEN count split by the partner's light. */
 type SeatMarginal = { name: string; table: Table; green: { open: number; n: number }; red: { open: number; n: number } };
@@ -138,6 +149,11 @@ export function createRoom(code: string, deps: RoomDeps) {
   let triedPlans = new Set<CellKey>();
   /** Each pair's rounds in the current (or latest) wave. */
   let pairWave = new Map<number, RateSummary>();
+  /** Act III: each pair's dials locked at the latest wave start, and its followed count in that wave. */
+  let lockedDials = new Map<number, { a: TuningConfig; b: TuningConfig }>();
+  let pairFollowed = new Map<number, { n: number; of: number }>();
+  let crewDialsRate: number | null = null;
+  let stationSaved = false;
   /** Keyed by player id, or `bot-<pair>-<side>` for an AI crewmate. */
   let marginals = new Map<string, SeatMarginal>();
 
@@ -163,6 +179,9 @@ export function createRoom(code: string, deps: RoomDeps) {
         plans: pairPlans(pair),
         locked: lockedPlans.get(pair.id) ?? null,
         lastWave: pairWave.get(pair.id) ?? null,
+        dials: pairDials(pair),
+        lockedDials: lockedDials.get(pair.id) ?? null,
+        followed: pairFollowed.get(pair.id) ?? null,
       };
     };
     return {
@@ -190,6 +209,11 @@ export function createRoom(code: string, deps: RoomDeps) {
       },
       lastBatch,
       triedPlans: [...triedPlans],
+      act3Followed: pairFollowed.size
+        ? [...pairFollowed.values()].reduce((sum, f) => ({ n: sum.n + f.n, of: sum.of + f.of }), { n: 0, of: 0 })
+        : null,
+      crewDialsRate,
+      stationSaved,
       ceilingRevealed,
       toolUnlocked,
       // Only in the debrief: per-light counts could otherwise hint at a partner's past lights mid-game.
@@ -267,8 +291,10 @@ export function createRoom(code: string, deps: RoomDeps) {
     act === 1 ? (deps.rng() < 0.5 ? 0 : 1) : classicalValve(BOT_ACT2_PLAN, light);
 
   /** The dial a seat uses for a light: the player's own tuning, or the optimal one for an AI crewmate. */
-  const seatDial = (pair: Pair, side: Side, light: Light) =>
-    dialFor(pair[side]?.tuning ?? OPTIMAL_TUNING[side === "a" ? "A" : "B"], light);
+  const seatDial = (pair: Pair, side: Side, light: Light) => dialFor(pairDials(pair)[side], light);
+
+  /** A pair's dials: each player's, or the optimal ones for an AI crewmate. */
+  const pairDials = (pair: Pair) => ({ a: pair.a?.tuning ?? OPTIMAL_TUNING.A, b: pair.b?.tuning ?? OPTIMAL_TUNING.B });
 
   /**
    * Act III: one side taps MEASURE. Whoever measures first gets a fair coin; the second result is conditioned on it
@@ -277,11 +303,11 @@ export function createRoom(code: string, deps: RoomDeps) {
   function measureSide(pair: Pair, pr: PairRound, side: Side): Valve {
     const other: Side = side === "a" ? "b" : "a";
     const theta = seatDial(pair, side, side === "a" ? pr.x : pr.y);
-    const partner = pr[other];
+    const partner = pr.crystal[other];
     const partnerTheta = pr.theta[other];
     const valve =
       partner === null || partnerTheta === null ? measureFirst(deps.rng) : measureSecond(partner, partnerTheta, theta, deps.rng);
-    pr[side] = valve;
+    pr.crystal[side] = valve;
     pr.theta[side] = theta;
     return valve;
   }
@@ -300,6 +326,11 @@ export function createRoom(code: string, deps: RoomDeps) {
     roundNo = 0;
     batchStats = emptyRate();
     pairWave = new Map(pairs.map((pair) => [pair.id, emptyRate()]));
+    // Act III: the dials each pair goes into the wave with, and a fresh followed count.
+    if (act === 3) {
+      lockedDials = new Map(pairs.map((pair) => [pair.id, pairDials(pair)]));
+      pairFollowed = new Map(pairs.map((pair) => [pair.id, { n: 0, of: 0 }]));
+    }
     // Act II: the plans each pair goes into the wave with (a change mid-wave doesn't move the lock).
     if (act === 2)
       for (const pair of pairs) {
@@ -329,7 +360,7 @@ export function createRoom(code: string, deps: RoomDeps) {
     broadcast();
   }
 
-  const roundMs = () => (act === 1 ? MP_ACT1_ROUND_MS : MP_ROUND_MS);
+  const roundMs = () => (act === 1 ? MP_ACT1_ROUND_MS : act === 3 ? MP_ACT3_ROUND_MS : MP_ROUND_MS);
 
   function nextRound() {
     roundNo++;
@@ -339,13 +370,12 @@ export function createRoom(code: string, deps: RoomDeps) {
     for (const pair of pairs) {
       const planned = act === 1 ? act1Orders.get(pair.id)?.[roundNo - 1] : undefined;
       const { x, y } = planned ? { x: planned[0], y: planned[1] } : drawInputs(deps.rng);
-      const pr: PairRound = { x, y, a: null, b: null, theta: { a: null, b: null } };
+      const pr: PairRound = { x, y, a: null, b: null, theta: { a: null, b: null }, crystal: { a: null, b: null } };
       // AI crewmates answer at once. DECISION: in Act III the bot measures at the start of the round, so it is
-      // always first and its human partner's result is the conditioned one.
+      // always first and its human partner's result is the conditioned one; CORA always follows her crystal.
       for (const side of ["a", "b"] as const) {
         if (pair[side]) continue;
-        if (act !== 3) pr[side] = botValve(side === "a" ? x : y);
-        else measureSide(pair, pr, side);
+        pr[side] = act !== 3 ? botValve(side === "a" ? x : y) : measureSide(pair, pr, side);
       }
       byPair.set(pair.id, pr);
     }
@@ -372,7 +402,7 @@ export function createRoom(code: string, deps: RoomDeps) {
       toPlayer(p, {
         ...base,
         light,
-        ...(act === 3 ? { dialDeg: seatDial(pair, side, light) } : {}),
+        ...(act === 3 ? { dialDeg: seatDial(pair, side, light), crystal: pr.crystal[side] } : {}),
         ...(act === 1 ? radio : {}),
       });
     }
@@ -391,7 +421,8 @@ export function createRoom(code: string, deps: RoomDeps) {
     broadcast();
   }
 
-  /** Act I / II: a valve tap. Act III: a MEASURE tap (`valve` undefined). */
+  /** Act I / II: a valve tap. Act III: a MEASURE tap (`valve` undefined) reads the crystal, then a valve tap sets the
+   *  pump (only after measuring; it may go against the crystal, and changes until every pump is set). */
   function answer(player: Player, roundId: string, valve?: Valve) {
     if (phase !== "round" || !live || live.id !== roundId || deps.now() > live.deadline) return;
     const pair = pairs.find((p) => p.a === player || p.b === player);
@@ -399,12 +430,17 @@ export function createRoom(code: string, deps: RoomDeps) {
     if (!pair || !pr) return;
     const side: Side = pair.a === player ? "a" : "b";
     if (act === 1) return valve === undefined ? undefined : answerAct1(pair, pr, side, valve);
-    if (pr[side] !== null) return;
-    if (act === 2) {
-      if (valve === undefined) return;
+    if (act === 3) {
+      if (valve === undefined) {
+        if (pr.crystal[side] !== null) return; // one measurement per round
+        toPlayer(player, { type: "round:measured", roundId, crystal: measureSide(pair, pr, side) });
+        return broadcast();
+      }
+      if (pr.crystal[side] === null) return; // the pump comes after MEASURE
       pr[side] = valve;
     } else {
-      toPlayer(player, { type: "round:measured", roundId, valve: measureSide(pair, pr, side) });
+      if (pr[side] !== null || valve === undefined) return;
+      pr[side] = valve;
     }
     const done = [...live.byPair.values()].every((r) => r.a !== null && r.b !== null);
     if (done) resolveRound();
@@ -455,6 +491,14 @@ export function createRoom(code: string, deps: RoomDeps) {
       if (act !== 1) rolling.push(r.win);
       recordMarginal(pair, "a", pr.a, pr.y);
       recordMarginal(pair, "b", pr.b, pr.x);
+      // Act III: did each player set the pump their crystal suggested? (CORA always does; timeouts don't count.)
+      const followed = pairFollowed.get(pair.id);
+      if (act === 3 && followed)
+        for (const side of ["a", "b"] as const) {
+          if (!pair[side] || pr[side] === null) continue;
+          followed.of++;
+          if (pr[side] === pr.crystal[side]) followed.n++;
+        }
       const msg: ServerMsg = { type: "round:result", roundId: live.id, ...outcome };
       toPlayer(pair.a, msg);
       toPlayer(pair.b, msg);
@@ -470,6 +514,12 @@ export function createRoom(code: string, deps: RoomDeps) {
 
   function endBatch() {
     live = null;
+    // Act III: the crew's dials, as the pairs' average exact rate; 80% saves the station (and it stays saved).
+    if (act === 3 && lockedDials.size) {
+      const rates = [...lockedDials.values()].map((d) => quantumExpectedWinRate(d.a, d.b));
+      crewDialsRate = rates.reduce((sum, r) => sum + r, 0) / rates.length;
+      if (crewDialsRate >= SURVIVAL_THRESHOLD) stationSaved = true;
+    }
     phase = "batchDone";
     deadline = null;
     lastBatch = batchStats;
@@ -539,6 +589,10 @@ export function createRoom(code: string, deps: RoomDeps) {
         lockedPlans = new Map();
         triedPlans = new Set();
         pairWave = new Map();
+        lockedDials = new Map();
+        pairFollowed = new Map();
+        crewDialsRate = null;
+        stationSaved = false;
         marginals = new Map();
         batchStats = lastBatch = null;
         for (const p of players) {
@@ -612,7 +666,7 @@ export function createRoom(code: string, deps: RoomDeps) {
           // The partner sees plans (and, from E2b, dials) change live.
           return broadcast();
         case "player:valve":
-          if (!player || act === 3) return;
+          if (!player) return;
           return answer(player, msg.roundId, msg.valve);
         case "player:measure":
           if (!player || act !== 3) return;

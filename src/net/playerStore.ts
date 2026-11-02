@@ -23,6 +23,8 @@ type LiveRound = {
   answered: Valve | null;
   measuring: boolean;
   partner: PartnerCall | null;
+  /** Act III: the crystal's suggestion once MEASURE has been read (the pump is still the player's to set). */
+  crystal: Valve | null;
 };
 
 type PlayerStore = {
@@ -41,6 +43,7 @@ type PlayerStore = {
   resume(): boolean;
   answer(valve: Valve): void;
   measure(): void;
+  followCrystal(): void;
   setPlan(plan: ClassicalStrategy): void;
   setTuning(tuning: TuningConfig): void;
   leave(): void;
@@ -99,6 +102,7 @@ export const usePlayer = create<PlayerStore>()((set, get) => ({
                 answered: msg.pump ?? null,
                 measuring: false,
                 partner: msg.partner ?? null,
+                crystal: msg.crystal ?? null,
               },
               flash: null,
             });
@@ -110,7 +114,7 @@ export const usePlayer = create<PlayerStore>()((set, get) => ({
           }
           case "round:measured": {
             const { round } = get();
-            if (round?.roundId === msg.roundId) set({ round: { ...round, answered: msg.valve, measuring: false } });
+            if (round?.roundId === msg.roundId) set({ round: { ...round, crystal: msg.crystal, measuring: false } });
             return;
           }
           case "round:result": {
@@ -140,17 +144,25 @@ export const usePlayer = create<PlayerStore>()((set, get) => ({
 
   answer(valve) {
     const { round } = get();
-    // Act I: the last tap counts, so a different pump is sent again. Act II: the first tap counts.
-    if (!round || round.act === 3 || round.answered === valve || (round.act === 2 && round.answered !== null)) return;
+    // Act I: the last tap counts, so a different pump is sent again. Acts II and III: the first tap counts, and in
+    // Act III only once MEASURE has given the crystal's suggestion.
+    if (!round || round.answered === valve || (round.act !== 1 && round.answered !== null)) return;
+    if (round.act === 3 && round.crystal === null) return;
     station?.send({ type: "player:valve", roundId: round.roundId, valve });
     set({ round: { ...round, answered: valve } });
   },
 
   measure() {
     const { round } = get();
-    if (!round || round.act !== 3 || round.answered !== null || round.measuring) return;
+    if (!round || round.act !== 3 || round.crystal !== null || round.measuring) return;
     station?.send({ type: "player:measure", roundId: round.roundId });
     set({ round: { ...round, measuring: true } });
+  },
+
+  /** Act III: set the pump the crystal suggested. */
+  followCrystal() {
+    const { round, answer } = get();
+    if (round?.crystal != null) answer(round.crystal);
   },
 
   setTuning(tuning) {

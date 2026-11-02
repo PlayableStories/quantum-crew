@@ -60,8 +60,8 @@ describe("storm waves", () => {
   });
 
   it("event mode's own keys are untouched by solo's (event mode counts storm waves too, since E1)", () => {
-    expect(S.tool.kicker).toBe("Incoming cargo");
-    expect(S.tool.lines[1]).toContain("The crystal decides your pump");
+    // Event mode's tool reveal has its own copy since E2b (the supply pod, for pairs).
+    expect(S.event.pod.lines.join(" ")).not.toContain(S.crew.name);
     expect(S.debrief.kicker).toBe("Debrief");
     expect(S.tv.roundOf(2, 3, 12)).toBe("Wave 2 · round 3/12");
     expect(S.tv.phase.batchDone).toBe("The wave has passed");
