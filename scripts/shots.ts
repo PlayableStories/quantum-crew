@@ -71,7 +71,13 @@ const EVENT_PASSES = [
 /** Worst-case fit checks that failed (written into the report, then the run fails). */
 const fitFailures: string[] = [];
 /** What /station-info says in the screenshots: a made-up LAN address, so they never show this machine's. */
-const EXAMPLE_INFO = { publicUrl: null, lanUrls: ["http://192.168.1.20:4317"] };
+const EXAMPLE_INFO = {
+  publicUrl: null,
+  lan: [
+    { url: "http://192.168.1.20:4317", iface: "en0" },
+    { url: "http://100.101.7.3:4317", iface: "utun4" },
+  ],
+};
 
 
 /** Pairs of stability-gauge labels that overlap on screen (each pair as "a / b"). */

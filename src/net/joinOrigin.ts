@@ -1,19 +1,43 @@
 // The join address on the TV (its QR code and printed link are built from this one value).
 // In order: the server's PUBLIC_URL; the TV's own address, if phones can reach it too (anything but localhost); the
-// server's LAN address, when the TV is open on the laptop itself at localhost; otherwise nothing, and the TV warns.
-import { STATION_INFO_PATH, type StationInfo } from "../shared/protocol.ts";
+// server's LAN address, when the TV is open on the laptop itself at localhost (the facilitator's choice if they made
+// one, else the best-ranked); otherwise nothing, and the TV warns. At localhost with several LAN addresses, the others
+// come back as `alternatives` so the facilitator can switch with one click.
+import { STATION_INFO_PATH, type JoinAddress, type StationInfo } from "../shared/protocol.ts";
 
 const LOCAL = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
-export type JoinOrigin = { origin: string; warning: false } | { origin: string; warning: true };
+export type JoinOrigin = { origin: string; warning: boolean; alternatives: JoinAddress[] };
 
-export function pickJoinOrigin(info: StationInfo | null, here: { origin: string; hostname: string }): JoinOrigin {
-  if (info?.publicUrl) return { origin: info.publicUrl, warning: false };
-  if (!LOCAL.has(here.hostname)) return { origin: here.origin, warning: false };
-  const lan = info?.lanUrls[0];
-  if (lan) return { origin: lan, warning: false };
+export function pickJoinOrigin(
+  info: StationInfo | null,
+  here: { origin: string; hostname: string },
+  chosen?: string | null,
+): JoinOrigin {
+  if (info?.publicUrl) return { origin: info.publicUrl, warning: false, alternatives: [] };
+  if (!LOCAL.has(here.hostname)) return { origin: here.origin, warning: false, alternatives: [] };
+  const lan = info?.lan ?? [];
+  const pick = lan.find((a) => a.url === chosen) ?? lan[0];
+  if (pick) return { origin: pick.url, warning: false, alternatives: lan.filter((a) => a !== pick) };
   // Only this computer can open a localhost link: show it, with a warning.
-  return { origin: here.origin, warning: true };
+  return { origin: here.origin, warning: true, alternatives: [] };
+}
+
+/** The facilitator's choice of LAN address, kept on this TV across reloads (null if storage is unavailable). */
+const CHOSEN_KEY = "qc-join-address";
+export function loadChosenAddress(): string | null {
+  try {
+    return localStorage.getItem(CHOSEN_KEY);
+  } catch {
+    return null;
+  }
+}
+export function saveChosenAddress(url: string) {
+  try {
+    localStorage.setItem(CHOSEN_KEY, url);
+  } catch {
+    // The choice still applies until the page reloads.
+  }
 }
 
 export const joinUrl = (origin: string, room: string) => `${origin}/play?room=${room}`;

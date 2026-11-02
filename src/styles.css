@@ -1317,7 +1317,50 @@ p {
 .tv__debrief {
   flex: 1 1 0;
   min-height: 0;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--gap) * 0.75);
+}
+
+/* The debrief takes the whole TV width (the join panel and pair list step aside), like wave done. */
+@media (min-width: 900px) {
+  .tv--wide {
+    grid-template-areas: "head head" "main main" "controls controls";
+  }
+}
+
+.tv--wide .tv__side {
+  display: none;
+}
+
+.tv__debrief-head h1 {
+  margin: 4px 0 0;
+}
+
+.tv__debrief-head .kicker {
+  margin: 8px 0 0;
+}
+
+/* The explanation beside the step's numbers. */
+.tv__debrief-body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: calc(var(--gap) * 1.5);
+  align-items: start;
+}
+
+.tv__debrief-body--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tv__debrief-body .stack {
+  gap: 10px;
+}
+
+.tv__debrief-body p {
+  margin: 0;
 }
 
 .tv__debrief h1 {
@@ -1364,21 +1407,30 @@ p {
 }
 
 .tv__debrief .tv__line {
-  font-size: clamp(1rem, 1.45vw, 1.6rem);
+  font-size: clamp(1rem, 1.3vw, 1.55rem);
+  line-height: 1.4;
 }
 
 .tv__debrief .tv__big {
   font-size: clamp(1.2rem, 2vw, 2rem);
 }
 
-/* Back / Next stay in view however long the step is. */
+/* Back / Next on the panel's bottom row, at the right (nothing scrolls, so no need to stick). */
 .tv__debrief-nav {
-  position: sticky;
-  bottom: calc(var(--gap) * -1);
-  margin: 0 calc(var(--gap) * -1) calc(var(--gap) * -1);
-  padding: var(--gap);
-  background: var(--panel);
+  justify-content: flex-end;
+  padding-top: calc(var(--gap) * 0.75);
   border-top: 1px solid var(--edge);
+}
+
+.tv__debrief-nav .btn {
+  flex: 0 0 auto;
+  min-width: 10em;
+  min-height: 48px;
+}
+
+/* The no-signalling table: up to nine rows (the crew and eight players). */
+.tv__debrief .marginals td {
+  padding-block: 3px;
 }
 
 .marginals__crew td {
@@ -3491,4 +3543,26 @@ button.board__cell:focus-visible {
   .lull .rule-chip__text {
     font-size: 0.72rem;
   }
+}
+
+/* The TV lobby: other addresses the laptop has, one click each. */
+.tv__join-other {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.tv__join-alt {
+  margin: 0 6px 0 0;
+  padding: 2px 6px;
+  border: 1px solid var(--edge-bright);
+  border-radius: 4px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tv__join-alt:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
 }

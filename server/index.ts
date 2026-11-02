@@ -62,6 +62,10 @@ attachStation(server);
 server.listen(PORT, () => {
   const info = stationInfo(PORT);
   console.log(`Quantum Crew station on http://localhost:${PORT}`);
-  const join = info.publicUrl ? [info.publicUrl] : info.lanUrls;
-  console.log(join.length ? `Phones join at: ${join.join("  ·  ")}` : "No network address found: phones can't reach this laptop.");
+  // Every address, the one the TV will use first (see server/joinInfo.ts for the ranking).
+  const [best, ...others] = info.lan.map((a) => `${a.url} (${a.iface})`);
+  if (info.publicUrl) console.log(`Phones join at: ${info.publicUrl} (PUBLIC_URL)`);
+  else if (best) console.log(`Phones join at: ${best}`);
+  else console.log("No network address found: phones can't reach this laptop.");
+  if (others.length) console.log(`Also on: ${others.join("  ·  ")}`);
 });

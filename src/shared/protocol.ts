@@ -189,8 +189,10 @@ export const HEALTH_PATH = "/healthz";
 /** GET → StationInfo: where phones should go to join (the TV can't tell from its own address). */
 export const STATION_INFO_PATH = "/station-info";
 
-/** `publicUrl` is PUBLIC_URL when the server has it set; `lanUrls` are the server's LAN addresses on its port. */
-export type StationInfo = { publicUrl: string | null; lanUrls: string[] };
+/** `publicUrl` is PUBLIC_URL when the server has it set; `lan` is the server's LAN addresses on its port, best first
+ *  (see server/joinInfo.ts), each with the network interface it's on. */
+export type StationInfo = { publicUrl: string | null; lan: JoinAddress[] };
+export type JoinAddress = { url: string; iface: string };
 
 /** Parses and checks a client message; returns null if it is malformed. */
 export function parseClientMsg(raw: string): ClientMsg | null {

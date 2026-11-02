@@ -538,6 +538,9 @@ export const S = {
     station: (code: string) => `Station ${code}`,
     join: "Join on your phone",
     joinAt: (url: string) => `or open ${url}`,
+    /** The laptop has other network addresses; one of them may be the one phones can reach. */
+    tryOther: "Not working? Try:",
+    useAddress: (address: string, iface: string) => `Use ${address} (${iface}) for the QR code and link`,
     /** The TV is at localhost and the server found no network address: phones can't reach that link. */
     joinWarning:
       "Phones can't open this link: it only works on this computer. Open this TV page at the laptop's network address (it's printed where you ran pnpm start), or set PUBLIC_URL on the server.",
