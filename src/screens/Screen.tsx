@@ -15,13 +15,22 @@ import { SeatName } from "../components/AiBadge.tsx";
 import { CrewIcon } from "../components/CrewIcon.tsx";
 import { MuteToggle } from "../components/MuteToggle.tsx";
 import { QuantumBackdrop } from "../components/QuantumBackdrop.tsx";
-import { OptimalDials, fmt } from "../components/DebriefParts.tsx";
+import { fmt } from "../components/DebriefParts.tsx";
 import { StationVisual } from "../components/StationVisual.tsx";
 import { MP_ACT1_ROUND_MS, MP_ROUND_MS } from "../config.ts";
 import { RadioLine } from "../components/RadioLine.tsx";
 import { RingDiagram } from "../components/RingDiagram.tsx";
-import { SURVIVAL_THRESHOLD, classicalExpectedWinRate, quantumExpectedWinRate, type TuningConfig } from "../shared/chsh.ts";
+import {
+  OPTIMAL_TUNING,
+  SURVIVAL_THRESHOLD,
+  classicalExpectedWinRate,
+  exactOpenRates,
+  quantumExpectedWinRate,
+  type TuningConfig,
+} from "../shared/chsh.ts";
 import { CrystalCases } from "../components/CrystalCases.tsx";
+import { NoSignalling, PlanVsCrystals, ThreeNumbers } from "../components/ReportParts.tsx";
+import { crewReport } from "../shared/report.ts";
 import { formatDeg } from "../components/Dial.tsx";
 import { ALL_CELLS, expectedBoard, planId, type Board } from "../shared/plans.ts";
 import { FourCases } from "../components/FourCases.tsx";
@@ -37,13 +46,11 @@ const rate = (r: RateSummary) => (r.rounds ? r.wins / r.rounds : null);
 export function Screen() {
   const { status, state, localDeadline, results, error, start, command } = useHost();
   useEffect(() => start(), [start]);
-  // Facilitator-only, so it lives on the TV: the hint and the debrief step.
+  // Facilitator-only, so it lives on the TV: the hint. (The report's step is the room's, `debriefStep`.)
   const [hint, setHint] = useState(false);
-  const [step, setStep] = useState(0);
   useEffect(() => {
-    if (state?.phase !== "debrief") setStep(0);
     if (!state?.toolUnlocked) setHint(false);
-  }, [state?.phase, state?.toolUnlocked]);
+  }, [state?.toolUnlocked]);
   useTvSounds(state, results);
   // Where phones join: asked from the server once (see net/joinOrigin.ts for the order).
   const [info, setInfo] = useState<StationInfo | null>(null);
@@ -104,14 +111,16 @@ export function Screen() {
         ) : state.phase === "tool" ? (
           <ToolPanel />
         ) : state.phase === "debrief" ? (
-          <TvDebrief state={state} step={step} setStep={setStep} />
+          <TvDebrief state={state} onCommand={command} />
+        ) : state.phase === "resolution" ? (
+          <ResolutionPanel saved={state.stationSaved} />
         ) : (
           <StationVisual rate={gauge} />
         )}
         <div
           className="panel"
           hidden={
-            ["debrief", "briefing", "storm", "ceiling", "tool"].includes(state.phase) ||
+            ["debrief", "briefing", "storm", "ceiling", "tool", "resolution"].includes(state.phase) ||
             (state.phase === "batchDone" && state.act !== 1) // the pairs' four cases need the room
           }
         >
@@ -322,6 +331,9 @@ export function CeilingPanel({ state }: { state: RoomState }) {
           <strong>{S.ceiling.engineering(tried.size, ALL_CELLS.length - tried.size)}</strong>
         </p>
         <p className="tv__line">{S.ceiling.truth}</p>
+        <p className="tv__line tv__beat">
+          <strong>{S.event.beats.ceilingRoom}</strong>
+        </p>
       </div>
       <PlanBoard board={board} labels={S.event.board} />
     </div>
@@ -386,11 +398,35 @@ export function CrystalWave({ state }: { state: RoomState }) {
 }
 
 /** The debrief on the big screen: the same four steps as solo, with the whole crew's numbers. */
-function TvDebrief({ state, step, setStep }: { state: RoomState; step: number; setStep: (n: number) => void }) {
+/** The storm passes: the station clears (calm when saved, damaged when not, as in solo), the station log says how
+ *  it ended, and the room is told the radio is back. */
+export function ResolutionPanel({ saved }: { saved: boolean }) {
+  return (
+    <div className="stack tv__resolution">
+      {saved ? <StationVisual rate={1} clearing /> : <StationVisual rate={null} damaged clearing />}
+      <div className="panel stack">
+        <p className="kicker">{S.resolution.kicker}</p>
+        <p className="tv__line">{saved ? S.resolution.log : S.resolution.logNotSaved}</p>
+        <p className="tv__line">
+          <strong>{S.event.resolution.room}</strong>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** The incident report on the big screen: solo's four steps in the crew's version, stepped by the room (Back /
+ *  Next send reportBack / reportNext, so a reconnecting TV keeps its place). */
+export function TvDebrief({ state, onCommand }: { state: RoomState; onCommand: (cmd: HostCommand) => void }) {
   const steps = S.debrief.steps;
+  const step = Math.min(state.debriefStep, steps.length - 1);
   const content = steps[step]!;
-  const act2 = rate(state.stability.act2);
-  const act3 = rate(state.stability.act3);
+  const report = crewReport(state);
+  const R = S.event.report;
+  // The quantum-limit and no-signalling steps use the best pair's dials (if one reached 80%), else the best dials.
+  const best = report.bestPair;
+  const dials = best?.dials ?? { a: OPTIMAL_TUNING.A, b: OPTIMAL_TUNING.B };
+  const crew = state.marginals?.crew;
   return (
     // Full TV width, nothing scrolls: the explanation on the left, the step's numbers on the right, Back / Next below.
     <div className="panel tv__debrief">
@@ -400,7 +436,7 @@ function TvDebrief({ state, step, setStep }: { state: RoomState; step: number; s
             <span key={i} className={i <= step ? "on" : ""} />
           ))}
         </div>
-        <p className="kicker">{S.debrief.kicker}</p>
+        <p className="kicker">{S.report.kicker}</p>
         <h1>{content.title}</h1>
       </div>
       <div className={`tv__debrief-body ${content.body.length ? "" : "tv__debrief-body--single"}`}>
@@ -415,25 +451,31 @@ function TvDebrief({ state, step, setStep }: { state: RoomState; step: number; s
           </div>
         )}
         <div className="stack tv__debrief-numbers">
-          {step === 0 && act2 !== null && <p className="tv__big">{S.tv.crewAct(2, pct(act2), state.stability.act2.rounds)}</p>}
+          {step === 0 && <ThreeNumbers act1={report.act1} saved={report.saved} act3={report.act3} copy={R.three} />}
           {step === 1 && (
+            <PlanVsCrystals
+              dials={dials}
+              label={best ? R.pairDials(best.pairId, best.a, best.b) : S.debrief.compare.dials(false)}
+            />
+          )}
+          {step === 2 && (
             <>
-              {act3 !== null && <p className="tv__big">{S.tv.crewAct(3, pct(act3), state.stability.act3.rounds)}</p>}
-              <div className="row">
-                <OptimalDials table="A" />
-                <OptimalDials table="B" />
-              </div>
+              <NoSignalling
+                exact={exactOpenRates(dials.a, dials.b)}
+                who={{ a: S.event.table("A"), b: S.event.table("B") }}
+                real={crew && crew.rounds > 0 ? R.crewRounds(crew.rounds, fmt(crew.partnerGreen), fmt(crew.partnerRed)) : null}
+              />
+              {state.marginals && <MarginalTable {...state.marginals} />}
             </>
           )}
-          {step === 2 && state.marginals && <MarginalTable {...state.marginals} />}
           {step === 3 && <CreditsList />}
         </div>
       </div>
       <div className="row tv__debrief-nav">
-        <button className="btn" disabled={step === 0} onClick={() => setStep(step - 1)}>
+        <button className="btn" disabled={step === 0} onClick={() => onCommand("reportBack")}>
           {S.debrief.back}
         </button>
-        <button className="btn btn--primary" disabled={step === steps.length - 1} onClick={() => setStep(step + 1)}>
+        <button className="btn btn--primary" disabled={step === steps.length - 1} onClick={() => onCommand("reportNext")}>
           {S.debrief.next}
         </button>
       </div>
@@ -638,13 +680,20 @@ function HostControls({
       revealCeiling: !inBatch && state.act === 2 && state.stability.act2.rounds > 0 && state.phase !== "ceiling",
       // DECISION: the tool unlocks after the ceiling has been revealed, to keep the learning arc in order.
       unlockTool: !inBatch && state.ceilingRevealed && !state.toolUnlocked,
+      // The ending: after at least one Act III wave.
+      stormPasses: !inBatch && state.act === 3 && state.stability.act3.rounds > 0 && !["resolution", "debrief"].includes(state.phase),
+      // Back / Next live in the report panel, not in this row.
+      reportBack: false,
+      reportNext: false,
       debrief: !inBatch && state.act === 3 && state.stability.act3.rounds > 0 && state.phase !== "debrief",
       reset: true,
     }),
     [inBatch, hasPlayers, state.phase, state.act, state.stability.act2.rounds, state.stability.act3.rounds, state.ceilingRevealed, state.toolUnlocked],
   );
   // Start the night shift only matters in the lobby; after that it steps aside so the row fits (Show hint joins it).
-  const order = HOST_COMMANDS.filter((cmd) => cmd !== "startNightShift" || state.phase === "lobby");
+  const order = HOST_COMMANDS.filter(
+    (cmd) => (cmd !== "startNightShift" || state.phase === "lobby") && cmd !== "reportBack" && cmd !== "reportNext",
+  );
   return (
     <footer className="tv__controls">
       <span className="kicker">{S.tv.controls}</span>

@@ -3566,3 +3566,18 @@ button.board__cell:focus-visible {
   outline: 2px solid var(--amber);
   outline-offset: 2px;
 }
+
+/* Event: a prompt to the pair where solo has CORA speak (the engineering report, the storm passing). */
+.partner-beat {
+  border-left: 3px solid var(--radio);
+}
+
+.partner-beat p {
+  margin: 0;
+}
+
+.tv__beat {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--radio);
+}

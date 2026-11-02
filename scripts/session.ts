@@ -5,12 +5,14 @@
 //   one player changing their mind; every round held) and the storm; a player drops out mid-wave and rejoins their seat; the TV
 //   disconnects and resumes with its token; one Act II wave; the engineering report; the tool; two Act III waves with
 //   tuned dials (A 0° / 45°, B 22.5° / 157.5°): each phone measures, then sets the pump its crystal suggests; the
-//   pooled rate must be clearly above 75%, and the crew's dials average 85.4%, which saves the station; the debrief.
+//   pooled rate must be clearly above 75%, and the crew's dials average 85.4%, which saves the station; the storm
+//   passes (saved) and the incident report. Then a reset and a short not-saved session (untuned dials, 75%).
 import { ACT1_ROUNDS, BATCH_SIZE, MP_RESULT_MS, MP_ROUND_MS, STORM_STATIC_MS } from "../src/config.ts";
 import { OPTIMAL_TUNING, QUANTUM_LIMIT } from "../src/shared/chsh.ts";
 import type { ClientMsg, HostCommand, RoomState, ServerMsg } from "../src/shared/protocol.ts";
 import { mulberry32 } from "../src/shared/rng.ts";
 import { createStation } from "../server/station.ts";
+import { crewReport } from "../src/shared/report.ts";
 
 const SEED = 20261030;
 
@@ -229,9 +231,39 @@ check(Math.abs(crew - QUANTUM_LIMIT) < 1e-9 && state().stationSaved, `the crew's
 const followed = state().act3Followed;
 check(!!followed && followed.of === 8 * BATCH_SIZE && followed.n === followed.of, "every player followed their crystal (latest wave)");
 
-// The debrief.
+// The saved ending: the storm passes (the crew's dials saved the station), then the incident report.
+host("stormPasses");
+check(state().phase === "resolution" && state().stationSaved, "the storm passes: saved");
 host("debrief");
-check(state().phase === "debrief" && !!state().marginals, "the debrief, with the no-signalling numbers");
+check(state().phase === "debrief" && !!state().marginals, "the incident report, with the no-signalling numbers");
+const saved = crewReport(state());
+check(
+  saved.act1 === 1 && Math.abs((saved.act3 ?? 0) - QUANTUM_LIMIT) < 1e-9 && saved.bestPair !== null,
+  `the report: Act I ${(saved.act1 ?? 0) * 100}%, the crew's dials ${((saved.act3 ?? 0) * 100).toFixed(1)}%, best pair ${saved.bestPair?.pairId}`,
+);
+for (let i = 0; i < 3; i++) host("reportNext");
+check(state().debriefStep === 3, "the report steps forward to the credits");
+
+// The not-saved ending: a reset (players stay; dials go back to 0°), straight into Act II from the lobby, the tool
+// and one untuned Act III wave. Every pair's dials agree, so each scores exactly 75%: not saved.
+host("reset");
+answered.clear();
+sent.clear();
+for (const conn of phones.keys()) inbox.set(conn, []);
+host("startBatch");
+check(playUntil("batchDone"), "after a reset: an Act II wave straight from the lobby");
+host("revealCeiling");
+host("unlockTool");
+host("startBatch");
+check(playUntil("batchDone"), "one untuned Act III wave");
+host("stormPasses");
+check(state().phase === "resolution" && !state().stationSaved, "the storm passes: not saved");
+host("debrief");
+const notSaved = crewReport(state());
+check(
+  notSaved.act1 === null && notSaved.act3 === 0.75 && notSaved.bestPair === null && !notSaved.saved,
+  "the report: no night shift, the crew's dials 75.0%, no pair at 80% (the best dials lead)",
+);
 
 console.log(`Session: ${((now / 1000) | 0)} s of station time (round ${MP_ROUND_MS} ms, result ${MP_RESULT_MS} ms)`);
 process.exit(ok ? 0 : 1);

@@ -277,9 +277,25 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    holding), their true rate (pairs at 80% or more are highlighted), the wave's score and who followed, plus the
    crew's followed count and its dials' average. **Saved or not:** once a wave ends with that average at 80% or
    more, the station counts as saved (it stays saved; the ending itself is a later phase).
-13. **Debrief** on the TV (Back / Next): the Bell/CHSH wall with the crew's Act II score, the Tsirelson bound with
-   the best dial settings and the crew's Act III score, then **no-signalling**: every crew member's clockwise rate
-   split by what their partner's sensor read (≈ 50/50 both ways, pooled for the whole crew), then credits.
+13. **The storm passes** (after at least one Act III wave): the TV clears the storm from the station, calm if the
+   crew saved it and damaged if not, with the station log's line. The radio comes back: each phone prompts the
+   player to tell their partner what they were thinking during the storm, and CORA's partners hear her own saved
+   or not-saved line.
+14. **Incident report** on the TV (Back / Next; the step is held by the server, so a refreshed TV keeps its place),
+   solo's report in the crew's version:
+   - the three numbers: Act I with the radio (100% possible, plus the crew's score), Act II's best plan (exactly
+     75%) and Act III's crystals (the crew's dials average). When the crew wasn't saved, the best dials (85.4%) lead
+     and the crew's number sits underneath;
+   - the best plan beside the crystals: the best pair's dials if one reached 80%, else the best dials;
+   - no-signalling: exact 50% for both tables, the crew's real numbers, and why the storm couldn't jam the
+     crystals;
+   - credits.
+
+   Each phone shows its own pair's three numbers: their Act I score, their locked plans' true rate and their dials'
+   exact rate.
+
+At the engineering report, human pairs get a prompt instead of CORA's personal line ("Did you blame each other? No
+plan beats 75%: it was never either of you."); pairs with CORA hear her line.
 
 A phone that reloads or drops out rejoins its seat automatically (same name, same table). A refreshed TV resumes
 the same station. Running a session for real: [`docs/facilitator.md`](docs/facilitator.md); watching a playtest:
@@ -288,8 +304,7 @@ the same station. Running a session for real: [`docs/facilitator.md`](docs/facil
 From the lobby, **Use the lull** or **Start the wave** still skip the night shift and go straight to Act II (for a
 short session).
 
-**Follow-up (not built yet):** event mode has no ending for the crew (the station saved or not) and keeps the older
-debrief copy.
+**Follow-up (E3b, not built yet):** a remote for the facilitator's phone.
 
 ## The physics
 This is the **CHSH game**, a Bell test. Two players who can't talk each get a random bit (the sensor: COOL = 0,
