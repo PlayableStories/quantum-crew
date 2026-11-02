@@ -28,8 +28,8 @@ import { FourCases } from "../components/FourCases.tsx";
 import { PlanBoard } from "../components/PlanBoard.tsx";
 import { useHost } from "../net/hostStore.ts";
 import { useRemainingMs } from "../net/useCountdown.ts";
-import { fetchStationInfo, joinUrl, pickJoinOrigin } from "../net/joinOrigin.ts";
-import { HOST_COMMANDS, roundIdOf, type HostCommand, type PairInfo, type RateSummary, type RoomState, type RoundOutcome, type StationInfo } from "../shared/protocol.ts";
+import { fetchStationInfo, joinUrl, loadChosenAddress, pickJoinOrigin, saveChosenAddress } from "../net/joinOrigin.ts";
+import { HOST_COMMANDS, roundIdOf, type HostCommand, type PairInfo, type RateSummary, type RoomState, type RoundOutcome, type StationInfo, type JoinAddress } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 
 const rate = (r: RateSummary) => (r.rounds ? r.wins / r.rounds : null);
@@ -47,6 +47,8 @@ export function Screen() {
   useTvSounds(state, results);
   // Where phones join: asked from the server once (see net/joinOrigin.ts for the order).
   const [info, setInfo] = useState<StationInfo | null>(null);
+  // The facilitator's pick among the laptop's addresses ("Not working? Try…"), kept across reloads.
+  const [chosen, setChosen] = useState<string | null>(() => loadChosenAddress());
   useEffect(() => {
     void fetchStationInfo().then(setInfo);
   }, []);
@@ -59,7 +61,7 @@ export function Screen() {
     );
   }
 
-  const join = pickJoinOrigin(info, location);
+  const join = pickJoinOrigin(info, location, chosen);
   const url = joinUrl(join.origin, state.room);
   const actRate = state.act === 1 ? state.stability.act1 : state.act === 2 ? state.stability.act2 : state.stability.act3;
   // Act I has its own gauge (every round winnable); the station's rolling gauge starts with the first storm wave.
@@ -70,7 +72,11 @@ export function Screen() {
   const quantum = state.act === 3 && state.phase !== "debrief";
   return (
     // After a wave the pairs' four cases take the whole width (the join panel and pair list step aside).
-    <main className={`tv ${quantum ? "quantum" : ""} ${state.phase === "batchDone" && state.act !== 1 ? "tv--cases" : ""}`}>
+    <main
+      className={`tv ${quantum ? "quantum" : ""} ${state.phase === "batchDone" && state.act !== 1 ? "tv--cases" : ""} ${
+        state.phase === "debrief" ? "tv--wide" : ""
+      }`}
+    >
       {quantum && <QuantumBackdrop />}
       <header className="tv__head">
         <p className="kicker">{S.title}</p>
@@ -125,7 +131,17 @@ export function Screen() {
       </section>
 
       <aside className="tv__side">
-        <JoinPanel url={url} code={state.room} big={lobby} warning={join.warning} />
+        <JoinPanel
+          url={url}
+          code={state.room}
+          big={lobby}
+          warning={join.warning}
+          alternatives={join.alternatives}
+          onChoose={(address) => {
+            saveChosenAddress(address);
+            setChosen(address);
+          }}
+        />
         <Pairs
           state={state}
           lastResults={
@@ -376,36 +392,43 @@ function TvDebrief({ state, step, setStep }: { state: RoomState; step: number; s
   const act2 = rate(state.stability.act2);
   const act3 = rate(state.stability.act3);
   return (
-    <div className="panel stack tv__debrief">
-      <div className="steps" aria-hidden="true">
-        {steps.map((_, i) => (
-          <span key={i} className={i <= step ? "on" : ""} />
-        ))}
+    // Full TV width, nothing scrolls: the explanation on the left, the step's numbers on the right, Back / Next below.
+    <div className="panel tv__debrief">
+      <div className="tv__debrief-head">
+        <div className="steps" aria-hidden="true">
+          {steps.map((_, i) => (
+            <span key={i} className={i <= step ? "on" : ""} />
+          ))}
+        </div>
+        <p className="kicker">{S.debrief.kicker}</p>
+        <h1>{content.title}</h1>
       </div>
-      <p className="kicker">{S.debrief.kicker}</p>
-      <h1>{content.title}</h1>
-      {content.body.map((p) => (
-        <p key={p} className="tv__line">
-          {p}
-        </p>
-      ))}
-      {step === 0 && act2 !== null && <p className="tv__big">{S.tv.crewAct(2, pct(act2), state.stability.act2.rounds)}</p>}
-      {step === 1 && (
-        <>
-          {act3 !== null && <p className="tv__big">{S.tv.crewAct(3, pct(act3), state.stability.act3.rounds)}</p>}
-          <div className="row">
-            <OptimalDials table="A" />
-            <OptimalDials table="B" />
+      <div className={`tv__debrief-body ${content.body.length ? "" : "tv__debrief-body--single"}`}>
+        {content.body.length > 0 && (
+          <div className="stack">
+            {content.body.map((p) => (
+              <p key={p} className="tv__line">
+                {p}
+              </p>
+            ))}
+            {step === 2 && state.marginals && <p className="muted">{S.tv.wobble}</p>}
           </div>
-        </>
-      )}
-      {step === 2 && state.marginals && (
-        <>
-          <MarginalTable {...state.marginals} />
-          <p className="muted small">{S.tv.wobble}</p>
-        </>
-      )}
-      {step === 3 && <CreditsList />}
+        )}
+        <div className="stack tv__debrief-numbers">
+          {step === 0 && act2 !== null && <p className="tv__big">{S.tv.crewAct(2, pct(act2), state.stability.act2.rounds)}</p>}
+          {step === 1 && (
+            <>
+              {act3 !== null && <p className="tv__big">{S.tv.crewAct(3, pct(act3), state.stability.act3.rounds)}</p>}
+              <div className="row">
+                <OptimalDials table="A" />
+                <OptimalDials table="B" />
+              </div>
+            </>
+          )}
+          {step === 2 && state.marginals && <MarginalTable {...state.marginals} />}
+          {step === 3 && <CreditsList />}
+        </div>
+      </div>
       <div className="row tv__debrief-nav">
         <button className="btn" disabled={step === 0} onClick={() => setStep(step - 1)}>
           {S.debrief.back}
@@ -462,7 +485,23 @@ function MarginalTable({ rows, crew }: NonNullable<RoomState["marginals"]>) {
 }
 
 /** The QR code and the printed link come from the same `url`, so they always match. */
-export function JoinPanel({ url, code, big, warning = false }: { url: string; code: string; big: boolean; warning?: boolean }) {
+/** The QR code and the printed link come from one `url`. In the lobby (`big`), when the laptop has other addresses,
+ *  "Not working? Try:" offers each as a button; one click makes it the join address. */
+export function JoinPanel({
+  url,
+  code,
+  big,
+  warning = false,
+  alternatives = [],
+  onChoose,
+}: {
+  url: string;
+  code: string;
+  big: boolean;
+  warning?: boolean;
+  alternatives?: JoinAddress[];
+  onChoose?: (url: string) => void;
+}) {
   const svg = useQr(url);
   return (
     <div className={`panel tv__join ${big ? "tv__join--big" : ""}`} data-join-url={url}>
@@ -473,6 +512,22 @@ export function JoinPanel({ url, code, big, warning = false }: { url: string; co
           <span className="muted">{S.tv.code}</span> {code}
         </p>
         {big && <p className="muted small tv__join-link">{S.tv.joinAt(url.replace(/^https?:\/\//, ""))}</p>}
+        {big && alternatives.length > 0 && (
+          <p className="small tv__join-other">
+            <span className="muted">{S.tv.tryOther}</span>{" "}
+            {alternatives.map((a) => (
+              <button
+                key={a.url}
+                type="button"
+                className="tv__join-alt"
+                aria-label={S.tv.useAddress(a.url.replace(/^https?:\/\//, ""), a.iface)}
+                onClick={() => onChoose?.(a.url)}
+              >
+                {a.url.replace(/^https?:\/\//, "")}
+              </button>
+            ))}
+          </p>
+        )}
         {/* The TV is open at localhost and the server has no other address: phones can't use this link. */}
         {warning && (
           <p className="tv__join-warning" role="alert">

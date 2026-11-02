@@ -8,10 +8,13 @@ Setting up the server: see [Run event mode at a venue](../README.md#run-event-mo
 
 ## Pre-flight checklist (30 minutes before)
 
+- [ ] **No deploys on event days.** On a hosted server (Render, Fly…) a deploy restarts it and ends every room; turn
+      auto-deploy off. On the free Render tier, open the site about 10 minutes early (it sleeps when idle).
 - [ ] **Power** for the laptop, the router and the TV, and a charger for your own phone.
 - [ ] **Network:** the laptop and the router are on, and the laptop is on the router's Wi-Fi (or cable). Venue Wi-Fi
       often stops phones reaching the laptop; your own travel router avoids that.
-- [ ] **Server:** `pnpm build && pnpm start`. Note the "Phones join at:" address it prints.
+- [ ] **Server:** `pnpm build && pnpm start`. Note the "Phones join at:" address it prints (the one the QR code
+      uses); any "Also on:" addresses are the laptop's others (VPN, Docker…).
 - [ ] **Phone check:** on a phone on the same Wi-Fi, open `<that address>/healthz`. It should show `{"ok":true}`.
 - [ ] **TV:** open `/screen` on the laptop and put it on the TV (mirror or extend). Read the room code and the link
       from the back of the room. If the TV shows the yellow warning ("Phones can't open this link"), see
@@ -54,6 +57,8 @@ Short on time? From the lobby, **Use the lull (45 s)** skips the night shift and
 - **"No station with code …":** check the four letters on the TV (case doesn't matter).
 - **The page doesn't load at all:** the phone can't reach the laptop.
   - Is the phone on the same Wi-Fi as the laptop (not mobile data, not the venue's guest network)?
+  - If the lobby shows "Not working? Try: …", the laptop has other addresses (a VPN, Docker, a virtual machine).
+    Click one: it becomes the QR code and the link (the TV remembers it). Try each until a phone gets in.
   - Open `<address>/healthz` on that phone. If that fails too, the network is isolating devices: use your own
     router, or the laptop's hotspot.
 - **The TV shows the yellow warning** ("Phones can't open this link"): the TV page is open at `localhost` and the

@@ -289,7 +289,7 @@ From the lobby, **Use the lull** or **Start the wave** still skip the night shif
 short session).
 
 **Follow-up (not built yet):** event mode has no ending for the crew (the station saved or not) and keeps the older
-debrief copy; on a 1280×720 TV, debrief steps 1–3 don't fit yet.
+debrief copy.
 
 ## The physics
 This is the **CHSH game**, a Bell test. Two players who can't talk each get a random bit (the sensor: COOL = 0,
@@ -417,7 +417,7 @@ Table B's radio once Table A has set a pump), an Act I result, the storm's stati
 wave done, the engineering report, the tool, the Act III huddle, an Act III round (and a phone that has measured), a
 result, wave done and every debrief step. It runs the session twice: the TV at 1920×1080 with phones at 390×844, then
 the TV at 1280×720 with phones at 375×667. The server's timers are real, so live rounds and results get viewport
-shots only. `/station-info` answers a made-up `192.168.1.20`, so the shots never show your machine's address. Output
+shots only. `/station-info` answers a made-up `192.168.1.20` plus a VPN-like `100.101.7.3` (so the lobby shows "Not working? Try: …"), and the shots never show your machine's address. Output
 goes to `shots/<out>/event/<device>-<size>/`, with the same `report.md`; `--compare before after --event` makes the
 contact sheets. `--quick` runs only the tight pass (TV 1280×720 with phones 375×667), for fit work. In Act III,
 Table A and B tune to the best dials, so wave done shows a pair that holds. The TV never scrolls, so for TV screens the report also flags any region whose content is cut off
@@ -446,10 +446,18 @@ during a session, because a restart ends every room. The facilitator's checklist
 3. the laptop's own network (LAN) address, which the server detects, when the TV is open at `localhost`;
 4. otherwise the TV shows a warning: its link only works on this computer.
 
+Laptops often have several addresses (Wi-Fi plus Docker, a VPN, virtual machines), and phones can reach only some of
+them. The server ranks them (`server/joinInfo.ts`): 192.168.x first, then 10.x, then 172.16–31.x, then anything else;
+last come link-local (169.254.x) and VPN/carrier-grade NAT (100.64–127.x) addresses and interfaces that look virtual
+(`docker`, `br-`, `bridge`, `veth`, `vmnet`, `vboxnet`, `utun`, `tun`, `tailscale`, `zt`, `wg`). The TV uses the best
+one; when there are others, the lobby shows them under the link ("Not working? Try: …"), and one click makes that
+address the QR code and the link (the TV remembers the choice). `pnpm start` prints every address with its network
+interface, the chosen one first.
+
 ### (a) A laptop at the venue (recommended)
 ```sh
 pnpm install
-pnpm build && pnpm start   # listens on $PORT (default 8787) and prints "Phones join at: http://192.168.x.x:8787"
+pnpm build && pnpm start   # listens on $PORT (default 8787) and prints "Phones join at: http://192.168.x.x:8787 (en0)"
 ```
 - Open the TV page at `http://localhost:8787/screen` on the laptop (the QR uses the printed network address), or at
   the printed address itself.
@@ -484,6 +492,22 @@ fly deploy
 In the generated `fly.toml`, keep the machine running during sessions (`auto_stop_machines = "off"`,
 `min_machines_running = 1` under `[http_service]`), so an idle moment doesn't stop it and lose the rooms. Check
 Fly's own docs for the current settings. Open `https://<app>.fly.dev/screen` on the TV.
+
+**Example host for a playtest: Render's free tier** (docs only; nothing has been deployed or signed up for). Check
+Render's own docs for the current options.
+- **New Web Service** from the repository, **Language/runtime: Docker** (it builds the repo's `Dockerfile`),
+  **Region: Frankfurt**, **Instance type: Free**.
+- **Environment:** `PORT=8787`, the port the Dockerfile's server listens on.
+- **Health check path:** `/healthz`.
+- **Auto-deploy: off.** A deploy restarts the server, and a restart ends every room. Deploy by hand, never on an
+  event day.
+- **The free service sleeps after 15 minutes without traffic,** and the first visit after that wakes it (it can take
+  up to a minute). Open the site about 10 minutes before the session, and don't leave a room idle in the lobby that
+  long: a sleeping service loses its rooms like a restart does.
+- **Upgrade path:** switching the same service to a paid instance type stops the sleeping; nothing else changes.
+- **A custom subdomain** (e.g. `crew.example.org`): add it under the service's custom domains and point a `CNAME`
+  record at the service's `onrender.com` address. Open the TV at that subdomain; the QR code uses it, so
+  `PUBLIC_URL` isn't needed.
 
 ## Built with an AI coding agent
 Quantum Crew was designed by a person and written almost entirely by Claude Code, in milestones (M0–M5), one branch

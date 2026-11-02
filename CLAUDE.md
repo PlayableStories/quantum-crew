@@ -55,8 +55,10 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   mode's bot seats use the same name (`server/room.ts` `BOT_NAME = CREW_NAME`) and the badge on the TV pair card and
   the phone's partner line. Readout reactions state only facts (`hotCool`, `coolHot`, `bothCool`), never who
   reversed or whose fault it was. Act III
-  tuning shows the crewmate's dials locked at `OPTIMAL_TUNING.B`. Event mode's bots behave as before: empty seats play
-  `BOT_ACT2_PLAN`, and the TV's ceiling text uses `S.ceiling.lead`.
+  tuning shows the crewmate's dials locked at `OPTIMAL_TUNING.B`. Event mode's bots: empty seats play
+  `BOT_ACT2_PLAN` in Act II, a random pump in Act I, and follow their crystal in Act III. The TV's engineering report
+  uses `S.ceiling.engineering` + `S.ceiling.truth` (since E2a); `S.ceiling.lead` / `lines` are no longer shown
+  anywhere (only `board.test.tsx` still checks `lines`).
 - **Engines used:** Atlas assets made by William on platform.mothquantum.com (tessa-image-v1 station art, blur-v1
   degradation levels, entanglement-shader-v1 tool reveal, a sound engine for sfx). The in-game entanglement is a
   classical simulation of |Φ+⟩ in `src/shared/chsh.ts`; say so honestly in the README and credits.
@@ -98,12 +100,15 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   1 Act II batch before the engineering report; the meter spans 50–100%; the 75 line appears from the ceiling reveal
   and 85.4 in Act III; debrief unlocks at a ≥ 80% 1,000-round test or after 2 Act III batches; hint after 1 Act III
   batch under 80% (both lowered 2026-10-06 at the user's request). No framer-motion yet (CSS animations suffice); sounds and mute toggle are M5.
-  Event: rounds 3.5 s (MP_ROUND_MS); the huddle's end auto-starts the batch; a round resolves early once everyone
-  answered; joiners mid-batch are seated after it; max 4 per table; empty seat = bot (always pumps clockwise in Act II);
-  the TV QR uses the URL the TV was opened at. Act III: bots measure at round start (always first); tunings snap to
-  the 8 dial stops; the tool unlocks only after the ceiling reveal; hint and debrief step are TV-local state;
+  Event: rounds last 8 s in Act I (`MP_ACT1_ROUND_MS`), 3.5 s in Act II (`MP_ROUND_MS`), 7 s in Act III
+  (`MP_ACT3_ROUND_MS`); the lull's end auto-starts the wave; a round resolves early once everyone answered; joiners
+  mid-wave are seated after it; max 4 per table; empty seat = CORA. The join address follows E0's order and Phase F's
+  ranking. Act III: bots measure at round start (always first); tunings snap to the 8 dial stops; the tool unlocks only
+  after the ceiling reveal; the hint and the debrief step are TV-local state (the step moves to the room in E3a);
   per-seat marginals are sent only in the debrief phase (plus a pooled "whole crew" row).
-- **Deploy:** solo = static build on Vercel (PlayableStories team); event mode needs a Node host with WebSockets (TBD).
+- **Deploy:** solo = static build on Vercel (PlayableStories team); event mode needs one Node process with WebSockets: a
+  venue laptop is the documented default, and the README also documents Docker, Fly.io and Render (docs only; nothing
+  is deployed).
 - **Event E0 (2026-10-30, a real session):**
   - **Join address:** the server answers `/station-info` (`STATION_INFO_PATH`, `StationInfo` in `protocol.ts`) with
     `PUBLIC_URL` and its LAN IPv4 URLs (`server/joinInfo.ts`; also served by the Vite dev plugin). The TV's
@@ -130,7 +135,8 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     and pooled) and stays out of the rolling gauge, which starts with the first wave. Round ids: `act1-n`, else
     `<wave>-<n>` (`roundIdOf`); `batchNo` counts waves only.
   - **Results:** `RoundOutcome` carries `x, y, a, b, cause` in every act. Act I shows the cause on phones (with a
-    small ring, `RingDiagram labels`) and on the TV's pair cards; waves still show Stable / Leak until E2.
+    small ring, `RingDiagram labels`) and on the TV's pair cards. (Waves showed Stable / Leak until E2a; every act
+    shows the cause now.)
   - **Copy:** partner lines take the name (`S.event.radio.*`); CORA keeps `S.crew.reading` / `stormBreak`; a human
     partner's storm line is `S.event.storm.logBreak` from the station log (`RadioLine who` / `quoted`). Event wording
     is storm waves now ("Wave n · round", "The wave has passed", "The lull: last chance to talk", "Use the lull",
@@ -175,6 +181,17 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - **Working style (2026-11-01, user request):** phases run in checkpoints of about 10–15 minutes; stop after each
     and report (built, checked, unexpected), and wait for "go".
   - **Next:** the crew's ending (saved or not) and the debrief.
+- **Phase F (2026-11-02, before the playtest):**
+  - **Join address ranking:** `server/joinInfo.ts` `rankAddresses` / `addressRank`: 192.168/16, 10/8, 172.16/12,
+    anything else; last link-local, 100.64/10 and virtual-looking interface names (`docker`, `br-`, `bridge`, `veth`,
+    `vmnet`, `vboxnet`, `utun`, `tun`, `tailscale`, `zt`, `wg`). `StationInfo` is `{ publicUrl, lan: { url, iface }[] }`,
+    best first. `pickJoinOrigin(info, here, chosen)` returns `alternatives` at localhost; the lobby's `JoinPanel` shows
+    "Not working? Try:" buttons, and the TV remembers the choice (`loadChosenAddress` / `saveChosenAddress`,
+    localStorage). `pnpm start` logs every address, the chosen one first.
+  - **Debrief fit:** the TV debrief is full width (`.tv--wide` hides the side) with the explanation beside the
+    step's numbers (`.tv__debrief-body`); Back / Next sit at the bottom right. Every step fits 1280×720 with four pairs.
+  - **Docs:** stale event-mode statements fixed; the README has a Render free-tier section; the facilitator's
+    pre-flight has "No deploys on event days".
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.
@@ -202,7 +219,7 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
       Run button, plus `S.readout.added` in Act II.
     - Engineering report: `PlanBoard exact` shows `expectedBoard()` rates, with the player's own test small
       underneath and a corner mark (`.board__cell--eng::after`) on engineering's squares. Solo uses
-      `S.ceiling.truth`; the TV keeps `S.ceiling.lines`.
+      `S.ceiling.truth`. (The event TV used `S.ceiling.lines` until E2a; it now uses the board and `truth` too.)
     - Phone rules (`max-width: 599px`): 12px gaps and panel padding, and a compact test button. The huddle's h1 is
       visually hidden on phones (`.hide-on-phone`).
     - `pnpm shots` reports heights to 2 decimals and checks picking a board square from the keyboard.
@@ -298,8 +315,8 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     - CORA's line breaks off under static (`RadioLine interference`; the flicker stops with reduced motion);
     - then the station log.
     - `endStorm()` leads to the first huddle.
-  - Solo's `Act` type is `1 | 2 | 3`. Event mode's `protocol.ts` `Act` (2 | 3) is untouched, and event mode has no
-    Act I yet (a follow-up in the README).
+  - Solo's `Act` type is `1 | 2 | 3`. (Event mode got Act I and the storm in E1; its `protocol.ts` `Act` is
+    `1 | 2 | 3` too.)
   - Tests reach the huddle through `toHuddle()` (`src/solo/testkit.ts`), which plays Act I by the rule and leaves the
     storm.
 - **Story Phase 2 (2026-10-30, waves and the ending):**
@@ -308,9 +325,9 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     **the lull**.
   - Internal identifiers stay (`batch`, `act2Batch`…).
   - **Solo has its own keys where event mode shares strings:**
-    - `S.pod` for the tool reveal (the phone keeps `S.tool`);
-    - `S.report` for the incident report (the TV keeps `S.debrief.kicker` / `steps`).
-    - Event strings are tested as unchanged in `story2.test.tsx`.
+    - `S.pod` for the tool reveal (event mode has its own `S.event.pod` since E2b; `S.tool` is gone);
+    - `S.report` for the incident report (the TV keeps `S.debrief.kicker` / `steps` until E3a).
+    - `story2.test.tsx` checks event mode's own keys (now the storm wording and `S.event.pod`).
   - **Engineering report:** kicker "· supply deck". **Tool reveal:** a supply pod, with engineering's note and CORA's
     new procedure.
   - **Act III readout:** CORA's `followLine` adds a line when more than 3 answered rounds went against the crystal,
