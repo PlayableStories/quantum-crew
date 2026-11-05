@@ -372,7 +372,6 @@ export const S = {
     next: "Next",
     back: "Back",
     again: "Play again",
-    table: (t: string) => `Table ${t} (best setting)`,
     home: "Home",
     steps: [
       {
@@ -526,6 +525,43 @@ export const S = {
         `The closer your dial points to ${name}'s, the more often your crystals give the same direction. Need your pumps to match? Point close to ${name}'s. Need them to differ? Point far away.`,
       howButton: "How it works",
     },
+    /** The storm passes (event): the room is told the radio is back. Phones get their own prompt (checkpoint 3). */
+    resolution: {
+      room: "Comms are back. Turn to your partner and tell them what you were thinking during the storm.",
+      /** On a phone with a human partner (CORA's partners hear her own line, `crew.resolution`). */
+      head: "Comms are back",
+      prompt: (name: string) => `Tell ${name} what you were thinking during the storm.`,
+    },
+    /** Where solo has CORA say something personal, a human pair gets a prompt instead. */
+    beats: {
+      head: "Turn to your partner",
+      ceiling: (name: string) => `Did you and ${name} blame each other? No plan beats 75%: it was never either of you.`,
+      ceilingRoom: "Turn to your partner. Did you blame each other? No plan beats 75%: it was never either of you.",
+    },
+    /** The incident report on the TV: solo's report in the crew's words. */
+    report: {
+      three: {
+        act1Yours: (pct: string) => `possible · the crew held ${pct}`,
+        act3Note: "the crew's dials, exactly",
+        act3Yours: (pct: string) => `the crew's dials, ${pct}`,
+        story:
+          "Talking made every round winnable. No plan could replace talking. The crew's crystals beat every plan without carrying a single message.",
+        storyNotSaved:
+          "Talking made every round winnable. No plan could replace talking. The best crystal settings beat every plan without carrying a single message; the crew's didn't get there this time.",
+      },
+      pairDials: (pair: number, a: string, b: string) => `Pair ${pair}'s dials (${a} & ${b})`,
+      /** On a phone: the pair's own three numbers. */
+      phoneHead: (name: string) => `You and ${name}`,
+      phoneAct1: "Act I · radio",
+      phoneAct2: "Act II · your plans",
+      phoneAct3: "Act III · your dials",
+      phoneAct1Note: "held, with the radio",
+      phoneAct2Note: "true rate, exactly",
+      phoneAct3Note: "true rate, exactly",
+      notPlayed: "not played",
+      crewRounds: (n: number, cool: string, hot: string) =>
+        `In the crew's ${n} real Act III pumps, a pump ran clockwise ${cool} of the time when the partner's section was COOL, and ${hot} when it was HOT.`,
+    },
     /** The storm in event mode. With a human partner the radio's last words come from the station log. */
     storm: {
       log: "Station log",
@@ -556,6 +592,7 @@ export const S = {
       batchDone: "The wave has passed",
       ceiling: "Engineering report",
       tool: "The Entanglement Tool",
+      resolution: "The storm passes",
       debrief: "Debrief",
     },
     /** Act I's rounds: the radio works, so the banner says so. */
@@ -575,7 +612,10 @@ export const S = {
       startBatch: "Start the wave",
       revealCeiling: "Reveal ceiling",
       unlockTool: "Unlock tool",
-      debrief: "Debrief",
+      stormPasses: "The storm passes",
+      debrief: "Incident report",
+      reportBack: "Back",
+      reportNext: "Next",
       reset: "Reset",
     },
     /** Start batch, during the briefing: starts Act I's rounds. */
@@ -583,7 +623,6 @@ export const S = {
     resetConfirm: "Reset the session? Scores are cleared; players stay.",
     showHint: "Show hint",
     hideHint: "Hide hint",
-    crewAct: (act: number, pct: string, n: number) => `Your crew in Act ${ROMAN[act]}: ${pct} of ${n} rounds`,
     wholeCrew: "Whole crew",
     wobble: "A few rounds each makes the numbers wobble. Over many rounds every row settles at 50%, whatever the partner's sensor read.",
     marginalHead: {

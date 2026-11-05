@@ -2,23 +2,11 @@
 // no-signalling (with the player's own numbers), and credits.
 import { ScreenLayout } from "../components/ScreenLayout.tsx";
 import { CreditsList } from "../components/CreditsList.tsx";
-import { Bars, fmt } from "../components/DebriefParts.tsx";
-import { formatDeg } from "../components/Dial.tsx";
-import { LightIcon } from "../components/SensorLight.tsx";
+import { fmt } from "../components/DebriefParts.tsx";
+import { NoSignalling, PlanVsCrystals, ThreeNumbers } from "../components/ReportParts.tsx";
 import { pct } from "../components/StabilityMeter.tsx";
-import { DEFAULT_CREW_PLAN } from "../config.ts";
 import { navigate } from "../lib/router.ts";
-import {
-  OPTIMAL_TUNING,
-  classicalCases,
-  exactOpenRates,
-  openRatesByPartnerLight,
-  quantumCases,
-  quantumExpectedWinRate,
-  winRate,
-  type Light,
-} from "../shared/chsh.ts";
-import { HOT } from "../shared/fiction.ts";
+import { OPTIMAL_TUNING, exactOpenRates, openRatesByPartnerLight, winRate } from "../shared/chsh.ts";
 import { S } from "../strings.ts";
 import { reportTuning, stationRate, stationSaved, useSolo } from "./soloStore.ts";
 
@@ -32,11 +20,11 @@ export function Debrief() {
   // The "your numbers" panel for this step: beside the explanation on landscape, under it on a phone.
   const numbers =
     step === 0 ? (
-      <ThreeNumbers />
+      <SoloThreeNumbers />
     ) : step === 1 && content.stat ? (
       <div className="panel stack">
         <p>{content.stat(pct(stationRate(s)))}</p>
-        <PlanVsCrystals />
+        <SoloPlanVsCrystals />
       </div>
     ) : step === 2 ? (
       <NoSignallingPanel />
@@ -92,128 +80,35 @@ export function Debrief() {
   );
 }
 
-/**
- * The quantum-limit step: the best plan and the crystals side by side, four cases each. A plan holds three cases
- * every time and loses the fourth every time (75%); the crystals hold every case about 85% of the time.
- * The right column shows the player's dials if they passed, else the best dials.
- */
-function PlanVsCrystals() {
+/** The quantum-limit step: the player's dials if they saved the station, else the best dials. */
+function SoloPlanVsCrystals() {
   const s = useSolo((st) => st);
   const yours = stationSaved(s); // the player's dials only if they saved the station
-  const plan = classicalCases(DEFAULT_CREW_PLAN, DEFAULT_CREW_PLAN);
-  const crystals = quantumCases(yours ? reportTuning(s) : OPTIMAL_TUNING.A, OPTIMAL_TUNING.B);
-  const C = S.debrief.compare;
-  const whole = (p: number) => `${Math.round(p * 100)}%`;
   return (
-    <div className="stack">
-      <div className="compare">
-        <div className="compare__col">
-          <p className="kicker">
-            {C.plan}
-            <b className="compare__rate">{"\u00a0·\u00a075%"}</b>
-          </p>
-          <ul>
-            {plan.map((c) => (
-              <li key={`${c.x}${c.y}`} className={c.win ? "case--win" : "case--loss"}>
-                <Sensors x={c.x} y={c.y} />
-                <b>{c.win ? "✓ 100%" : "✗ 0%"}</b>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="compare__col">
-          <p className="kicker">
-            {C.dials(yours)}
-            <b className="compare__rate">{`\u00a0·\u00a0${pct(crystals.reduce((sum, c) => sum + c.pWin, 0) / 4)}`}</b>
-          </p>
-          <ul>
-            {crystals.map((c) => (
-              <li key={`${c.x}${c.y}`} className="case--win">
-                <Sensors x={c.x} y={c.y} />
-                <span className="muted compare__angles">
-                  {formatDeg(c.thetaA)}·{formatDeg(c.thetaB)}
-                </span>
-                <b>{whole(c.pWin)}</b>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-      <p className="small">{C.why}</p>
-    </div>
+    <PlanVsCrystals
+      dials={{ a: yours ? reportTuning(s) : OPTIMAL_TUNING.A, b: OPTIMAL_TUNING.B }}
+      label={S.debrief.compare.dials(yours)}
+    />
   );
 }
 
-function Sensors({ x, y }: { x: Light; y: Light }) {
-  return (
-    <span className="compare__sensors">
-      <span className={x === HOT ? "case__reading--hot" : "case__reading--cool"}>
-        <LightIcon light={x} />
-      </span>
-      <span className={y === HOT ? "case__reading--hot" : "case__reading--cool"}>
-        <LightIcon light={y} />
-      </span>
-    </span>
-  );
-}
-
-/** Each pump's clockwise rate split by the partner's sensor, exactly: 50% both ways, so no message gets through.
- *  The player's own Act III rounds sit underneath for comparison. */
+/** The no-signalling step: exact 50% for both pumps, the player's own Act III rounds underneath. */
 function NoSignallingPanel() {
   const tuning = useSolo((s) => s.tuning);
   const act3 = useSolo((s) => s.act3);
-  const exact = exactOpenRates(tuning, OPTIMAL_TUNING.B);
   const real = openRatesByPartnerLight(act3);
   const P = S.debrief.panel;
   return (
-    <div className="panel stack">
-      <p className="kicker">{P.head}</p>
-      <Bars who={P.you} rates={exact.a} />
-      <Bars who={P.crewmate} rates={exact.b} />
-      {act3.length > 0 && (
-        <p className="muted small">{P.yourRounds(act3.length, fmt(real.a.partnerGreen), fmt(real.a.partnerRed))}</p>
-      )}
-      <p className="small">{S.report.noJam}</p>
-    </div>
+    <NoSignalling
+      exact={exactOpenRates(tuning, OPTIMAL_TUNING.B)}
+      who={{ a: P.you, b: P.crewmate }}
+      real={act3.length > 0 ? P.yourRounds(act3.length, fmt(real.a.partnerGreen), fmt(real.a.partnerRed)) : null}
+    />
   );
 }
 
-/**
- * The incident report's first finding: the game's three numbers side by side. Act I with the radio (every round
- * winnable; the player's own Act I score too), Act II's best plan (exactly 75%), and Act III's crystals (the player's
- * dial settings' exact rate, about 85% at best). If the station wasn't saved, the Act III card leads with the best
- * dials and shows the player's underneath, and the summary says only the best settings beat every plan.
- */
-/** The best dials' exact rate (the Tsirelson bound, ≈ 85.4%). */
-const BEST_RATE = quantumExpectedWinRate(OPTIMAL_TUNING.A, OPTIMAL_TUNING.B);
-
-function ThreeNumbers() {
+/** The incident report's first finding, for the player (see ReportParts' ThreeNumbers). */
+function SoloThreeNumbers() {
   const s = useSolo((st) => st);
-  const R = S.report;
-  const act1 = s.act1.length ? pct(winRate(s.act1)) : null;
-  const saved = stationSaved(s);
-  return (
-    <div className="panel stack">
-      <ul className="three">
-        <li>
-          <span className="kicker">{R.act1}</span>
-          <b className="three__big">100%</b>
-          <span className="muted small">{act1 === null ? R.act1Possible : R.act1Yours(act1)}</span>
-        </li>
-        <li>
-          <span className="kicker">{R.act2}</span>
-          <b className="three__big">75%</b>
-          <span className="muted small">{R.act2Note}</span>
-        </li>
-        <li>
-          <span className="kicker">{R.act3}</span>
-          {/* Saved: the player's dials. Not saved: the best dials lead, the player's below (no false claim). */}
-          <b className="three__big">{pct(saved ? stationRate(s) : BEST_RATE)}</b>
-          <span className="muted small">{saved ? R.act3Note : R.act3Best}</span>
-          {!saved && <span className="muted small three__yours">{R.act3Yours(pct(stationRate(s)))}</span>}
-        </li>
-      </ul>
-      <p className="small">{saved ? R.story : R.storyNotSaved}</p>
-    </div>
-  );
+  return <ThreeNumbers act1={s.act1.length ? winRate(s.act1) : null} saved={stationSaved(s)} act3={stationRate(s)} />;
 }

@@ -180,7 +180,6 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     end. Still cut at 1280×720: debrief steps 1–3 (not in E2's scope).
   - **Working style (2026-11-01, user request):** phases run in checkpoints of about 10–15 minutes; stop after each
     and report (built, checked, unexpected), and wait for "go".
-  - **Next:** the crew's ending (saved or not) and the debrief.
 - **Phase F (2026-11-02, before the playtest):**
   - **Join address ranking:** `server/joinInfo.ts` `rankAddresses` / `addressRank`: 192.168/16, 10/8, 172.16/12,
     anything else; last link-local, 100.64/10 and virtual-looking interface names (`docker`, `br-`, `bridge`, `veth`,
@@ -192,6 +191,27 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     step's numbers (`.tv__debrief-body`); Back / Next sit at the bottom right. Every step fits 1280×720 with four pairs.
   - **Docs:** stale event-mode statements fixed; the README has a Render free-tier section; the facilitator's
     pre-flight has "No deploys on event days".
+- **Event E3a (2026-11-02, the ending and the incident report):**
+  - **Room:** phase `resolution` (host `stormPasses`, "The storm passes", after at least one Act III wave, outside a
+    wave), then `debrief` (the TV labels it "Incident report"; still allowed straight from an Act III wave done).
+    `RoomState.debriefStep` (0–3) is the room's, moved by `reportNext` / `reportBack` (`REPORT_STEPS`); it resets on
+    entering the debrief. `savedDialsRate` keeps the average that first saved the station.
+  - **`src/shared/report.ts`:** `crewReport` (Act I pooled, Act III = `savedDialsRate` when saved else
+    `crewDialsRate`, the best pair = highest locked-dials rate if ≥ 80%) and `pairReport` (Act I, locked plan's
+    true rate, locked dials' exact rate; null for an act not played).
+  - **`components/ReportParts.tsx`:** solo's `ThreeNumbers`, `PlanVsCrystals` and `NoSignalling`, now props-driven;
+    solo's `Debrief.tsx` passes its own values (output unchanged), the TV passes the crew's (`S.event.report.three`).
+  - **TV:** `ResolutionPanel` (calm or damaged, `clearing`, `S.resolution.log` / `logNotSaved`,
+    `S.event.resolution.room`); `TvDebrief` = the incident report (`S.report.kicker`, solo's steps; the best pair's
+    dials or the best dials; exact 50% bars + the crew's real line + the per-seat table). The engineering report adds
+    `S.event.beats.ceilingRoom`.
+  - **Phones:** `PartnerBeat`: CORA's own line on the radio (`S.crew.ceiling`, `resolution` / `resolutionNotSaved`)
+    when she's the partner, else a prompt naming the partner (`S.event.beats.ceiling`, `S.event.resolution.prompt`).
+    In the report, `PairNumbers` shows the pair's three numbers.
+  - **Session:** a saved ending, then a reset and a short not-saved one (untuned dials: exactly 75%).
+  - **Shots:** the resolution and every report step; a capture that doesn't appear within 5 s is skipped with a
+    warning; host-button clicks time out after 5 s.
+  - **Next:** E3b, the facilitator's remote.
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.

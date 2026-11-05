@@ -627,3 +627,70 @@ describe("Act III dials and saved or not (E2b)", () => {
     expect(t.roomState("tv").act3Followed).toEqual({ n: 3, of: 3 });
   });
 });
+
+describe("the ending and the incident report (E3a)", () => {
+  function toAct3(t: ReturnType<typeof setup>) {
+    t.join("a1", "Ada", "A");
+    t.join("b1", "Bo", "B");
+    t.host("startBatch");
+    t.advance((MP_ROUND_MS + MP_RESULT_MS) * BATCH_SIZE);
+    t.host("revealCeiling");
+    t.host("unlockTool");
+  }
+  const wave = (t: ReturnType<typeof setup>) => {
+    t.host("startBatch");
+    t.advance((MP_ACT3_ROUND_MS + MP_RESULT_MS) * BATCH_SIZE);
+  };
+
+  it("the storm passes only after an Act III wave, outside a wave; then the incident report", () => {
+    const t = setup(41);
+    toAct3(t);
+    t.host("stormPasses");
+    expect(t.last("tv", "error")!.code).toBe("not-now"); // no Act III wave yet
+    t.host("startBatch");
+    t.host("stormPasses");
+    expect(t.roomState("tv").phase).toBe("round"); // not during a wave
+    t.advance((MP_ACT3_ROUND_MS + MP_RESULT_MS) * BATCH_SIZE);
+    t.host("stormPasses");
+    expect(t.roomState("tv").phase).toBe("resolution");
+    t.host("debrief");
+    expect(t.roomState("tv")).toMatchObject({ phase: "debrief", debriefStep: 0 });
+  });
+
+  it("the report's step moves with Back / Next within its four steps, and a reconnecting TV keeps it", () => {
+    const t = setup(42);
+    toAct3(t);
+    wave(t);
+    t.host("reportNext");
+    expect(t.last("tv", "error")!.code).toBe("not-now"); // not before the report
+    t.host("stormPasses");
+    t.host("debrief");
+    t.host("reportBack");
+    expect(t.roomState("tv").debriefStep).toBe(0);
+    for (let i = 0; i < 5; i++) t.host("reportNext");
+    expect(t.roomState("tv").debriefStep).toBe(3);
+    t.host("reportBack");
+    expect(t.roomState("tv").debriefStep).toBe(2);
+    const { room, token } = t.last("tv", "host:created")!;
+    t.station.disconnect("tv");
+    t.send("tv2", { type: "host:resume", room, token });
+    expect(t.roomState("tv2").debriefStep).toBe(2);
+    t.send("tv2", { type: "host:command", cmd: "reset" });
+    expect(t.roomState("tv2")).toMatchObject({ phase: "lobby", debriefStep: 0, savedDialsRate: null });
+  });
+
+  it("the average that first saved the station is kept, even when a later wave's drops", () => {
+    const t = setup(43);
+    toAct3(t);
+    t.send("a1", { type: "player:strategy", act: 3, tuning: OPTIMAL_TUNING.A });
+    t.send("b1", { type: "player:strategy", act: 3, tuning: OPTIMAL_TUNING.B });
+    wave(t);
+    expect(t.roomState("tv").savedDialsRate).toBeCloseTo(QUANTUM_LIMIT, 10);
+    t.send("b1", { type: "player:strategy", act: 3, tuning: { greenDeg: 90, redDeg: 90 } });
+    wave(t);
+    const s = t.roomState("tv");
+    expect(s.crewDialsRate).toBeLessThan(0.8);
+    expect(s.savedDialsRate).toBeCloseTo(QUANTUM_LIMIT, 10);
+    expect(s.stationSaved).toBe(true);
+  });
+});

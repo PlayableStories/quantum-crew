@@ -24,7 +24,9 @@ import { useRemainingMs } from "../net/useCountdown.ts";
 import type { Light, Table, Valve } from "../shared/chsh.ts";
 import { ANTICLOCKWISE, CLOCKWISE, COOL, HOT } from "../shared/fiction.ts";
 import { planId } from "../shared/plans.ts";
-import { NAME_MAX, ROOM_CODE, type PartnerCall, type Seat as RoomSeat } from "../shared/protocol.ts";
+import { NAME_MAX, ROOM_CODE, type PairInfo, type PartnerCall, type Seat as RoomSeat } from "../shared/protocol.ts";
+import { pairReport } from "../shared/report.ts";
+import { pct } from "../components/StabilityMeter.tsx";
 import { S } from "../strings.ts";
 
 export function Play() {
@@ -363,7 +365,22 @@ function InRoom() {
 
       {!round && !me?.pairId && state.phase !== "lobby" && <p className="muted">{S.phone.waitingSeat}</p>}
       {!round && state.phase === "lobby" && <p className="spacer">{S.phone.lobby}</p>}
-      {!round && (state.phase === "batchDone" || state.phase === "ceiling" || state.phase === "debrief") && (
+      {/* The engineering report: CORA's own line, or (a human partner) a prompt to talk about it. */}
+      {!round && state.phase === "ceiling" && partner && (
+        <PartnerBeat partner={partner} cora={S.crew.ceiling} head={S.event.beats.head} prompt={S.event.beats.ceiling(partner.name)} />
+      )}
+      {/* The storm passes: the radio is back. CORA speaks her own line; a human pair is prompted to talk. */}
+      {!round && state.phase === "resolution" && partner && (
+        <PartnerBeat
+          partner={partner}
+          cora={state.stationSaved ? S.crew.resolution : S.crew.resolutionNotSaved}
+          head={S.event.resolution.head}
+          prompt={S.event.resolution.prompt(partner.name)}
+        />
+      )}
+      {/* The incident report: this pair's own numbers to take away. */}
+      {!round && state.phase === "debrief" && pair && partner && <PairNumbers pair={pair} partner={partner.name} />}
+      {!round && ["batchDone", "ceiling", "resolution", "debrief"].includes(state.phase) && (
         <p className="spacer">{S.phone.watch}</p>
       )}
       {!round && state.phase === "batchDone" && state.act === 3 && (
@@ -384,6 +401,41 @@ function InRoom() {
         {S.phone.leave}
       </button>
     </main>,
+  );
+}
+
+/** One of CORA's personal beats: her own line on the radio when she's the partner; otherwise a prompt to the pair. */
+function PartnerBeat({ partner, cora, head, prompt }: { partner: RoomSeat; cora: string; head: string; prompt: string }) {
+  if (partner.playerId === null) return <RadioLine lines={[cora]} />;
+  return (
+    <div className="panel stack partner-beat" role="status">
+      <p className="kicker">{head}</p>
+      <p>{prompt}</p>
+    </div>
+  );
+}
+
+/** The incident report on a phone: the pair's Act I score, their locked plans' true rate and their dials' exact rate
+ *  (a dash for any act they didn't play). */
+function PairNumbers({ pair, partner }: { pair: PairInfo; partner: string }) {
+  const r = pairReport(pair);
+  const R = S.event.report;
+  const cell = (label: string, value: number | null, note: string) => (
+    <li>
+      <span className="kicker">{label}</span>
+      <b className="three__big">{value === null ? "—" : pct(value)}</b>
+      <span className="muted small">{value === null ? R.notPlayed : note}</span>
+    </li>
+  );
+  return (
+    <div className="panel stack pair-numbers">
+      <p className="kicker">{R.phoneHead(partner)}</p>
+      <ul className="three">
+        {cell(R.phoneAct1, r.act1, R.phoneAct1Note)}
+        {cell(R.phoneAct2, r.plan, R.phoneAct2Note)}
+        {cell(R.phoneAct3, r.dials, R.phoneAct3Note)}
+      </ul>
+    </div>
   );
 }
 

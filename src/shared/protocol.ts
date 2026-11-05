@@ -11,7 +11,8 @@ export type Act = 1 | 2 | 3;
 /**
  * lobby → briefing (the night shift) → round ⇄ roundResult (Act I, ACT1_ROUNDS) → storm → strategy (the lull, timed)
  * → round ⇄ roundResult (× batch size, a storm wave) → batchDone → … → ceiling (Act II ends)
- * → tool (Entanglement Tool unlocked, Act III) → strategy → round … → debrief.
+ * → tool (Entanglement Tool unlocked, Act III) → strategy → round … → resolution (the storm passes) → debrief (the
+ * incident report, stepped by the host).
  * From the lobby, startStrategy / startBatch still go straight to Act II (no night shift).
  */
 export type RoomPhase =
@@ -24,6 +25,7 @@ export type RoomPhase =
   | "batchDone"
   | "ceiling"
   | "tool"
+  | "resolution"
   | "debrief";
 
 export type HostCommand =
@@ -32,7 +34,10 @@ export type HostCommand =
   | "startBatch"
   | "revealCeiling"
   | "unlockTool"
+  | "stormPasses"
   | "debrief"
+  | "reportBack"
+  | "reportNext"
   | "reset";
 
 export const HOST_COMMANDS: readonly HostCommand[] = [
@@ -41,9 +46,15 @@ export const HOST_COMMANDS: readonly HostCommand[] = [
   "startBatch",
   "revealCeiling",
   "unlockTool",
+  "stormPasses",
   "debrief",
+  "reportBack",
+  "reportNext",
   "reset",
 ];
+
+/** The incident report's steps (the same four as solo's debrief). */
+export const REPORT_STEPS = 4;
 
 export type RateSummary = { rounds: number; wins: number; timeouts: number };
 
@@ -107,6 +118,11 @@ export type RoomState = {
   /** True once an Act III wave ends with the crew's dials averaging 80% or more; it stays true (like solo's
    *  act3Passed). The ending comes in a later phase. */
   stationSaved: boolean;
+  /** The crew's dials average from the first wave that saved the station (null until then); the report uses it, like
+   *  solo's savedTuning, even if a later wave's average dropped. */
+  savedDialsRate: number | null;
+  /** The incident report's step (0–3), held by the server so a reconnecting TV (and the remote) keep their place. */
+  debriefStep: number;
   ceilingRevealed: boolean;
   toolUnlocked: boolean;
   /** Act III no-signalling data, sent only during the debrief. `crew` pools every seat (bigger sample, closer to 50%). */

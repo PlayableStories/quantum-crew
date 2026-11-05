@@ -51,7 +51,7 @@ import type {
   RoundOutcome,
   ServerMsg,
 } from "../src/shared/protocol.ts";
-import { roundIdOf } from "../src/shared/protocol.ts"; // a value, so not in the type-only import above
+import { REPORT_STEPS, roundIdOf } from "../src/shared/protocol.ts"; // values, so not in the type-only import above
 import { CREW_NAME } from "../src/strings.ts";
 import type { Rng } from "../src/shared/rng.ts";
 
@@ -154,6 +154,8 @@ export function createRoom(code: string, deps: RoomDeps) {
   let pairFollowed = new Map<number, { n: number; of: number }>();
   let crewDialsRate: number | null = null;
   let stationSaved = false;
+  let savedDialsRate: number | null = null;
+  let debriefStep = 0;
   /** Keyed by player id, or `bot-<pair>-<side>` for an AI crewmate. */
   let marginals = new Map<string, SeatMarginal>();
 
@@ -214,6 +216,8 @@ export function createRoom(code: string, deps: RoomDeps) {
         : null,
       crewDialsRate,
       stationSaved,
+      savedDialsRate,
+      debriefStep,
       ceilingRevealed,
       toolUnlocked,
       // Only in the debrief: per-light counts could otherwise hint at a partner's past lights mid-game.
@@ -518,7 +522,10 @@ export function createRoom(code: string, deps: RoomDeps) {
     if (act === 3 && lockedDials.size) {
       const rates = [...lockedDials.values()].map((d) => quantumExpectedWinRate(d.a, d.b));
       crewDialsRate = rates.reduce((sum, r) => sum + r, 0) / rates.length;
-      if (crewDialsRate >= SURVIVAL_THRESHOLD) stationSaved = true;
+      if (crewDialsRate >= SURVIVAL_THRESHOLD && !stationSaved) {
+        stationSaved = true;
+        savedDialsRate = crewDialsRate;
+      }
     }
     phase = "batchDone";
     deadline = null;
@@ -568,12 +575,29 @@ export function createRoom(code: string, deps: RoomDeps) {
         phase = "tool";
         deadline = null;
         return broadcast();
+      case "stormPasses":
+        // The ending: after at least one Act III wave, outside a wave. It reads stationSaved (no new state).
+        if (inBatch() || act !== 3 || actStats[3].rounds === 0 || phase === "resolution" || phase === "debrief")
+          return notNow();
+        clearTimer();
+        phase = "resolution";
+        deadline = null;
+        return broadcast();
       case "debrief":
         if (inBatch()) return notNow();
         clearTimer();
         phase = "debrief";
         deadline = null;
+        debriefStep = 0;
         return broadcast();
+      case "reportBack":
+      case "reportNext": {
+        if (phase !== "debrief") return notNow();
+        const step = debriefStep + (cmd === "reportNext" ? 1 : -1);
+        if (step < 0 || step >= REPORT_STEPS) return notNow();
+        debriefStep = step;
+        return broadcast();
+      }
       case "reset":
         clearTimer();
         phase = "lobby";
@@ -593,6 +617,8 @@ export function createRoom(code: string, deps: RoomDeps) {
         pairFollowed = new Map();
         crewDialsRate = null;
         stationSaved = false;
+        savedDialsRate = null;
+        debriefStep = 0;
         marginals = new Map();
         batchStats = lastBatch = null;
         for (const p of players) {

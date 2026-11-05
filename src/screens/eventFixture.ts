@@ -45,6 +45,8 @@ export function room(phase: RoomPhase, bot = false, act: Act = 1): RoomState {
     act3Followed: null,
     crewDialsRate: null,
     stationSaved: false,
+    savedDialsRate: null,
+    debriefStep: 0,
     ceilingRevealed: false,
     toolUnlocked: false,
     marginals: null,

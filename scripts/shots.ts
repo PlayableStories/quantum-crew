@@ -542,7 +542,7 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     [a, "-a", primary],
     [b, "-b", primary],
   ];
-  const host = async (cmd: string) => tv.page.locator(".tv__controls").getByRole("button", { name: cmd, exact: true }).click();
+  const host = async (cmd: string) => tv.page.locator(".tv__controls").getByRole("button", { name: cmd, exact: true }).click({ timeout: 5000 });
   const banner = (phase: string) => tv.page.locator(`.tv__banner--${phase}`);
 
   // Lobby: the TV first, then each phone joins from the link (the code is prefilled).
@@ -623,15 +623,31 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
   await shot("act3-wave-done", all(), true);
 
 
-  // The debrief, step by step on the TV.
-  await host(S.tv.cmd.debrief);
-  await tv.page.locator(".tv__debrief").waitFor();
-  for (let step = 1; ; step++) {
-    await shot(`debrief-${step}`, step === 1 ? all() : [[tv, "", null]], true);
-    const next = tv.page.locator(".tv__debrief-nav .btn--primary");
-    if (await next.isDisabled()) break;
-    await next.click();
+  // The storm passes (since E3a; a TV without it goes straight to the report): the TV and both phones.
+  // A capture that doesn't come up within 5 s is skipped with a warning, so one blocked screen never stalls the run.
+  const ready = (what: string, wait: Promise<unknown>) =>
+    wait.then(
+      () => true,
+      () => (console.warn(`  skipped: ${what} (${tvSize.name})`), false),
+    );
+  const stormPasses = (S.tv.cmd as Record<string, string>).stormPasses;
+  if (stormPasses) {
+    await host(stormPasses).catch(() => {});
+    if (await ready("resolution", banner("resolution").waitFor({ timeout: 5000 }))) await shot("resolution", all(), true);
   }
+
+  // The debrief (the incident report since E3a), step by step on the TV; the phones at the first step. Since E3a the
+  // step is the room's, so wait for the step dots to move after Next.
+  await host(S.tv.cmd.debrief).catch(() => {});
+  if (await ready("the report", tv.page.locator(".tv__debrief").waitFor({ timeout: 5000 })))
+    for (let step = 1; step <= 4; step++) {
+      if (!(await ready(`report step ${step}`, tv.page.locator(".tv__debrief .steps .on").nth(step - 1).waitFor({ timeout: 5000 }))))
+        break;
+      await shot(`debrief-${step}`, step === 1 ? all() : [[tv, "", null]], true);
+      const next = tv.page.locator(".tv__debrief-nav .btn--primary");
+      if (await next.isDisabled()) break;
+      await next.click();
+    }
 
   for (const ws of crowd) ws.close();
   for (const v of [tv, a, b]) await v.context.close();
