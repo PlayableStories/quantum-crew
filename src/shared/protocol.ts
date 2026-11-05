@@ -28,6 +28,11 @@ export type RoomPhase =
   | "resolution"
   | "debrief";
 
+/** How the facilitator paces rounds: Guided (no countdown; the facilitator closes rounds and moves on), Relaxed
+ *  (generous timers), Brisk (the original timers). */
+export type Pace = "guided" | "relaxed" | "brisk";
+export const PACES: readonly Pace[] = ["guided", "relaxed", "brisk"];
+
 export type HostCommand =
   | "startNightShift"
   | "startStrategy"
@@ -38,6 +43,11 @@ export type HostCommand =
   | "debrief"
   | "reportBack"
   | "reportNext"
+  | "setPace"
+  | "pause"
+  | "resume"
+  | "closeRound"
+  | "nextRound"
   | "reset";
 
 export const HOST_COMMANDS: readonly HostCommand[] = [
@@ -50,6 +60,11 @@ export const HOST_COMMANDS: readonly HostCommand[] = [
   "debrief",
   "reportBack",
   "reportNext",
+  "setPace",
+  "pause",
+  "resume",
+  "closeRound",
+  "nextRound",
   "reset",
 ];
 
@@ -123,6 +138,17 @@ export type RoomState = {
   savedDialsRate: number | null;
   /** The incident report's step (0–3), held by the server so a reconnecting TV (and the remote) keep their place. */
   debriefStep: number;
+  /** The facilitator's pace (null: the default, Guided for each act's first wave and Relaxed after), and the pace
+   *  of the current round (or of the next one, between rounds). */
+  paceChoice: Pace | null;
+  pace: Pace;
+  /** Paused: everything that was counting down is frozen; `left` is what the round's countdown had left. */
+  paused: { left: number | null } | null;
+  /** The lull: server time it began (the TV shows how long the room has been talking; it never ends by itself). */
+  lullSince: number | null;
+  /** Changes with every phase, round or report step. A host command that carries an older `step` is ignored, so a
+   *  double press (or the TV and a remote pressing at once) never skips two steps. */
+  step: string;
   ceilingRevealed: boolean;
   toolUnlocked: boolean;
   /** Act III no-signalling data, sent only during the debrief. `crew` pools every seat (bigger sample, closer to 50%). */
@@ -146,7 +172,9 @@ export type ClientMsg =
   | { type: "player:strategy"; act: Act; classical?: ClassicalStrategy; tuning?: TuningConfig }
   | { type: "player:valve"; roundId: string; valve: Valve }
   | { type: "player:measure"; roundId: string }
-  | { type: "host:command"; cmd: HostCommand };
+  /** The player leaves: their seat stays theirs and CORA covers it until they rejoin (same name and table). */
+  | { type: "player:leave" }
+  | { type: "host:command"; cmd: HostCommand; step?: string; pace?: Pace }
 
 /** A pair's round once it's over: both sensors and pumps (a null pump = not set in time) and what happened. */
 export type RoundOutcome = {
@@ -173,7 +201,8 @@ export type ServerMsg =
       roundId: string;
       act: Act;
       light: Light;
-      deadline: number;
+      /** Null in a Guided round: no countdown; the facilitator closes it. */
+      deadline: number | null;
       serverNow: number;
       dialDeg?: number;
       /** Act I: the partner's reading (and pump, if set) over the radio, and this phone's own pump after a rejoin. */
@@ -192,7 +221,7 @@ export type ServerMsg =
   | { type: "round:results"; roundId: string; results: RoundOutcome[] }
   | { type: "error"; code: ErrorCode; message: string };
 
-export type ErrorCode = "no-room" | "table-full" | "bad-request" | "not-host" | "not-now";
+export type ErrorCode = "no-room" | "table-full" | "bad-request" | "not-host" | "not-now" | "stale";
 
 /** A round's id: `act1-<n>` for the night shift, `<wave>-<n>` for storm waves (counted across Acts II and III). */
 export const roundIdOf = (act: Act, batchNo: number, roundNo: number) =>
@@ -246,8 +275,19 @@ export function parseClientMsg(raw: string): ClientMsg | null {
     case "player:measure":
       return str(o.roundId) ? { type: "player:measure", roundId: o.roundId as string } : null;
     case "host:command": {
-      return HOST_COMMANDS.includes(o.cmd as HostCommand) ? { type: "host:command", cmd: o.cmd as HostCommand } : null;
+      if (!HOST_COMMANDS.includes(o.cmd as HostCommand)) return null;
+      if (o.step !== undefined && !str(o.step)) return null;
+      if (o.pace !== undefined && !PACES.includes(o.pace as Pace)) return null;
+      if (o.cmd === "setPace" && o.pace === undefined) return null;
+      return {
+        type: "host:command",
+        cmd: o.cmd as HostCommand,
+        ...(o.step !== undefined && { step: o.step as string }),
+        ...(o.pace !== undefined && { pace: o.pace as Pace }),
+      };
     }
+    case "player:leave":
+      return { type: "player:leave" };
     default:
       return null;
   }

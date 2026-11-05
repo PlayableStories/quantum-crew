@@ -1,13 +1,15 @@
 // pnpm session
 // A whole event session against an in-process station (no network), with a fake clock and a seeded RNG, so it is fast
-// and the same every run. `pnpm smoke` covers the real WebSocket; this covers the session from lobby to debrief:
+// and the same every run. `pnpm smoke` covers the real WebSocket; this covers the session from lobby to debrief.
+// Pacing: Act I and each act's first wave are Guided (the script presses Next round on each result; it closes one
+// round early and double-presses Next round once, which must advance once); later waves are Relaxed (timers).
 //   four pairs join and a 9th player is turned away; the night shift (briefing, Act I by the rule over the radio, with
 //   one player changing their mind; every round held) and the storm; a player drops out mid-wave and rejoins their seat; the TV
 //   disconnects and resumes with its token; one Act II wave; the engineering report; the tool; two Act III waves with
 //   tuned dials (A 0° / 45°, B 22.5° / 157.5°): each phone measures, then sets the pump its crystal suggests; the
 //   pooled rate must be clearly above 75%, and the crew's dials average 85.4%, which saves the station; the storm
 //   passes (saved) and the incident report. Then a reset and a short not-saved session (untuned dials, 75%).
-import { ACT1_ROUNDS, BATCH_SIZE, MP_RESULT_MS, MP_ROUND_MS, STORM_STATIC_MS } from "../src/config.ts";
+import { ACT1_ROUNDS, MP_WAVE_SIZE, MP_RESULT_MS, MP_ROUND_MS, STORM_STATIC_MS } from "../src/config.ts";
 import { OPTIMAL_TUNING, QUANTUM_LIMIT } from "../src/shared/chsh.ts";
 import type { ClientMsg, HostCommand, RoomState, ServerMsg } from "../src/shared/protocol.ts";
 import { mulberry32 } from "../src/shared/rng.ts";
@@ -135,10 +137,20 @@ function setPump(conn: string, roundId: string, valve: 0 | 1) {
 }
 
 /** Runs the clock until the room reaches `phase`, answering as rounds come. */
+/** Guided results wait for the facilitator: press Next round (with the room's step) when one is showing. */
+const nextRound = () => send(tv, { type: "host:command", cmd: "nextRound", step: state().step });
+const paces = new Set<string>();
+
+/** Runs the clock until the room reaches `phase`, answering as rounds come and pressing Next round on Guided
+ *  results (Relaxed and Brisk move on by their own timers). */
 function playUntil(phase: RoomState["phase"], during?: (round: number) => void) {
-  for (let steps = 0; steps < 10_000 && state().phase !== phase; steps++) {
-    answerAll();
+  for (let steps = 0; steps < 20_000 && state().phase !== phase; steps++) {
+    // Each tick: the facilitator (and drop-outs) first, then a Guided result moves on, then the phones answer, so a
+    // result always shows for at least one tick and the hook sees it.
     during?.(state().roundNo);
+    if (state().phase === "round") paces.add(`${state().act}:${state().batchNo}:${state().pace}`);
+    if (state().phase === "roundResult" && state().pace === "guided") nextRound();
+    answerAll();
     advance(100);
   }
   return state().phase === phase;
@@ -178,7 +190,22 @@ let dropped = false;
 let rejoined = false;
 const bo = "phone1";
 const boId = last(bo, "player:joined")!.playerId;
+let closed = false;
+let doubled = false;
 const reached = playUntil("batchDone", (round) => {
+  // Guided (the first wave): the facilitator closes round 2 early, and presses Next round twice on round 3's
+  // result from the same step: the room advances once.
+  if (round === 1 && !closed && state().phase === "roundResult") {
+    nextRound(); // round 2 opens; nobody has chosen yet
+    send(tv, { type: "host:command", cmd: "closeRound", step: state().step });
+    closed = state().phase === "roundResult" && state().roundNo === 2 && last(tv, "round:results")!.results.every((r) => r.timedOut);
+  }
+  if (round === 3 && !doubled && state().phase === "roundResult") {
+    const step = state().step;
+    send(tv, { type: "host:command", cmd: "nextRound", step });
+    send(tv, { type: "host:command", cmd: "nextRound", step });
+    doubled = state().roundNo === 4 && last(tv, "error")?.code === "stale";
+  }
   if (round === 4 && !dropped) {
     station.disconnect(bo);
     phones.get(bo)!.online = false;
@@ -191,16 +218,21 @@ const reached = playUntil("batchDone", (round) => {
   }
 });
 check(reached, "one full Act II wave");
-check(state().lastBatch?.rounds === 4 * BATCH_SIZE, `the wave scored ${state().lastBatch?.rounds} pair-rounds`);
+check(paces.has("2:1:guided"), "the first wave was Guided (no countdown; Next round by the facilitator)");
+check(closed, "Close the round ended a Guided round early");
+check(doubled, "a double Next round from the same step advanced once");
+check(state().lastBatch?.rounds === 4 * MP_WAVE_SIZE, `the wave scored ${state().lastBatch?.rounds} pair-rounds`);
 const tried = [...state().triedPlans].sort().join(" ");
 check(tried === "0-0 1-0 2-0", `the plans locked at the wave start are recorded as tried (${tried})`);
 check(
-  state().pairs.every((p) => p.locked !== null && p.lastWave?.rounds === BATCH_SIZE),
+  state().pairs.every((p) => p.locked !== null && p.lastWave?.rounds === MP_WAVE_SIZE),
   "every pair has its locked plans and its own wave score",
 );
 const back = last("phone1b", "player:joined");
 check(!!back && back.playerId === boId, "Bo dropped out mid-wave and rejoined the same seat");
 check(state().players.find((p) => p.id === boId)?.connected === true, "Bo is connected again");
+const boPair = state().pairs.find((p) => p.b.playerId === boId)!;
+check(boPair.lastWave?.timeouts === 1, "while Bo was away CORA covered his seat (the only too-slow round is the one closed early)");
 
 // The TV page is refreshed: it resumes with its token.
 station.disconnect(tv);
@@ -224,12 +256,16 @@ for (let wave = 1; wave <= 2; wave++) {
 }
 const act3 = state().stability.act3;
 const rate = act3.rounds ? act3.wins / act3.rounds : 0;
-check(act3.rounds === 2 * 4 * BATCH_SIZE, `Act III scored ${act3.rounds} pair-rounds`);
+check(act3.rounds === 2 * 4 * MP_WAVE_SIZE, `Act III scored ${act3.rounds} pair-rounds`);
 check(rate >= 0.78, `pooled Act III rate ${(rate * 100).toFixed(1)}% is clearly above 75%`);
+check(
+  paces.has("3:2:guided") && paces.has("3:3:relaxed"),
+  `Act III: the first wave Guided, the next Relaxed (by its own timers) [${[...paces].filter((p) => p.startsWith("3:")).join(" ")}]`,
+);
 const crew = state().crewDialsRate ?? 0;
 check(Math.abs(crew - QUANTUM_LIMIT) < 1e-9 && state().stationSaved, `the crew's dials average ${(crew * 100).toFixed(1)}%: saved`);
 const followed = state().act3Followed;
-check(!!followed && followed.of === 8 * BATCH_SIZE && followed.n === followed.of, "every player followed their crystal (latest wave)");
+check(!!followed && followed.of === 8 * MP_WAVE_SIZE && followed.n === followed.of, "every player followed their crystal (latest wave)");
 
 // The saved ending: the storm passes (the crew's dials saved the station), then the incident report.
 host("stormPasses");

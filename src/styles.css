@@ -3221,7 +3221,7 @@ button.board__cell:focus-visible {
   max-width: 132px;
 }
 
-/* Short phones (an iPhone SE is 667px tall): a tighter lull, and a smaller Leave button. */
+/* Short phones (an iPhone SE is 667px tall): a tighter lull. */
 @media (max-height: 700px) {
   .lull {
     gap: 10px;
@@ -3266,11 +3266,6 @@ button.board__cell:focus-visible {
 
   .plan-box--phone {
     gap: 6px;
-  }
-
-  .phone-leave {
-    min-height: 44px;
-    padding-block: 6px;
   }
 }
 
@@ -3580,4 +3575,89 @@ button.board__cell:focus-visible {
   margin: 0;
   padding-left: 12px;
   border-left: 3px solid var(--radio);
+}
+
+/* Event TV, pacing: the lull's talking clock, the Paused line, who is still choosing, and the pace setting. */
+.tv__talking {
+  margin: 0;
+  font-size: clamp(1.2rem, 2vw, 2rem);
+  font-weight: 700;
+  color: var(--amber);
+}
+
+.tv__paused {
+  margin: 0;
+  padding: 6px 12px;
+  border-left: 4px solid var(--amber);
+  font-size: clamp(1.1rem, 1.6vw, 1.6rem);
+}
+
+.pair__waiting {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+.tv__pace {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tv__pace .kicker {
+  margin-right: 4px;
+}
+
+.tv__controls .tv__pace-btn {
+  min-height: 40px;
+  padding-inline: 10px;
+}
+
+.tv__keys {
+  margin-left: auto;
+}
+
+/* Event phone: the "⋯" menu beside mute, and the status line where the Leave button used to be. */
+.phone-top__tools {
+  gap: 6px;
+  flex: none;
+}
+
+.phone-menu__btn {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 10px;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.phone-status {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--amber);
+  color: var(--ink-muted);
+  text-align: left;
+}
+
+/* Event TV report: the numbers panel stays compact, and the body clips so Back / Next are never covered. */
+.tv__debrief-body {
+  overflow: hidden;
+}
+
+.tv__debrief-numbers .panel {
+  gap: 6px;
+  padding: 12px 14px;
+}
+
+.tv__debrief-numbers .bar {
+  gap: 2px;
+}
+
+.tv__debrief-numbers .bar span,
+.tv__debrief-numbers p {
+  font-size: 0.85em;
+}
+
+/* Event TV, the engineering report: a slightly shorter board so the prompt fits beneath it at 1280×720. */
+.tv__ceiling .board__cell {
+  min-height: 36px;
 }

@@ -53,7 +53,15 @@ export const ACT1_SETTLE_MS = 1500;
 export const MP_ACT1_RESULT_MS = 3500;
 /** Event: the storm's static on the TV and phones before the TV shows the storm log. */
 export const STORM_STATIC_MS = 6000;
-/** Strategy huddle (the lull) length; the wave starts automatically when it ends. */
+/** Event waves: rounds per wave (solo keeps BATCH_SIZE). Act I keeps ACT1_ROUNDS. */
+export const MP_WAVE_SIZE = 8;
+/** Event, Relaxed pace: generous timers so the room can read and talk (Brisk uses the MP_* times above). */
+export const RELAXED_ROUND_MS = 12_000;
+export const RELAXED_ACT1_ROUND_MS = 15_000;
+export const RELAXED_RESULT_MS = 8_000;
+/** Event: CORA (an empty or covered seat) acts after a natural delay in this range, in every pace. */
+export const CORA_DELAY_MS: readonly [number, number] = [1200, 2600];
+/** No longer used by the room: the lull lasts until the facilitator starts the wave (the TV shows how long). */
 export const STRATEGY_MS = 45_000;
 /** Pooled stability on the TV is the win rate of the last this-many rounds across all pairs. */
 export const ROLLING_WINDOW = 48;

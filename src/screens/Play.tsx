@@ -10,6 +10,7 @@ import { CrewIcon } from "../components/CrewIcon.tsx";
 import { Crystals } from "../components/EntanglementSurface.tsx";
 import { Dial, formatDeg } from "../components/Dial.tsx";
 import { Sheet } from "../components/Sheet.tsx";
+import { PhoneMenu } from "../components/PhoneMenu.tsx";
 import { MuteToggle } from "../components/MuteToggle.tsx";
 import { QuantumBackdrop } from "../components/QuantumBackdrop.tsx";
 import { SensorLight } from "../components/SensorLight.tsx";
@@ -163,6 +164,23 @@ function InRoom() {
   const pair = state.pairs.find((pr) => pr.id === me?.pairId);
   const partner = pair ? (seat.table === "A" ? pair.b : pair.a) : null;
   const mine = seat.table === "A" ? "a" : "b";
+  // The partner is a player who's away: CORA covers their seat until they rejoin.
+  const partnerAway = !!partner?.playerId && !state.players.find((pl) => pl.id === partner.playerId)?.connected;
+  const S_ = S.phone.status;
+  const status_ = state.paused
+    ? S_.paused
+    : round
+      ? null
+      : // The lull and the tool reveal already say what to do (and need the room on a small phone).
+        state.phase === "strategy" || state.phase === "tool"
+        ? null
+        : state.phase === "roundResult" || (state.phase === "round" && flash)
+          ? state.pace === "guided"
+            ? S_.guidedResult
+            : S_.timedResult
+          : state.phase === "lobby"
+            ? null
+            : S_.watch;
   const theirs = mine === "a" ? "b" : "a";
   // Act II: the plans locked for this wave (the reminder and the plan tag), and the partner's choice in the lull.
   const locked = pair?.locked ?? null;
@@ -180,7 +198,13 @@ function InRoom() {
   if (round && (round.act === 1 || round.answered === null)) {
     return wrap(
       <main className="screen">
-        <Countdown id={round.roundId} ms={round.ms} paused={round.measuring} />
+        {state.paused && (
+          <p className="phone-status" role="status">
+            {S.phone.status.paused}
+          </p>
+        )}
+        {/* Guided rounds have no countdown. */}
+        {round.ms !== null && <Countdown id={round.roundId} ms={round.ms} paused={round.measuring || !!state.paused} />}
         <SensorLight light={round.light} label={S.batch.yourLight} />
         {round.act === 1 && round.partner && partner && <PartnerRadio seat={partner} call={round.partner} />}
         {round.act === 2 && locked && partner && (
@@ -260,18 +284,33 @@ function InRoom() {
           <span className="kicker">{S.phone.seat(seat.table, seat.name)}</span>
         </span>
         {status !== "open" && <span className="kicker">{S.event.reconnecting}</span>}
-        <MuteToggle where="phone" />
+        <span className="row phone-top__tools">
+          <MuteToggle where="phone" />
+          <PhoneMenu
+            partner={partner && { name: partner.name, cora: partner.playerId === null }}
+            onLeave={() => {
+              leave();
+              navigate("/");
+            }}
+          />
+        </span>
       </div>
       {partner && (
         <p className="muted">
-          {S.phone.partner(partner.name, otherTable)}
-          {partner.playerId === null && <AiBadge />}
+          {partnerAway ? S.phone.partnerCovered(partner.name, otherTable) : S.phone.partner(partner.name, otherTable)}
+          {(partner.playerId === null || partnerAway) && <AiBadge />}
         </p>
       )}
 
       {round && round.answered !== null && (
         <div className="result spacer">
           <p className="result__verdict">{S.phone.pumpSet(S.pump[round.answered])}</p>
+          {/* Whether the partner has chosen yet (never what they chose). */}
+          {pair && partner && (
+            <p className="muted" role="status">
+              {pair.answered[theirs] ? S.phone.partnerChosen(partner.name) : S.phone.waitingFor(partner.name)}
+            </p>
+          )}
         </div>
       )}
 
@@ -310,7 +349,6 @@ function InRoom() {
           ) : (
             <RadioLine who={S.event.storm.log} quoted={false} lines={[S.event.storm.logBreak]} interference />
           )}
-          <p>{S.phone.watch}</p>
         </div>
       )}
 
@@ -380,9 +418,7 @@ function InRoom() {
       )}
       {/* The incident report: this pair's own numbers to take away. */}
       {!round && state.phase === "debrief" && pair && partner && <PairNumbers pair={pair} partner={partner.name} />}
-      {!round && ["batchDone", "ceiling", "resolution", "debrief"].includes(state.phase) && (
-        <p className="spacer">{S.phone.watch}</p>
-      )}
+
       {!round && state.phase === "batchDone" && state.act === 3 && (
         <details className="panel">
           <summary className="kicker">{S.phone.retune}</summary>
@@ -391,15 +427,12 @@ function InRoom() {
       )}
 
       <div className="spacer" />
-      <button
-        className="btn btn--ghost phone-leave"
-        onClick={() => {
-          leave();
-          navigate("/");
-        }}
-      >
-        {S.phone.leave}
-      </button>
+      {/* Where the Leave button used to be: what's happening, while there's nothing to press. */}
+      {status_ && (
+        <p className="phone-status" role="status">
+          {status_}
+        </p>
+      )}
     </main>,
   );
 }

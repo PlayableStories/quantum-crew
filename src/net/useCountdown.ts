@@ -15,3 +15,15 @@ export function useRemainingMs(localDeadline: number | null): number | null {
   }, [localDeadline]);
   return localDeadline === null ? null : Math.max(0, localDeadline - now);
 }
+
+/** Milliseconds since a local start time (null: not started), re-rendering every second. */
+export function useElapsedMs(localStart: number | null): number | null {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (localStart === null) return;
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [localStart]);
+  return localStart === null ? null : Math.max(0, now - localStart);
+}

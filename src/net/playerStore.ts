@@ -18,7 +18,8 @@ type LiveRound = {
   roundId: string;
   act: Act;
   light: Light;
-  ms: number;
+  /** Null in a Guided round: no countdown. */
+  ms: number | null;
   dialDeg: number | null;
   answered: Valve | null;
   measuring: boolean;
@@ -97,7 +98,7 @@ export const usePlayer = create<PlayerStore>()((set, get) => ({
                 roundId: msg.roundId,
                 act: msg.act,
                 light: msg.light,
-                ms: Math.max(0, msg.deadline - msg.serverNow),
+                ms: msg.deadline === null ? null : Math.max(0, msg.deadline - msg.serverNow),
                 dialDeg: msg.dialDeg ?? null,
                 answered: msg.pump ?? null,
                 measuring: false,
@@ -176,6 +177,8 @@ export const usePlayer = create<PlayerStore>()((set, get) => ({
   },
 
   leave() {
+    // Tell the room first: the seat stays ours and CORA covers it until we rejoin.
+    station?.send({ type: "player:leave" });
     station?.close();
     station = null;
     session.remove(KEY);

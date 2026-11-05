@@ -5,23 +5,19 @@
 import {
   ACT1_ROUNDS,
   ACT1_SETTLE_MS,
-  BATCH_SIZE,
   BOT_ACT2_PLAN,
+  CORA_DELAY_MS,
   DEFAULT_PLAN,
   DEFAULT_TUNING,
   MAX_PAIRS,
-  MP_ACT1_RESULT_MS,
-  MP_ACT1_ROUND_MS,
-  MP_ACT3_ROUND_MS,
-  MP_RESULT_MS,
-  MP_ROUND_MS,
+  MP_WAVE_SIZE,
   ROLLING_WINDOW,
   STORM_STATIC_MS,
-  STRATEGY_MS,
 } from "../src/config.ts";
 import { act1Order, type SensorPair } from "../src/shared/act1.ts";
 import { roundCause } from "../src/shared/fiction.ts";
 import { cellKey, type CellKey } from "../src/shared/plans.ts";
+import { decisionMs, resultMs } from "../src/shared/pace.ts";
 import {
   DIAL_POSITIONS,
   OPTIMAL_TUNING,
@@ -44,6 +40,7 @@ import type {
   ClientMsg,
   ErrorCode,
   HostCommand,
+  Pace,
   PairInfo,
   RateSummary,
   RoomPhase,
@@ -91,12 +88,18 @@ type PairRound = {
   theta: { a: number | null; b: number | null };
   /** Act III: what each side's crystal said when they measured (a suggestion; the pump is `a` / `b`). */
   crystal: { a: Valve | null; b: Valve | null };
+  /** A seated player who was away for this round: CORA played their seat (their own rows don't count it). */
+  covered: { a: boolean; b: boolean };
 };
 
 /** Act III no-signalling record for one seat: its OPEN count split by the partner's light. */
 type SeatMarginal = { name: string; table: Table; green: { open: number; n: number }; red: { open: number; n: number } };
 
-type LiveRound = { id: string; deadline: number; byPair: Map<number, PairRound> };
+/** `deadline` is null in a Guided round (no countdown: it closes when everyone has chosen, or by the facilitator). */
+type LiveRound = { id: string; deadline: number | null; pace: Pace; byPair: Map<number, PairRound> };
+
+/** A pending timer, so pause can freeze it and resume restart it with the time it had left. */
+type Pending = { fn: () => void; at: number; cancel: () => void };
 
 const emptyRate = (): RateSummary => ({ rounds: 0, wins: 0, timeouts: 0 });
 const emptyActs = (): Record<Act, RateSummary> => ({ 1: emptyRate(), 2: emptyRate(), 3: emptyRate() });
@@ -130,9 +133,15 @@ export function createRoom(code: string, deps: RoomDeps) {
   let roundNo = 0;
   let deadline: number | null = null;
   let live: LiveRound | null = null;
-  let cancelTimer: (() => void) | null = null;
-  /** Act I: ends the round early once every pump is set and has stayed put for ACT1_SETTLE_MS. */
-  let cancelSettle: (() => void) | null = null;
+  /** Everything counting down, by key: "phase" (a round's deadline, a result, the storm's static), "settle" (Act I:
+   *  the round closes once every pump has stayed put for ACT1_SETTLE_MS) and "cora-<pair>-<side>" (CORA's moves). */
+  const timers = new Map<string, Pending>();
+  /** Paused: the timers' remaining times (restarted on resume), and the round's countdown. */
+  let paused: { timers: Map<string, { fn: () => void; left: number }>; left: number | null } | null = null;
+  /** Pacing: the facilitator's choice (null = the default) and how many waves each act has started. */
+  let paceChoice: Pace | null = null;
+  let wavesInAct: Record<Act, number> = { 1: 0, 2: 0, 3: 0 };
+  let lullSince: number | null = null;
   /** Act I: each pair's sensor order for the night shift (every combination, no double HOT first). */
   let act1Orders = new Map<number, SensorPair[]>();
   let ceilingRevealed = false;
@@ -192,7 +201,7 @@ export function createRoom(code: string, deps: RoomDeps) {
       act,
       batchNo,
       roundNo,
-      batchSize: BATCH_SIZE,
+      batchSize: MP_WAVE_SIZE,
       deadline,
       serverNow: deps.now(),
       players: players.map((p) => ({
@@ -218,6 +227,11 @@ export function createRoom(code: string, deps: RoomDeps) {
       stationSaved,
       savedDialsRate,
       debriefStep,
+      paceChoice,
+      pace: live?.pace ?? upcomingPace(),
+      paused: paused ? { left: paused.left } : null,
+      lullSince,
+      step: stepSig(),
       ceilingRevealed,
       toolUnlocked,
       // Only in the debrief: per-light counts could otherwise hint at a partner's past lights mid-game.
@@ -264,31 +278,107 @@ export function createRoom(code: string, deps: RoomDeps) {
 
   const inBatch = () => phase === "round" || phase === "roundResult";
 
-  // --- Timers -----------------------------------------------------------------------------------
+  // --- Timers (pausable) -------------------------------------------------------------------------
 
-  function setTimer(fn: () => void, ms: number) {
-    cancelTimer?.();
-    cancelTimer = deps.schedule(() => {
-      cancelTimer = null;
+  /** Runs `fn` after `ms` under `key` (replacing any timer with that key). While paused it waits for resume. */
+  function later(key: string, ms: number, fn: () => void) {
+    cancel(key);
+    if (paused) {
+      paused.timers.set(key, { fn, left: ms });
+      return;
+    }
+    const cancelIt = deps.schedule(() => {
+      timers.delete(key);
       fn();
     }, ms);
+    timers.set(key, { fn, at: deps.now() + ms, cancel: cancelIt });
   }
 
+  function cancel(key: string) {
+    timers.get(key)?.cancel();
+    timers.delete(key);
+    paused?.timers.delete(key);
+  }
+
+  /** Cancels every timer (a phase change); the pause, if any, stays. */
   function clearTimer() {
-    cancelTimer?.();
-    cancelTimer = null;
-    clearSettle();
+    for (const t of timers.values()) t.cancel();
+    timers.clear();
+    paused?.timers.clear();
   }
 
-  function clearSettle() {
-    cancelSettle?.();
-    cancelSettle = null;
+  /** Cancels a round's timers: its deadline, Act I's settle and CORA's pending moves. */
+  function clearRoundTimers() {
+    for (const key of [...timers.keys(), ...(paused?.timers.keys() ?? [])])
+      if (key === "phase" || key === "settle" || key.startsWith("cora-")) cancel(key);
   }
+
+  function pause() {
+    const now = deps.now();
+    const saved = new Map<string, { fn: () => void; left: number }>();
+    for (const [key, t] of timers) {
+      t.cancel();
+      saved.set(key, { fn: t.fn, left: Math.max(0, t.at - now) });
+    }
+    timers.clear();
+    paused = { timers: saved, left: deadline === null ? null : Math.max(0, deadline - now) };
+    deadline = null;
+  }
+
+  function resume() {
+    if (!paused) return;
+    const { timers: saved, left } = paused;
+    paused = null;
+    for (const [key, t] of saved) later(key, t.left, t.fn);
+    deadline = left === null ? null : deps.now() + left;
+    if (live) live.deadline = live.pace === "guided" ? null : deadline;
+  }
+
+  // --- Pacing ----------------------------------------------------------------------------------
+
+  /** The pace for wave `n` of the current act (Act I is one "wave"): the facilitator's choice, else Guided for each
+   *  act's first wave and Relaxed after it. */
+  const paceFor = (n: number): Pace => paceChoice ?? (n <= 1 ? "guided" : "relaxed");
+
+  /** Between rounds: the pace the next round will have. */
+  function upcomingPace(): Pace {
+    if (phase === "roundResult" || phase === "round") return paceFor(wavesInAct[act]);
+    if (phase === "lobby" || phase === "briefing") return paceFor(1);
+    // The storm leads into Act II's first wave; otherwise the next wave of this act.
+    const nextAct: Act = act === 1 ? 2 : act;
+    return paceFor(wavesInAct[nextAct] + 1);
+  }
+
+  /** The room's current step: changes with every phase, round or report step (see RoomState.step). */
+  const stepSig = () => `${phase}:${act}:${batchNo}:${roundNo}:${debriefStep}`;
 
   // --- Rounds -----------------------------------------------------------------------------------
 
   /** A pair's Act II plans: each player's choice, or CORA's standard procedure in an empty seat. */
   const pairPlans = (pair: Pair) => ({ a: pair.a?.classical ?? BOT_ACT2_PLAN, b: pair.b?.classical ?? BOT_ACT2_PLAN });
+
+  /** CORA plays a seat that's empty, or whose player is away (until they rejoin). */
+  const coraSeat = (pair: Pair, side: Side) => !pair[side] || pair[side]!.conn === null;
+
+  /** CORA moves after a natural delay (from the room's RNG), in every pace. */
+  function scheduleCora(pair: Pair, side: Side) {
+    const [lo, hi] = CORA_DELAY_MS;
+    later(`cora-${pair.id}-${side}`, lo + deps.rng() * (hi - lo), () => coraMove(pair.id, side));
+  }
+
+  /** CORA's move: Act I a random pump (her partner hears it), Act II standard procedure, Act III measure and follow. */
+  function coraMove(pairId: number, side: Side) {
+    const pair = pairs.find((p) => p.id === pairId);
+    const pr = live?.byPair.get(pairId);
+    if (!live || phase !== "round" || !pair || !pr || pr[side] !== null) return;
+    const light = side === "a" ? pr.x : pr.y;
+    if (act === 1) {
+      pr[side] = botValve(light);
+      toPlayer(pair[side === "a" ? "b" : "a"], { type: "round:partner", roundId: live.id, pump: pr[side]! });
+    } else if (act === 2) pr[side] = botValve(light);
+    else pr[side] = measureSide(pair, pr, side);
+    afterAnswer();
+  }
 
   /** The AI crewmate's Act II valve for a light. Act I: a random direction, called over the radio (as in solo). */
   const botValve = (light: Light): Valve =>
@@ -318,6 +408,7 @@ export function createRoom(code: string, deps: RoomDeps) {
 
   function startBatch() {
     clearTimer();
+    lullSince = null;
     if (players.length === 0) {
       phase = "lobby";
       deadline = null;
@@ -326,6 +417,7 @@ export function createRoom(code: string, deps: RoomDeps) {
     repair();
     // From the lobby or the storm, a wave starts Act II (Act I is only ever started from the briefing).
     if (act === 1) act = 2;
+    wavesInAct[act]++;
     batchNo++;
     roundNo = 0;
     batchStats = emptyRate();
@@ -350,6 +442,7 @@ export function createRoom(code: string, deps: RoomDeps) {
     clearTimer();
     repair();
     act = 1;
+    wavesInAct[1] = 1;
     roundNo = 0;
     act1Orders = new Map(pairs.map((pair) => [pair.id, act1Order(deps.rng)]));
     nextRound();
@@ -361,10 +454,10 @@ export function createRoom(code: string, deps: RoomDeps) {
     live = null;
     phase = "storm";
     deadline = deps.now() + STORM_STATIC_MS;
+    // The static has a deadline (the TV shows the log after it); a timer marks it so pause can freeze it too.
+    later("phase", STORM_STATIC_MS, broadcast);
     broadcast();
   }
-
-  const roundMs = () => (act === 1 ? MP_ACT1_ROUND_MS : act === 3 ? MP_ACT3_ROUND_MS : MP_ROUND_MS);
 
   function nextRound() {
     roundNo++;
@@ -374,20 +467,26 @@ export function createRoom(code: string, deps: RoomDeps) {
     for (const pair of pairs) {
       const planned = act === 1 ? act1Orders.get(pair.id)?.[roundNo - 1] : undefined;
       const { x, y } = planned ? { x: planned[0], y: planned[1] } : drawInputs(deps.rng);
-      const pr: PairRound = { x, y, a: null, b: null, theta: { a: null, b: null }, crystal: { a: null, b: null } };
-      // AI crewmates answer at once. DECISION: in Act III the bot measures at the start of the round, so it is
-      // always first and its human partner's result is the conditioned one; CORA always follows her crystal.
-      for (const side of ["a", "b"] as const) {
-        if (pair[side]) continue;
-        pr[side] = act !== 3 ? botValve(side === "a" ? x : y) : measureSide(pair, pr, side);
-      }
+      const pr: PairRound = {
+        x,
+        y,
+        a: null,
+        b: null,
+        theta: { a: null, b: null },
+        crystal: { a: null, b: null },
+        covered: { a: !!pair.a && !pair.a.conn, b: !!pair.b && !pair.b.conn },
+      };
       byPair.set(pair.id, pr);
     }
-    live = { id, deadline: now + roundMs(), byPair };
+    const pace = paceFor(wavesInAct[act]);
+    const ms = decisionMs(pace, act);
+    live = { id, deadline: ms === null ? null : now + ms, pace, byPair };
     phase = "round";
     deadline = live.deadline;
     for (const pair of pairs) sendRoundStart(pair);
-    setTimer(resolveRound, roundMs());
+    // CORA plays empty and covered seats after a natural delay (in Act III she follows her crystal).
+    for (const pair of pairs) for (const side of ["a", "b"] as const) if (coraSeat(pair, side)) scheduleCora(pair, side);
+    if (ms !== null) later("phase", ms, resolveRound);
     broadcast();
   }
 
@@ -419,16 +518,25 @@ export function createRoom(code: string, deps: RoomDeps) {
     pr[side] = valve;
     const partner = pair[side === "a" ? "b" : "a"];
     toPlayer(partner, { type: "round:partner", roundId: live.id, pump: valve });
-    clearSettle();
+    afterAnswer();
+  }
+
+  /** After any pump is set: once every seat has one, the round closes (Act I: after ACT1_SETTLE_MS with no change,
+   *  so a player can still change their mind). In every pace. */
+  function afterAnswer() {
+    if (!live) return;
+    cancel("settle");
     const allSet = [...live.byPair.values()].every((r) => r.a !== null && r.b !== null);
-    if (allSet) cancelSettle = deps.schedule(resolveRound, ACT1_SETTLE_MS);
+    if (allSet && act === 1) later("settle", ACT1_SETTLE_MS, resolveRound);
+    else if (allSet) return resolveRound();
     broadcast();
   }
 
   /** Act I / II: a valve tap. Act III: a MEASURE tap (`valve` undefined) reads the crystal, then a valve tap sets the
    *  pump (only after measuring; it may go against the crystal, and changes until every pump is set). */
   function answer(player: Player, roundId: string, valve?: Valve) {
-    if (phase !== "round" || !live || live.id !== roundId || deps.now() > live.deadline) return;
+    if (paused || phase !== "round" || !live || live.id !== roundId) return;
+    if (live.deadline !== null && deps.now() > live.deadline) return;
     const pair = pairs.find((p) => p.a === player || p.b === player);
     const pr = pair && live.byPair.get(pair.id);
     if (!pair || !pr) return;
@@ -446,9 +554,7 @@ export function createRoom(code: string, deps: RoomDeps) {
       if (pr[side] !== null || valve === undefined) return;
       pr[side] = valve;
     }
-    const done = [...live.byPair.values()].every((r) => r.a !== null && r.b !== null);
-    if (done) resolveRound();
-    else broadcast();
+    afterAnswer();
   }
 
   function recordMarginal(pair: Pair, side: Side, valve: Valve | null, partnerLight: Light) {
@@ -469,7 +575,7 @@ export function createRoom(code: string, deps: RoomDeps) {
 
   function resolveRound() {
     if (!live) return;
-    clearTimer();
+    clearRoundTimers();
     const results: RoundOutcome[] = [];
     for (const pair of pairs) {
       const pr = live.byPair.get(pair.id);
@@ -493,13 +599,14 @@ export function createRoom(code: string, deps: RoomDeps) {
       if (wave && act !== 1) addResult(wave, outcome);
       // DECISION: the station gauge starts with the first storm wave; Act I (every round winnable) has its own rate.
       if (act !== 1) rolling.push(r.win);
-      recordMarginal(pair, "a", pr.a, pr.y);
-      recordMarginal(pair, "b", pr.b, pr.x);
+      // A covered seat's round was CORA's: it doesn't count in the away player's own rows.
+      if (!pr.covered.a) recordMarginal(pair, "a", pr.a, pr.y);
+      if (!pr.covered.b) recordMarginal(pair, "b", pr.b, pr.x);
       // Act III: did each player set the pump their crystal suggested? (CORA always does; timeouts don't count.)
       const followed = pairFollowed.get(pair.id);
       if (act === 3 && followed)
         for (const side of ["a", "b"] as const) {
-          if (!pair[side] || pr[side] === null) continue;
+          if (!pair[side] || pr.covered[side] || pr[side] === null) continue;
           followed.of++;
           if (pr[side] === pr.crystal[side]) followed.n++;
         }
@@ -511,9 +618,17 @@ export function createRoom(code: string, deps: RoomDeps) {
     toHost({ type: "round:results", roundId: live.id, results });
     phase = "roundResult";
     deadline = null;
-    if (act === 1) setTimer(roundNo < ACT1_ROUNDS ? nextRound : startStorm, MP_ACT1_RESULT_MS);
-    else setTimer(roundNo < BATCH_SIZE ? nextRound : endBatch, MP_RESULT_MS);
+    // Guided: the result stays until the facilitator presses Next round. Otherwise the pace's timer moves on.
+    const ms = resultMs(live.pace, act);
+    if (ms !== null) later("phase", ms, afterResult);
     broadcast();
+  }
+
+  /** After a result: the next round, the wave's end, or (after Act I) the storm. */
+  function afterResult() {
+    cancel("phase");
+    if (act === 1) return roundNo < ACT1_ROUNDS ? nextRound() : startStorm();
+    return roundNo < MP_WAVE_SIZE ? nextRound() : endBatch();
   }
 
   function endBatch() {
@@ -536,9 +651,31 @@ export function createRoom(code: string, deps: RoomDeps) {
 
   // --- Host commands ----------------------------------------------------------------------------
 
-  function command(conn: Conn, cmd: HostCommand) {
+  function command(conn: Conn, cmd: HostCommand, step?: string, pace?: Pace) {
     const notNow = () => error(conn, "not-now", `Can't ${cmd} during ${phase}.`);
+    // Sent from a step the room has already left (a double press, or two controllers): ignore it.
+    if (step !== undefined && step !== stepSig()) return error(conn, "stale", `Already past that step (${cmd}).`);
     switch (cmd) {
+      case "setPace":
+        // From the next round (the current round keeps its pace).
+        if (!pace) return notNow();
+        paceChoice = pace;
+        return broadcast();
+      case "pause":
+        if (paused) return notNow();
+        pause();
+        return broadcast();
+      case "resume":
+        if (!paused) return notNow();
+        resume();
+        return broadcast();
+      case "closeRound":
+        // Anyone who hasn't chosen counts as too slow.
+        if (phase !== "round" || paused) return notNow();
+        return resolveRound();
+      case "nextRound":
+        if (phase !== "roundResult" || paused) return notNow();
+        return afterResult();
       case "startNightShift":
         if (phase !== "lobby" || players.length === 0) return notNow();
         repair();
@@ -551,10 +688,11 @@ export function createRoom(code: string, deps: RoomDeps) {
         if (inBatch() || phase === "debrief" || phase === "briefing") return notNow();
         // From the lobby, the briefing or the storm: the lull before Act II's first wave.
         if (act === 1) act = 2;
+        clearTimer();
         phase = "strategy";
-        deadline = deps.now() + STRATEGY_MS;
-        // DECISION: when the huddle ends, the comms blackout starts with the batch, no extra host tap.
-        setTimer(startBatch, STRATEGY_MS);
+        // DECISION (pacing): the lull isn't timed; the facilitator starts the wave. The TV shows how long it's been.
+        deadline = null;
+        lullSince = deps.now();
         return broadcast();
       case "startBatch":
         if (inBatch() || phase === "debrief" || players.length === 0) return notNow();
@@ -605,6 +743,10 @@ export function createRoom(code: string, deps: RoomDeps) {
         batchNo = roundNo = 0;
         deadline = null;
         live = null;
+        paused = null;
+        paceChoice = null;
+        wavesInAct = { 1: 0, 2: 0, 3: 0 };
+        lullSince = null;
         ceilingRevealed = toolUnlocked = false;
         rolling = [];
         actStats = emptyActs();
@@ -638,9 +780,18 @@ export function createRoom(code: string, deps: RoomDeps) {
     if (existing) {
       existing.conn = conn;
       deps.send(conn, { type: "player:joined", room: code, playerId: existing.id, name: existing.name, table });
-      broadcast();
       const pair = pairs.find((p) => p.a === existing || p.b === existing);
-      if (pair && phase === "round") sendRoundStart(pair, existing);
+      const pr = pair && live?.byPair.get(pair.id);
+      if (pair && pr && phase === "round") {
+        // Back before CORA moved for them: the seat is theirs again this round.
+        const side: Side = pair.a === existing ? "a" : "b";
+        if (pr[side] === null) {
+          cancel(`cora-${pair.id}-${side}`);
+          pr.covered[side] = false;
+        }
+        sendRoundStart(pair, existing);
+      }
+      broadcast();
       return;
     }
     if (players.filter((p) => p.table === table).length >= MAX_PAIRS) {
@@ -660,6 +811,26 @@ export function createRoom(code: string, deps: RoomDeps) {
     if (!inBatch()) repair();
     deps.send(conn, { type: "player:joined", room: code, playerId: player.id, name, table });
     broadcast();
+  }
+
+  /** A connection closed (or the player left): their seat stays theirs and CORA covers it until they rejoin. */
+  function disconnect(conn: Conn) {
+    if (conn === hostConn) hostConn = null;
+    const player = players.find((p) => p.conn === conn);
+    if (player) {
+      player.conn = null;
+      // Mid-round, CORA covers the seat at once (until the player rejoins with the same name and table).
+      const pair = pairs.find((p) => p.a === player || p.b === player);
+      const pr = pair && live?.byPair.get(pair.id);
+      if (pair && pr && phase === "round") {
+        const side: Side = pair.a === player ? "a" : "b";
+        if (pr[side] === null) {
+          pr.covered[side] = true;
+          scheduleCora(pair, side);
+        }
+      }
+      broadcast();
+    }
   }
 
   return {
@@ -682,7 +853,9 @@ export function createRoom(code: string, deps: RoomDeps) {
           return broadcast();
         case "host:command":
           if (conn !== hostConn) return error(conn, "not-host", "Only the TV can run the session.");
-          return command(conn, msg.cmd);
+          return command(conn, msg.cmd, msg.step, msg.pace);
+        case "player:leave":
+          return disconnect(conn);
         case "player:join":
           return join(conn, msg.name, msg.table);
         case "player:strategy":
@@ -700,14 +873,7 @@ export function createRoom(code: string, deps: RoomDeps) {
       }
     },
 
-    disconnect(conn: Conn) {
-      if (conn === hostConn) hostConn = null;
-      const player = players.find((p) => p.conn === conn);
-      if (player) {
-        player.conn = null;
-        broadcast();
-      }
-    },
+    disconnect,
 
     /** Nobody connected and quiet for `ms`. */
     isIdle(ms: number) {

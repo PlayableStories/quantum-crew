@@ -250,13 +250,13 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    Too slow).
 5. **The storm** follows by itself: every phone's radio breaks up mid-line under static, then the TV shows the
    storm log.
-6. **Use the lull (45 s):** the last chance to talk. Each player picks one of solo's four named plans (always
-   clockwise, reverse when HOT, reverse when COOL, always anticlockwise), and the partner's choice shows live on
-   their phone. When the clock runs out the storm wave hits and the radio goes dark (or press **Start the wave**);
-   the plans lock as the wave starts.
-7. Each round of a wave, every phone shows only its own sensor, both locked plans as a reminder, two pump buttons
-   (either can be tapped) and a countdown. A result shows the cause, a small ring with both sensors and pumps, and a
-   line of station telemetry. The TV shows the round timer, who has answered and each pair's cause. The station's
+6. **Use the lull:** the last chance to talk. Each player picks one of solo's four named plans (always clockwise,
+   reverse when HOT, reverse when COOL, always anticlockwise), and the partner's choice shows live on their phone.
+   The lull isn't timed (the TV shows how long the room has been talking); **Start the wave** ends it, the storm wave
+   hits, the radio goes dark and the plans lock.
+7. Each round of a wave (8 rounds), every phone shows only its own sensor, both locked plans as a reminder and two
+   pump buttons (either can be tapped). After setting a pump a phone says whether the partner has chosen (never
+   what). A result shows the cause, a small ring with both sensors and pumps, and a line of station telemetry. The TV shows the round timer, who has answered and each pair's cause. The station's
    stability is pooled over the last 48 wave rounds across all pairs (Act I has its own rate), and each pair also has
    its own mini-meter (three or four pairs sit two to a row).
 8. After each wave the TV shows every pair's locked plans case by case (the four sensor combinations, each with
@@ -297,8 +297,21 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
 At the engineering report, human pairs get a prompt instead of CORA's personal line ("Did you blame each other? No
 plan beats 75%: it was never either of you."); pairs with CORA hear her line.
 
-A phone that reloads or drops out rejoins its seat automatically (same name, same table). A refreshed TV resumes
-the same station. Running a session for real: [`docs/facilitator.md`](docs/facilitator.md); watching a playtest:
+**Pacing.** The facilitator paces the room from the TV (the host row shows only what applies now, plus Pause, the
+pace and Reset; Space or → for the next step, P to pause):
+- **Guided** (the default for each act's first wave, the night shift included): no countdown. A round closes when
+  every pair has chosen (the TV shows who is still choosing) or on **Close the round**; the result stays on the TV
+  and phones until **Next round**.
+- **Relaxed** (the default after that): rounds run by themselves with generous timers (12 s to decide, 15 s in the
+  night shift, 8 s per result).
+- **Brisk:** the original timers. The facilitator's choice applies from the next round until changed.
+- **Pause** freezes every countdown for the whole room; **Resume** carries on with the time that was left.
+- Every host command carries the room's current step, and the server ignores one sent from a step it has already
+  left, so a double press never skips two steps (ready for a phone remote).
+
+**Leaving.** A phone's **⋯** menu (beside mute) has **Leave the game**, behind a confirmation where staying is the
+primary action. A player who leaves, or whose phone drops out, keeps their seat: CORA covers it (after a natural
+delay, like everywhere else) until they rejoin with the same name and table. A refreshed TV resumes the same station. Running a session for real: [`docs/facilitator.md`](docs/facilitator.md); watching a playtest:
 [`docs/playtest.md`](docs/playtest.md).
 
 From the lobby, **Use the lull** or **Start the wave** still skip the night shift and go straight to Act II (for a
