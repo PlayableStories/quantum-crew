@@ -6,7 +6,7 @@
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { WebSocket } from "ws";
-import { BATCH_SIZE } from "../src/config.ts";
+import { MP_WAVE_SIZE } from "../src/config.ts";
 import type { ClientMsg, RoomState, ServerMsg } from "../src/shared/protocol.ts";
 import { attachStation } from "../server/attach.ts";
 
@@ -72,6 +72,8 @@ const pairsReady = (m: ServerMsg): m is Extract<ServerMsg, { type: "room:state" 
 const lobby = (await tv.wait(pairsReady)).state;
 console.log(`Pairs: ${lobby.pairs.map((p) => `${p.a.name}+${p.b.name}`).join(", ")}`);
 
+// Brisk: the original timers (rounds run by themselves); pacing is covered by pnpm session and the room tests.
+tv.send({ type: "host:command", cmd: "setPace", pace: "brisk" });
 tv.send({ type: "host:command", cmd: "startBatch" });
 const t0 = Date.now();
 const done = await tv.wait(
@@ -88,11 +90,11 @@ const check = (cond: boolean, what: string) => {
 for (const [i, phone] of phones.entries()) {
   const starts = phone.msgs.filter(is("round:start"));
   const ids = new Set(starts.map((m) => m.roundId));
-  check(starts.length === BATCH_SIZE && ids.size === BATCH_SIZE, `${seats[i]![0]} got one light per round (${starts.length})`);
+  check(starts.length === MP_WAVE_SIZE && ids.size === MP_WAVE_SIZE, `${seats[i]![0]} got one light per round (${starts.length})`);
   const leaks = phone.msgs.filter((m) => m.type !== "round:start" && /"light"/.test(JSON.stringify(m)));
   check(leaks.length === 0, `${seats[i]![0]} never saw anyone else's light`);
 }
-check(s.lastBatch?.rounds === 2 * BATCH_SIZE, `batch scored ${s.lastBatch?.rounds} pair-rounds`);
+check(s.lastBatch?.rounds === 2 * MP_WAVE_SIZE, `batch scored ${s.lastBatch?.rounds} pair-rounds`);
 check(s.stability.act2.timeouts === 0, `no timeouts`);
 const r = s.stability.rolling ?? 0;
 check(r <= 1 && r >= 0, `pooled stability ${(r * 100).toFixed(1)}% (always-clockwise expects ≈ 75%)`);

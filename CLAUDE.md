@@ -100,9 +100,10 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   1 Act II batch before the engineering report; the meter spans 50–100%; the 75 line appears from the ceiling reveal
   and 85.4 in Act III; debrief unlocks at a ≥ 80% 1,000-round test or after 2 Act III batches; hint after 1 Act III
   batch under 80% (both lowered 2026-10-06 at the user's request). No framer-motion yet (CSS animations suffice); sounds and mute toggle are M5.
-  Event: rounds last 8 s in Act I (`MP_ACT1_ROUND_MS`), 3.5 s in Act II (`MP_ROUND_MS`), 7 s in Act III
-  (`MP_ACT3_ROUND_MS`); the lull's end auto-starts the wave; a round resolves early once everyone answered; joiners
-  mid-wave are seated after it; max 4 per table; empty seat = CORA. The join address follows E0's order and Phase F's
+  Event: facilitator-paced (see "Pacing" below): Guided rounds have no timer; Relaxed uses `RELAXED_*`; Brisk the
+  original `MP_ACT1_ROUND_MS` 8 s / `MP_ROUND_MS` 3.5 s / `MP_ACT3_ROUND_MS` 7 s. Lulls are untimed (the facilitator
+  starts the wave); waves are `MP_WAVE_SIZE` 8 rounds; a round resolves early once every seat answered; joiners
+  mid-wave are seated after it; max 4 per table; empty or away seat = CORA. The join address follows E0's order and Phase F's
   ranking. Act III: bots measure at round start (always first); tunings snap to the 8 dial stops; the tool unlocks only
   after the ceiling reveal; the hint and the debrief step are TV-local state (the step moves to the room in E3a);
   per-seat marginals are sent only in the debrief phase (plus a pooled "whole crew" row).
@@ -212,6 +213,31 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - **Shots:** the resolution and every report step; a capture that doesn't appear within 5 s is skipped with a
     warning; host-button clicks time out after 5 s.
   - **Next:** E3b, the facilitator's remote.
+- **Pacing (2026-11-05, after the first real playtest):** players read the full-width Leave as "continue", and
+  event mode moved too fast to read results or talk.
+  - **Room:** `Pace` = guided / relaxed / brisk; `paceChoice` (null = default: Guided for each act's first wave, the
+    night shift included, Relaxed after) and `pace` (the current or next round's). Times live in `src/shared/pace.ts`
+    (`decisionMs`, `resultMs`, used by the room and the TV). Guided: no deadline (`round:start.deadline` null); the
+    round closes when every seat answered (Act I after `ACT1_SETTLE_MS`) or on `closeRound` (missing = too slow); the
+    result waits for `nextRound`. One pausable timer helper (`later` / `cancel` / `pause` / `resume`) runs the round
+    deadline, results, Act I's settle, the storm's static and CORA's moves; `paused.left` is the countdown's rest.
+    Lulls are untimed (`lullSince`; `STRATEGY_MS` is unused). Waves are `MP_WAVE_SIZE` 8.
+  - **Stale commands:** `RoomState.step` (phase:act:wave:round:report step); a `host:command` carrying another step
+    gets `stale` and is ignored. The TV's `hostStore.command` always sends it (ready for E3b's remote).
+  - **CORA:** acts after `CORA_DELAY_MS` (from the room RNG) in every pace; in Act I her reading comes at once and her
+    pump after the delay. She also covers a seated player who's away (`player:leave` or a dropped connection) until
+    they rejoin with the same name and table; a rejoin before she moved takes that round back. Covered rounds don't
+    count in the away player's followed / marginal rows (`PairRound.covered`).
+  - **TV:** the host row shows only `nextSteps(state)`, plus Pause / Resume, the pace (radio group; "Pace (default)")
+    and Reset; Space / → = `keyStep`, P = pause. Guided rounds show no countdown and "Still choosing: …" on pair cards;
+    the lull shows "Talking for m:ss"; paused shows `S.tv.paused`. An away seat reads "CORA for …". Report step 3 has
+    no per-seat table any more (it didn't fit); the crew's real line stays.
+  - **Phones:** no full-width Leave: `components/PhoneMenu.tsx` ("⋯" beside mute, one Sheet that moves from the menu
+    to the confirmation, Stay primary). A status line (`S.phone.status.*`) where Leave was; after setting a pump,
+    `partnerChosen` / `waitingFor`; an away partner reads `partnerCovered`. Guided rounds have no countdown.
+  - **Scripts:** `pnpm session` plays Guided first waves (Close the round once, a double Next round that advances
+    once) and a Relaxed later wave; `pnpm smoke` sets Brisk. `pnpm shots --event` presses Next round on Guided
+    results and captures the phone menu, the leave dialog and a paused room.
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.

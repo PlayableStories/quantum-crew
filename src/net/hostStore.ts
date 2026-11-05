@@ -1,6 +1,6 @@
 // The TV's connection: creates (or resumes) a room and runs the session with host commands.
 import { create } from "zustand";
-import type { HostCommand, RoomState, RoundOutcome } from "../shared/protocol.ts";
+import type { HostCommand, Pace, RoomState, RoundOutcome } from "../shared/protocol.ts";
 import { toLocalDeadline } from "./useCountdown.ts";
 import { connectStation, session, type SocketStatus, type Station } from "./socket.ts";
 
@@ -14,7 +14,8 @@ type HostStore = {
   results: { roundId: string; results: RoundOutcome[] } | null;
   error: string | null;
   start(): () => void;
-  command(cmd: HostCommand): void;
+  /** Sends a host command with the room's current step, so a stale press (a double tap) is ignored by the room. */
+  command(cmd: HostCommand, pace?: Pace): void;
 };
 
 let station: Station | null = null;
@@ -49,6 +50,7 @@ export const useHost = create<HostStore>()((set) => ({
               station?.send({ type: "host:create" });
               return;
             }
+            if (msg.code === "stale") return; // a double press: the room already moved on
             return set({ error: msg.message });
         }
       },
@@ -59,8 +61,9 @@ export const useHost = create<HostStore>()((set) => ({
     };
   },
 
-  command(cmd) {
+  command(cmd, pace) {
     set({ error: null });
-    station?.send({ type: "host:command", cmd });
+    const step = useHost.getState().state?.step;
+    station?.send({ type: "host:command", cmd, ...(step && { step }), ...(pace && { pace }) });
   },
 }));

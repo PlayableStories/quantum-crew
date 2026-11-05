@@ -544,6 +544,17 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
   ];
   const host = async (cmd: string) => tv.page.locator(".tv__controls").getByRole("button", { name: cmd, exact: true }).click({ timeout: 5000 });
   const banner = (phase: string) => tv.page.locator(`.tv__banner--${phase}`);
+  // A capture that doesn't come up in time is skipped with a warning, so one blocked screen never stalls the run.
+  const ready = (what: string, wait: Promise<unknown>) =>
+    wait.then(
+      () => true,
+      () => (console.warn(`  skipped: ${what} (${tvSize.name})`), false),
+    );
+  // Guided results (since pacing) wait for the facilitator: press Next round when the TV offers it.
+  const nextRoundBtn = tv.page.locator(".tv__controls").getByRole("button", { name: S.tv.cmd.nextRound ?? "Next round", exact: true });
+  const moveOn = async () => {
+    if (await nextRoundBtn.count()) await nextRoundBtn.click({ timeout: 2000 }).catch(() => {});
+  };
 
   // Lobby: the TV first, then each phone joins from the link (the code is prefilled).
   await tv.page.goto(base + "/screen");
@@ -568,6 +579,27 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
   await tv.page.locator(".pair").nth(3).waitFor();
   await shot("lobby", all(), true);
 
+  // The phone's "⋯" menu and the leave dialog (since pacing; staying is the primary action), then Stay.
+  const menu = a.page.getByRole("button", { name: S.phone.menu?.open ?? "More" });
+  if (await menu.count()) {
+    await menu.click();
+    if (await ready("phone menu", a.page.locator("dialog[open]").waitFor({ timeout: 5000 }))) {
+      await shot("phone-menu", [[a, "", null]]);
+      await a.page.getByRole("button", { name: S.phone.menu.leave }).click();
+      if (await ready("leave dialog", a.page.getByRole("button", { name: S.phone.menu.stay }).waitFor({ timeout: 5000 }))) {
+        await shot("leave-dialog", [[a, "", null]]);
+        // Stay; if the click doesn't land within 3 s, note it and close the dialog with Escape instead.
+        await a.page
+          .getByRole("button", { name: S.phone.menu.stay })
+          .click({ timeout: 3000 })
+          .catch(async () => {
+            console.warn(`  skipped: clicking Stay in the leave dialog (${phoneSize.name}); closed with Escape`);
+            await a.page.keyboard.press("Escape");
+          });
+      }
+    }
+  }
+
   // The night shift (since E1; a TV without it goes straight to the huddle): the briefing, Act I, the storm.
   const nightShift = (S.tv.cmd as Record<string, string>).startNightShift;
   if (nightShift) {
@@ -578,8 +610,8 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     await playAct1();
     await banner("storm").waitFor();
     await shot("storm-static", all(), true);
-    await tv.page.getByRole("heading", { name: S.storm.logTitle }).waitFor({ timeout: 15_000 });
-    await shot("storm-log", all(), true);
+    if (await ready("storm log", tv.page.getByRole("heading", { name: S.storm.logTitle }).waitFor({ timeout: 15_000 })))
+      await shot("storm-log", all(), true);
   }
 
   // Act II: the huddle, then one wave.
@@ -624,12 +656,6 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
 
 
   // The storm passes (since E3a; a TV without it goes straight to the report): the TV and both phones.
-  // A capture that doesn't come up within 5 s is skipped with a warning, so one blocked screen never stalls the run.
-  const ready = (what: string, wait: Promise<unknown>) =>
-    wait.then(
-      () => true,
-      () => (console.warn(`  skipped: ${what} (${tvSize.name})`), false),
-    );
   const stormPasses = (S.tv.cmd as Record<string, string>).stormPasses;
   if (stormPasses) {
     await host(stormPasses).catch(() => {});
@@ -646,7 +672,7 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
       await shot(`debrief-${step}`, step === 1 ? all() : [[tv, "", null]], true);
       const next = tv.page.locator(".tv__debrief-nav .btn--primary");
       if (await next.isDisabled()) break;
-      await next.click();
+      if (!(await ready(`report Next after step ${step}`, next.click({ timeout: 5000 })))) break;
     }
 
   for (const ws of crowd) ws.close();
@@ -683,6 +709,7 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     let done = 0;
     let gotResult = false;
     while (!(await banner("storm").isVisible())) {
+      await moveOn();
       const text = (await kicker.textContent({ timeout: 200 }).catch(() => null)) ?? "";
       const n = Number(/round (\d+)/.exec(text)?.[1] ?? 0);
       const live = await Promise.all([a, b].map((v) => v.page.locator(".pumpbtn").first().isVisible()));
@@ -723,6 +750,7 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     let gotMeasured = prefix === "act2";
     let gotResult = false;
     while (!(await banner("batchDone").isVisible())) {
+      await moveOn();
       const live = await Promise.all([a, b].map((v) => v.page.locator(control).first().isVisible()));
       if (!live[0] || !live[1]) {
         await tv.page.waitForTimeout(50);
@@ -732,6 +760,13 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
         await shot(`${prefix}-round`, all(control));
         gotRound = (await Promise.all([a, b].map((v) => v.page.locator(control).first().isVisible()))).every(Boolean);
         if (!gotRound) n--; // moved on mid-shot: take it again next round, over the same files
+        // Pause (since pacing): the TV and both phones while paused, then Resume.
+        const pauseBtn = tv.page.locator(".tv__controls").getByRole("button", { name: S.tv.cmd.pause ?? "Pause", exact: true });
+        if (gotRound && prefix === "act2" && (await pauseBtn.count())) {
+          await pauseBtn.click();
+          if (await ready("paused", tv.page.locator(".tv__paused").waitFor({ timeout: 5000 }))) await shot("paused", all());
+          await tv.page.locator(".tv__controls").getByRole("button", { name: S.tv.cmd.resume, exact: true }).click().catch(() => {});
+        }
       }
       await a.page.locator(control).first().click();
       if (!gotMeasured) {
@@ -746,12 +781,12 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
       if (gotResult) continue;
       // Both answered: the round resolves now and its result shows for MP_RESULT_MS.
       const flash = ".result--win, .result--loss";
-      const ready = await Promise.all([
+      const shown = await Promise.all([
         banner("roundResult").waitFor({ timeout: 3000 }).then(() => true, () => false),
         a.page.locator(flash).waitFor({ timeout: 3000 }).then(() => true, () => false),
         b.page.locator(flash).waitFor({ timeout: 3000 }).then(() => true, () => false),
       ]);
-      if (!ready.every(Boolean)) continue;
+      if (!shown.every(Boolean)) continue;
       await shot(`${prefix}-result`, all());
       gotResult = (await Promise.all([banner("roundResult").isVisible(), a.page.locator(flash).isVisible(), b.page.locator(flash).isVisible()])).every(Boolean);
       if (!gotResult) n--;

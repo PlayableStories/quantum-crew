@@ -608,7 +608,7 @@ export const S = {
     controls: "Host controls",
     cmd: {
       startNightShift: "Start the night shift",
-      startStrategy: "Use the lull (45 s)",
+      startStrategy: "Use the lull",
       startBatch: "Start the wave",
       revealCeiling: "Reveal ceiling",
       unlockTool: "Unlock tool",
@@ -616,8 +616,25 @@ export const S = {
       debrief: "Incident report",
       reportBack: "Back",
       reportNext: "Next",
+      setPace: "Pace",
+      pause: "Pause",
+      resume: "Resume",
+      closeRound: "Close the round",
+      nextRound: "Next round",
       reset: "Reset",
     },
+    /** The pace setting (from the next round). */
+    pace: { label: "Pace", byDefault: "Pace (default)", guided: "Guided", relaxed: "Relaxed", brisk: "Brisk" },
+    keys: "Space / → next · P pause",
+    paused: "Paused",
+    pausedSub: "Press P or Resume to carry on.",
+    /** The lull: how long the room has been talking (a guide, not a countdown). */
+    talking: (time: string) => `Talking for ${time}`,
+    /** A round, on a pair card: who hasn't chosen yet (never what anyone chose). */
+    stillChoosing: (names: string) => `Still choosing: ${names}`,
+    allChosen: "Both have chosen",
+    /** A pair card: an away player's seat, covered by CORA until they rejoin. */
+    covering: (name: string) => `${CREW_NAME} for ${name}`,
     /** Start batch, during the briefing: starts Act I's rounds. */
     startRounds: "Start the rounds",
     resetConfirm: "Reset the session? Scores are cleared; players stay.",
@@ -654,7 +671,27 @@ export const S = {
     retune: "Retune your dials",
     plan: "Your plan",
     pumpSet: (v: string) => `Pump set: ${v}. Hold…`,
-    watch: "Eyes on the big screen.",
-    leave: "Leave",
+    /** The "⋯" menu: leaving, with a confirmation where staying is the primary action. */
+    menu: {
+      open: "More",
+      leave: "Leave the game",
+      confirmTitle: "Leave the station?",
+      confirmPartner: (name: string) => `${name} will be paired with CORA until you rejoin with the same name and table.`,
+      confirmAlone: "Rejoin with the same name and table to take your seat back.",
+      stay: "Stay",
+      leaveNow: "Leave",
+    },
+    /** Where the Leave button used to be: what's happening while there's nothing to press. */
+    status: {
+      watch: "Look at the big screen. The facilitator will move things on.",
+      guidedResult: "Result on the big screen. The facilitator starts the next round.",
+      timedResult: "Result on the big screen. The next round starts by itself.",
+      paused: "Paused. The facilitator will carry on.",
+    },
+    /** After setting your pump: whether your partner has (never what they chose). */
+    partnerChosen: (name: string) => `${name} has chosen.`,
+    waitingFor: (name: string) => `Waiting for ${name}…`,
+    /** Your partner is away and CORA is covering their seat. */
+    partnerCovered: (name: string, table: string) => `Partner: ${CREW_NAME} (covering for ${name}, Table ${table})`,
   },
 };

@@ -17,7 +17,6 @@ import { MuteToggle } from "../components/MuteToggle.tsx";
 import { QuantumBackdrop } from "../components/QuantumBackdrop.tsx";
 import { fmt } from "../components/DebriefParts.tsx";
 import { StationVisual } from "../components/StationVisual.tsx";
-import { MP_ACT1_ROUND_MS, MP_ROUND_MS } from "../config.ts";
 import { RadioLine } from "../components/RadioLine.tsx";
 import { RingDiagram } from "../components/RingDiagram.tsx";
 import {
@@ -36,9 +35,10 @@ import { ALL_CELLS, expectedBoard, planId, type Board } from "../shared/plans.ts
 import { FourCases } from "../components/FourCases.tsx";
 import { PlanBoard } from "../components/PlanBoard.tsx";
 import { useHost } from "../net/hostStore.ts";
-import { useRemainingMs } from "../net/useCountdown.ts";
+import { useElapsedMs, useRemainingMs } from "../net/useCountdown.ts";
+import { decisionMs } from "../shared/pace.ts";
 import { fetchStationInfo, joinUrl, loadChosenAddress, pickJoinOrigin, saveChosenAddress } from "../net/joinOrigin.ts";
-import { HOST_COMMANDS, roundIdOf, type HostCommand, type PairInfo, type RateSummary, type RoomState, type RoundOutcome, type StationInfo, type JoinAddress } from "../shared/protocol.ts";
+import { PACES, roundIdOf, type Pace, type HostCommand, type PairInfo, type RateSummary, type RoomState, type RoundOutcome, type StationInfo, type JoinAddress } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 
 const rate = (r: RateSummary) => (r.rounds ? r.wins / r.rounds : null);
@@ -197,24 +197,39 @@ function useTvSounds(state: RoomState | null, results: { roundId: string; result
 
 function PhaseBanner({ state, localDeadline }: { state: RoomState; localDeadline: number | null }) {
   const left = useRemainingMs(localDeadline);
+  // The lull: how long the room has been talking (a guide for the facilitator, never a countdown).
+  const lullStart = useMemo(
+    () => (state.lullSince === null ? null : Date.now() - (state.serverNow - state.lullSince)),
+    [state.lullSince, state.serverNow],
+  );
+  const talking = useElapsedMs(state.phase === "strategy" ? lullStart : null);
   const inBatch = state.phase === "round" || state.phase === "roundResult";
   const act1 = inBatch && state.act === 1;
+  // Guided rounds have no countdown; Relaxed and Brisk show the pace's time, frozen while paused.
+  const roundMs = decisionMs(state.pace, state.act);
   const title =
     state.phase === "storm" && !(left !== null && left > 0) ? S.storm.logTitle : act1 ? S.tv.act1Banner : S.tv.phase[state.phase];
   return (
     <div className={`tv__banner tv__banner--${state.phase} ${act1 ? "tv__banner--act1" : ""}`}>
       <h1>{title}</h1>
-      {state.phase === "strategy" && left !== null && <div className="tv__clock">{Math.ceil(left / 1000)}</div>}
+      {state.phase === "strategy" && talking !== null && <p className="tv__talking">{S.tv.talking(clock(talking))}</p>}
+      {state.paused && (
+        <p className="tv__paused" role="status">
+          <strong>{S.tv.paused}</strong> · {S.tv.pausedSub}
+        </p>
+      )}
       {inBatch && (
         <>
           <p className="kicker">
             {act1 ? S.tv.act1RoundOf(state.roundNo) : S.tv.roundOf(state.batchNo, state.roundNo, state.batchSize)}
           </p>
-          <Countdown
-            id={roundIdOf(state.act, state.batchNo, state.roundNo)}
-            ms={act1 ? MP_ACT1_ROUND_MS : MP_ROUND_MS}
-            paused={state.phase !== "round"}
-          />
+          {roundMs !== null && (
+            <Countdown
+              id={roundIdOf(state.act, state.batchNo, state.roundNo)}
+              ms={roundMs}
+              paused={state.phase !== "round" || !!state.paused}
+            />
+          )}
         </>
       )}
       {state.phase === "batchDone" && state.lastBatch && (
@@ -223,6 +238,9 @@ function PhaseBanner({ state, localDeadline }: { state: RoomState; localDeadline
     </div>
   );
 }
+
+/** m:ss, for the lull's talking clock. */
+const clock = (ms: number) => `${Math.floor(ms / 60_000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
 
 /** When the night shift starts: the background for pairs, tonight's routine and the rule's ring. */
 function BriefingPanel() {
@@ -331,11 +349,13 @@ export function CeilingPanel({ state }: { state: RoomState }) {
           <strong>{S.ceiling.engineering(tried.size, ALL_CELLS.length - tried.size)}</strong>
         </p>
         <p className="tv__line">{S.ceiling.truth}</p>
+      </div>
+      <div className="stack">
+        <PlanBoard board={board} labels={S.event.board} />
         <p className="tv__line tv__beat">
           <strong>{S.event.beats.ceilingRoom}</strong>
         </p>
       </div>
-      <PlanBoard board={board} labels={S.event.board} />
     </div>
   );
 }
@@ -465,7 +485,7 @@ export function TvDebrief({ state, onCommand }: { state: RoomState; onCommand: (
                 who={{ a: S.event.table("A"), b: S.event.table("B") }}
                 real={crew && crew.rounds > 0 ? R.crewRounds(crew.rounds, fmt(crew.partnerGreen), fmt(crew.partnerRed)) : null}
               />
-              {state.marginals && <MarginalTable {...state.marginals} />}
+
             </>
           )}
           {step === 3 && <CreditsList />}
@@ -480,49 +500,6 @@ export function TvDebrief({ state, onCommand }: { state: RoomState; onCommand: (
         </button>
       </div>
     </div>
-  );
-}
-
-/** Each seat's own pump: clockwise rate when the partner's sensor read COOL vs HOT. Both ≈ 50%: no message got through. */
-function MarginalTable({ rows, crew }: NonNullable<RoomState["marginals"]>) {
-  const cell = (r: number | null) => (
-    <td>
-      <div className="bar__track">
-        <div className="bar__fill" style={{ width: `${(r ?? 0) * 100}%` }} />
-        <div className="bar__half" />
-      </div>
-      <span>{fmt(r)}</span>
-    </td>
-  );
-  return (
-    <table className="marginals">
-      <thead>
-        <tr>
-          <th>{S.tv.marginalHead.player}</th>
-          <th>{S.tv.marginalHead.cool}</th>
-          <th>{S.tv.marginalHead.hot}</th>
-          <th>{S.tv.marginalHead.rounds}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr className="marginals__crew">
-          <td>{S.tv.wholeCrew}</td>
-          {cell(crew.partnerGreen)}
-          {cell(crew.partnerRed)}
-          <td className="muted">{crew.rounds}</td>
-        </tr>
-        {rows.map((m) => (
-          <tr key={`${m.table}-${m.name}`}>
-            <td>
-              {m.name} <span className="muted">({m.table})</span>
-            </td>
-            {cell(m.partnerGreen)}
-            {cell(m.partnerRed)}
-            <td className="muted">{m.rounds}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
   );
 }
 
@@ -615,6 +592,7 @@ function Pairs({ state, lastResults }: { state: RoomState; lastResults: RoundOut
 }
 
 function PairCard({ pair, state, result }: { pair: PairInfo; state: RoomState; result: RoundOutcome | null }) {
+  const waiting = (["a", "b"] as const).filter((side) => !pair.answered[side]).map((side) => pair[side].name);
   const r = rate(state.act === 1 ? pair.act1 : state.act === 2 ? pair.act2 : pair.act3);
   const connected = (id: string | null) => id === null || state.players.find((p) => p.id === id)?.connected;
   const seat = (side: "a" | "b") => {
@@ -623,7 +601,13 @@ function PairCard({ pair, state, result }: { pair: PairInfo; state: RoomState; r
     return (
       <span className={`seat ${connected(s.playerId) ? "" : "seat--off"} ${s.playerId === null ? "seat--bot" : ""}`}>
         <CrewIcon table={side === "a" ? "A" : "B"} bot={s.playerId === null} size={28} />
-        <b>{side.toUpperCase()}</b> <SeatName name={s.name} bot={s.playerId === null} />
+        <b>{side.toUpperCase()}</b>{" "}
+        {/* An away player: CORA covers their seat until they rejoin. */}
+        {s.playerId !== null && !connected(s.playerId) ? (
+          <SeatName name={S.tv.covering(s.name)} bot />
+        ) : (
+          <SeatName name={s.name} bot={s.playerId === null} />
+        )}
         {answered && " ✓"}
       </span>
     );
@@ -638,8 +622,11 @@ function PairCard({ pair, state, result }: { pair: PairInfo; state: RoomState; r
         {seat("a")}
         {seat("b")}
       </div>
-      {/* What happened, as on the phones; it takes the mini-meter's place while it shows (no meter before a round). */}
-      {result ? (
+      {/* While a round is open: who is still choosing (never what anyone chose). Then what happened, as on the phones.
+          Either takes the mini-meter's place (there's no meter before a round). */}
+      {state.phase === "round" && !result ? (
+        <p className="pair__waiting">{waiting.length ? S.tv.stillChoosing(waiting.join(", ")) : S.tv.allChosen}</p>
+      ) : result ? (
         <p className={`pair__cause ${result.win ? "pair__cause--win" : "pair__cause--loss"}`}>
           {result.win ? "✓ " : "✗ "}
           {S.outcome[result.cause].title}
@@ -656,6 +643,47 @@ function PairCard({ pair, state, result }: { pair: PairInfo; state: RoomState; r
   );
 }
 
+/** What the facilitator can do now, in the order they'd usually do it (the row shows only these, plus Pause, the
+ *  pace and Reset). */
+function nextSteps(state: RoomState): HostCommand[] {
+  switch (state.phase) {
+    case "lobby":
+      return ["startNightShift", "startStrategy", "startBatch"];
+    case "briefing":
+      return ["startBatch"];
+    case "round":
+      return ["closeRound"];
+    case "roundResult":
+      return state.pace === "guided" ? ["nextRound"] : [];
+    case "storm":
+      return ["startStrategy", "startBatch"];
+    case "strategy":
+      return ["startBatch"];
+    case "batchDone":
+      return state.act === 3
+        ? ["startStrategy", "startBatch", "stormPasses"]
+        : ["startStrategy", "startBatch", "revealCeiling", "unlockTool"];
+    case "ceiling":
+      return ["unlockTool"];
+    case "tool":
+      return ["startStrategy", "startBatch"];
+    case "resolution":
+      return ["debrief"];
+    case "debrief":
+      return [];
+  }
+}
+
+/** The natural next step for Space / →: close the round, then Next round; start the wave from the lull. */
+function keyStep(state: RoomState): HostCommand | null {
+  if (state.paused) return null;
+  if (state.phase === "round") return "closeRound";
+  if (state.phase === "roundResult" && state.pace === "guided") return "nextRound";
+  if (state.phase === "strategy") return "startBatch";
+  if (state.phase === "debrief") return "reportNext";
+  return null;
+}
+
 function HostControls({
   state,
   onCommand,
@@ -664,54 +692,87 @@ function HostControls({
   onHint,
 }: {
   state: RoomState;
-  onCommand: (c: HostCommand) => void;
+  onCommand: (c: HostCommand, pace?: Pace) => void;
   error: string | null;
   hint: boolean;
   onHint: () => void;
 }) {
   const inBatch = state.phase === "round" || state.phase === "roundResult";
   const hasPlayers = state.players.length > 0;
-  const enabled = useMemo<Record<HostCommand, boolean>>(
-    () => ({
-      startNightShift: hasPlayers && state.phase === "lobby",
-      // From the lobby these still skip the night shift and go straight to Act II.
-      startStrategy: !inBatch && hasPlayers && !["briefing", "strategy", "ceiling", "debrief"].includes(state.phase),
-      startBatch: !inBatch && hasPlayers && !["ceiling", "debrief"].includes(state.phase),
-      revealCeiling: !inBatch && state.act === 2 && state.stability.act2.rounds > 0 && state.phase !== "ceiling",
-      // DECISION: the tool unlocks after the ceiling has been revealed, to keep the learning arc in order.
-      unlockTool: !inBatch && state.ceilingRevealed && !state.toolUnlocked,
-      // The ending: after at least one Act III wave.
-      stormPasses: !inBatch && state.act === 3 && state.stability.act3.rounds > 0 && !["resolution", "debrief"].includes(state.phase),
-      // Back / Next live in the report panel, not in this row.
-      reportBack: false,
-      reportNext: false,
-      debrief: !inBatch && state.act === 3 && state.stability.act3.rounds > 0 && state.phase !== "debrief",
-      reset: true,
-    }),
-    [inBatch, hasPlayers, state.phase, state.act, state.stability.act2.rounds, state.stability.act3.rounds, state.ceilingRevealed, state.toolUnlocked],
-  );
-  // Start the night shift only matters in the lobby; after that it steps aside so the row fits (Show hint joins it).
-  const order = HOST_COMMANDS.filter(
-    (cmd) => (cmd !== "startNightShift" || state.phase === "lobby") && cmd !== "reportBack" && cmd !== "reportNext",
-  );
+  const enabled: Partial<Record<HostCommand, boolean>> = {
+    startNightShift: hasPlayers,
+    startStrategy: hasPlayers,
+    startBatch: hasPlayers,
+    revealCeiling: state.stability.act2.rounds > 0,
+    // DECISION: the tool unlocks after the ceiling has been revealed, to keep the learning arc in order.
+    unlockTool: state.ceilingRevealed && !state.toolUnlocked,
+    // The ending: after at least one Act III wave.
+    stormPasses: state.stability.act3.rounds > 0,
+    debrief: true,
+    closeRound: true,
+    nextRound: true,
+  };
+  const steps = nextSteps(state).filter((cmd) => enabled[cmd] && !state.paused);
+  const send = (cmd: HostCommand) => () => (cmd !== "reset" || confirm(S.tv.resetConfirm)) && onCommand(cmd);
+  const label = (cmd: HostCommand) => (cmd === "startBatch" && state.phase === "briefing" ? S.tv.startRounds : S.tv.cmd[cmd]);
+
+  // Keyboard for a facilitator at a laptop: Space or → for the natural next step, P to pause and resume. Not while a
+  // button, a field or the reset confirm has focus (Space would press that button too).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("button, input, select, textarea, [contenteditable], dialog")) return;
+      if (e.key === "p" || e.key === "P") {
+        e.preventDefault();
+        onCommand(state.paused ? "resume" : "pause");
+      } else if (e.key === " " || e.key === "ArrowRight") {
+        const cmd = keyStep(state);
+        if (!cmd) return;
+        e.preventDefault();
+        onCommand(cmd);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [state, onCommand]);
+
   return (
-    <footer className="tv__controls">
-      <span className="kicker">{S.tv.controls}</span>
-      {order.map((cmd) => (
-        <button
-          key={cmd}
-          className={`btn ${cmd === "reset" ? "btn--ghost" : ""}`}
-          disabled={!enabled[cmd]}
-          onClick={() => (cmd !== "reset" || confirm(S.tv.resetConfirm)) && onCommand(cmd)}
-        >
-          {cmd === "startBatch" && state.phase === "briefing" ? S.tv.startRounds : S.tv.cmd[cmd]}
+    <footer className="tv__controls" aria-label={S.tv.controls}>
+      {steps.map((cmd, i) => (
+        <button key={cmd} className={`btn ${i === 0 ? "btn--primary" : ""}`} onClick={send(cmd)}>
+          {label(cmd)}
         </button>
       ))}
-      {state.act === 3 && state.phase !== "debrief" && (
+      <button className={`btn ${state.paused ? "btn--selected" : ""}`} onClick={send(state.paused ? "resume" : "pause")}>
+        {state.paused ? S.tv.cmd.resume : S.tv.cmd.pause}
+      </button>
+      {/* The pace: from the next round. "Default" while it follows the schedule (Guided first waves, then Relaxed). */}
+      <div className="tv__pace" role="radiogroup" aria-label={S.tv.pace.label}>
+        <span className="kicker">{state.paceChoice ? S.tv.pace.label : S.tv.pace.byDefault}</span>
+        {PACES.map((p) => (
+          <button
+            key={p}
+            type="button"
+            role="radio"
+            aria-checked={state.pace === p}
+            className={`btn tv__pace-btn ${state.pace === p ? "btn--selected" : ""}`}
+            onClick={() => onCommand("setPace", p)}
+          >
+            {S.tv.pace[p]}
+          </button>
+        ))}
+      </div>
+      {state.act === 3 && state.phase !== "debrief" && !inBatch && (
         <button className={`btn ${hint ? "btn--selected" : ""}`} onClick={onHint}>
           {hint ? S.tv.hideHint : S.tv.showHint}
         </button>
       )}
+      <button className="btn btn--ghost" onClick={send("reset")}>
+        {S.tv.cmd.reset}
+      </button>
+      {/* The shortcuts, when Space has a step to take (not in the lobby, where nothing waits on it). */}
+      {keyStep(state) && <span className="muted small tv__keys">{S.tv.keys}</span>}
       {error && <span className="tv__error">{error}</span>}
     </footer>
   );
