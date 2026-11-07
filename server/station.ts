@@ -35,7 +35,7 @@ export function createStation(deps: RoomDeps) {
         bind(conn, room);
         return room.handle(conn, msg);
       }
-      if (msg.type === "host:resume" || msg.type === "player:join") {
+      if (msg.type === "host:resume" || msg.type === "remote:pair" || msg.type === "player:join") {
         const room = rooms.get(msg.room.toUpperCase());
         if (!room) return deps.send(conn, { type: "error", code: "no-room", message: `No station with code ${msg.room}.` });
         bind(conn, room);

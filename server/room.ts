@@ -121,6 +121,10 @@ export function snapDial(deg: number): number {
 export function createRoom(code: string, deps: RoomDeps) {
   const token = deps.newId();
   let hostConn: Conn | null = null;
+  /** The facilitator's phone remotes: paired with `remoteKey` (from the TV's QR code); they get what the TV gets and
+   *  may send host commands (not unpairRemotes). Unpairing makes a new key and drops them. */
+  let remoteKey = deps.newId();
+  const remotes = new Set<Conn>();
   let lastActivity = deps.now();
   let joinCounter = 0;
 
@@ -172,7 +176,11 @@ export function createRoom(code: string, deps: RoomDeps) {
 
   // --- Sending ----------------------------------------------------------------------------------
 
-  const toHost = (msg: ServerMsg) => hostConn && deps.send(hostConn, msg);
+  /** The TV and every paired remote. */
+  const toHost = (msg: ServerMsg) => {
+    if (hostConn) deps.send(hostConn, msg);
+    for (const conn of remotes) deps.send(conn, msg);
+  };
   const toPlayer = (p: Player | null, msg: ServerMsg) => p?.conn && deps.send(p.conn, msg);
   const error = (conn: Conn, code: ErrorCode, message: string) => deps.send(conn, { type: "error", code, message });
 
@@ -233,6 +241,7 @@ export function createRoom(code: string, deps: RoomDeps) {
       speed,
       autoChosen,
       lullSince,
+      remotes: remotes.size,
       step: stepSig(),
       ceilingRevealed,
       toolUnlocked,
@@ -811,6 +820,7 @@ export function createRoom(code: string, deps: RoomDeps) {
   /** A connection closed (or the player left): their seat stays theirs and CORA covers it until they rejoin. */
   function disconnect(conn: Conn) {
     if (conn === hostConn) hostConn = null;
+    if (remotes.delete(conn)) broadcast();
     const player = players.find((p) => p.conn === conn);
     if (player) {
       player.conn = null;
@@ -839,15 +849,28 @@ export function createRoom(code: string, deps: RoomDeps) {
       switch (msg.type) {
         case "host:create":
           hostConn = conn;
-          deps.send(conn, { type: "host:created", room: code, token });
+          deps.send(conn, { type: "host:created", room: code, token, remoteKey });
           return broadcast();
         case "host:resume":
           if (msg.token !== token) return error(conn, "not-host", "That host link has expired.");
           hostConn = conn;
-          deps.send(conn, { type: "host:created", room: code, token });
+          deps.send(conn, { type: "host:created", room: code, token, remoteKey });
+          return broadcast();
+        case "remote:pair":
+          if (msg.key !== remoteKey) return error(conn, "not-host", "That remote link has expired.");
+          remotes.add(conn);
+          deps.send(conn, { type: "remote:paired", room: code });
           return broadcast();
         case "host:command":
-          if (conn !== hostConn) return error(conn, "not-host", "Only the TV can run the session.");
+          if (msg.cmd === "unpairRemotes") {
+            if (conn !== hostConn) return error(conn, "not-host", "Only the TV can unpair remotes.");
+            remoteKey = deps.newId();
+            for (const r of remotes) error(r, "not-host", "That remote link has expired.");
+            remotes.clear();
+            deps.send(conn, { type: "host:created", room: code, token, remoteKey });
+            return broadcast();
+          }
+          if (conn !== hostConn && !remotes.has(conn)) return error(conn, "not-host", "Only the TV or its remote can run the session.");
           return command(conn, msg.cmd, msg.step, msg.speed);
         case "player:leave":
           return disconnect(conn);
@@ -872,7 +895,7 @@ export function createRoom(code: string, deps: RoomDeps) {
 
     /** Nobody connected and quiet for `ms`. */
     isIdle(ms: number) {
-      return hostConn === null && players.every((p) => p.conn === null) && deps.now() - lastActivity > ms;
+      return hostConn === null && remotes.size === 0 && players.every((p) => p.conn === null) && deps.now() - lastActivity > ms;
     },
 
     dispose() {

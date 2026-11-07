@@ -2,7 +2,7 @@
 // and the facilitator's host controls. Readable from across a room.
 // The night shift: the briefing (the background, for pairs), Act I's rounds with each pair's cause, then the storm
 // (static, then the storm log) before the first lull.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { Countdown } from "../components/Countdown.tsx";
 import { StabilityMeter, pct } from "../components/StabilityMeter.tsx";
@@ -35,16 +35,20 @@ import { ALL_CELLS, expectedBoard, planId, type Board } from "../shared/plans.ts
 import { FourCases } from "../components/FourCases.tsx";
 import { PlanBoard } from "../components/PlanBoard.tsx";
 import { useHost } from "../net/hostStore.ts";
+import { AutoToggle, enabledSteps, keyStep, stepLabel } from "./hostSteps.tsx";
 import { useElapsedMs, useRemainingMs } from "../net/useCountdown.ts";
-import { decisionMs, resultMs, secs } from "../shared/pace.ts";
-import { fetchStationInfo, joinUrl, loadChosenAddress, pickJoinOrigin, saveChosenAddress } from "../net/joinOrigin.ts";
-import { SPEEDS, roundIdOf, type Speed, type HostCommand, type PairInfo, type RateSummary, type RoomState, type RoundOutcome, type StationInfo, type JoinAddress } from "../shared/protocol.ts";
+import { decisionMs, resultMs } from "../shared/pace.ts";
+import { Sheet } from "../components/Sheet.tsx";
+import { fetchStationInfo, joinUrl, remoteUrl, loadChosenAddress, pickJoinOrigin, saveChosenAddress } from "../net/joinOrigin.ts";
+import { roundIdOf, type Speed, type HostCommand, type PairInfo, type RateSummary, type RoomState, type RoundOutcome, type StationInfo, type JoinAddress } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 
 const rate = (r: RateSummary) => (r.rounds ? r.wins / r.rounds : null);
 
 export function Screen() {
-  const { status, state, localDeadline, results, error, start, command } = useHost();
+  const { status, state, localDeadline, results, remoteKey, error, start, command } = useHost();
+  const [remoteOpen, setRemoteOpen] = useState(false);
+  const closeRemote = useCallback(() => setRemoteOpen(false), []);
   useEffect(() => start(), [start]);
   // Facilitator-only, so it lives on the TV: the hint. (The report's step is the room's, `debriefStep`.)
   const [hint, setHint] = useState(false);
@@ -91,9 +95,26 @@ export function Screen() {
           <p className="kicker">
             {S.tv.station(state.room)} {status !== "open" && `· ${S.event.reconnecting}`}
           </p>
+          <button
+            type="button"
+            className={`btn btn--ghost tv__remote ${state.remotes > 0 ? "tv__remote--on" : ""}`}
+            aria-haspopup="dialog"
+            onClick={() => setRemoteOpen(true)}
+          >
+            {state.remotes > 0 ? S.tv.remote.connected(state.remotes) : S.tv.remote.button}
+          </button>
           <MuteToggle where="tv" />
         </div>
       </header>
+      <Sheet open={remoteOpen} onClose={closeRemote} label={S.tv.remote.title}>
+        {remoteKey && (
+          <RemotePairing
+            url={remoteUrl(join.origin, state.room, remoteKey)}
+            remotes={state.remotes}
+            onUnpair={() => command("unpairRemotes")}
+          />
+        )}
+      </Sheet>
 
       <section className="tv__main">
         {state.phase !== "debrief" && <PhaseBanner state={state} localDeadline={localDeadline} />}
@@ -556,6 +577,27 @@ export function JoinPanel({
   );
 }
 
+/** The TV's pairing dialog for the phone remote: a QR code and link with the room's remote key, how many remotes are
+ *  paired, and Unpair (a new key; paired remotes are dropped). */
+export function RemotePairing({ url, remotes, onUnpair }: { url: string; remotes: number; onUnpair: () => void }) {
+  const svg = useQr(url);
+  return (
+    <div className="stack tv__pairing" data-remote-url={url}>
+      <h2>{S.tv.remote.title}</h2>
+      <p className="muted">{S.tv.remote.body}</p>
+      {svg && <div className="tv__qr tv__pairing-qr" dangerouslySetInnerHTML={{ __html: svg }} />}
+      <p className="small tv__pairing-link">{url.replace(/^https?:\/\//, "")}</p>
+      <p className="small">{S.tv.remote.warning}</p>
+      <p>
+        <strong>{S.tv.remote.count(remotes)}</strong>
+      </p>
+      <button type="button" className="btn" onClick={onUnpair}>
+        {S.tv.remote.unpair}
+      </button>
+    </div>
+  );
+}
+
 function useQr(text: string): string | null {
   const [svg, setSvg] = useState<string | null>(null);
   useEffect(() => {
@@ -641,45 +683,6 @@ function PairCard({ pair, state, result }: { pair: PairInfo; state: RoomState; r
   );
 }
 
-/** What the facilitator can do now, in the order they'd usually do it (the row shows only these, plus Play / Pause,
- *  the speed and Reset). */
-function nextSteps(state: RoomState): HostCommand[] {
-  switch (state.phase) {
-    case "lobby":
-      return ["startNightShift", "startStrategy", "startBatch"];
-    case "briefing":
-      return ["startBatch"];
-    case "round":
-    case "roundResult":
-      return ["next"];
-    case "storm":
-      return ["startStrategy", "startBatch"];
-    case "strategy":
-      return ["startBatch"];
-    case "batchDone":
-      return state.act === 3
-        ? ["startStrategy", "startBatch", "stormPasses"]
-        : ["startStrategy", "startBatch", "revealCeiling", "unlockTool"];
-    case "ceiling":
-      return ["unlockTool"];
-    case "tool":
-      return ["startStrategy", "startBatch"];
-    case "resolution":
-      return ["debrief"];
-    case "debrief":
-      return [];
-  }
-}
-
-/** The natural next step for Space / →: Next in a round or on a result (in either mode); start the wave from the
- *  lull; the report's Next. */
-function keyStep(state: RoomState): HostCommand | null {
-  if (state.phase === "round" || state.phase === "roundResult") return "next";
-  if (state.phase === "strategy") return "startBatch";
-  if (state.phase === "debrief") return "reportNext";
-  return null;
-}
-
 function HostControls({
   state,
   localDeadline,
@@ -696,29 +699,8 @@ function HostControls({
   onHint: () => void;
 }) {
   const inBatch = state.phase === "round" || state.phase === "roundResult";
-  const hasPlayers = state.players.length > 0;
-  const enabled: Partial<Record<HostCommand, boolean>> = {
-    startNightShift: hasPlayers,
-    startStrategy: hasPlayers,
-    startBatch: hasPlayers,
-    revealCeiling: state.stability.act2.rounds > 0,
-    // DECISION: the tool unlocks after the ceiling has been revealed, to keep the learning arc in order.
-    unlockTool: state.ceilingRevealed && !state.toolUnlocked,
-    // The ending: after at least one Act III wave.
-    stormPasses: state.stability.act3.rounds > 0,
-    debrief: true,
-    next: true,
-  };
-  const steps = nextSteps(state).filter((cmd) => enabled[cmd]);
+  const steps = enabledSteps(state);
   const send = (cmd: HostCommand) => () => (cmd !== "reset" || confirm(S.tv.resetConfirm)) && onCommand(cmd);
-  const label = (cmd: HostCommand) =>
-    cmd === "startBatch" && state.phase === "briefing"
-      ? S.tv.startRounds
-      : cmd === "next"
-        ? state.phase === "round"
-          ? S.tv.closeRound
-          : S.tv.nextRound
-        : S.tv.cmd[cmd];
   const toggle = () => onCommand(state.auto ? "manual" : "auto");
 
   // Keyboard for a facilitator at a laptop: Space or → for the natural next step, P for play / pause. Not while a
@@ -746,7 +728,7 @@ function HostControls({
     <footer className="tv__controls" aria-label={S.tv.controls}>
       {steps.map((cmd, i) => (
         <button key={cmd} className={`btn ${i === 0 ? "btn--primary" : ""}`} onClick={send(cmd)}>
-          {label(cmd)}
+          {stepLabel(state, cmd)}
         </button>
       ))}
       <AutoToggle state={state} localDeadline={localDeadline} onToggle={toggle} onSpeed={(sp) => onCommand("setSpeed", sp)} />
@@ -762,80 +744,5 @@ function HostControls({
       {keyStep(state) && <span className="muted small tv__keys">{S.tv.keys}</span>}
       {error && <span className="tv__error">{error}</span>}
     </footer>
-  );
-}
-
-/** Play / Pause (auto / manual, at once) with the seconds left while auto counts down, and a small ▾ beside it that
- *  opens the speeds (each with its times; picking one also plays). Closed by default. */
-function AutoToggle({
-  state,
-  localDeadline,
-  onToggle,
-  onSpeed,
-}: {
-  state: RoomState;
-  localDeadline: number | null;
-  onToggle: () => void;
-  onSpeed: (speed: Speed) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const wrap = useRef<HTMLDivElement>(null);
-  const inBatch = state.phase === "round" || state.phase === "roundResult";
-  const left = useRemainingMs(inBatch && state.auto ? localDeadline : null);
-  // Escape or a click elsewhere closes the menu.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    const onDown = (e: PointerEvent) => !wrap.current?.contains(e.target as Node) && setOpen(false);
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("pointerdown", onDown);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("pointerdown", onDown);
-    };
-  }, [open]);
-  const act = state.act;
-  return (
-    <div className="tv__auto" ref={wrap}>
-      <button
-        type="button"
-        className={`btn tv__auto-toggle ${state.auto ? "" : "btn--selected"}`}
-        aria-label={state.auto ? S.tv.auto.pauseLabel : S.tv.auto.playLabel}
-        title={state.auto ? S.tv.auto.pauseLabel : S.tv.auto.playLabel}
-        onClick={onToggle}
-      >
-        {!state.auto ? S.tv.auto.play : left !== null ? S.tv.auto.counting(Math.ceil(left / 1000)) : S.tv.auto.pause}
-      </button>
-      <button
-        type="button"
-        className="btn tv__auto-more"
-        aria-label={S.tv.auto.menu}
-        aria-haspopup="true"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-      >
-        ▾
-      </button>
-      {open && (
-        <div className="tv__auto-menu" role="radiogroup" aria-label={S.tv.auto.menu}>
-          {SPEEDS.map((sp) => (
-            <button
-              key={sp}
-              type="button"
-              role="radio"
-              aria-checked={state.speed === sp}
-              className={`tv__auto-speed ${state.speed === sp ? "tv__auto-speed--on" : ""}`}
-              onClick={() => {
-                onSpeed(sp);
-                setOpen(false);
-              }}
-            >
-              <strong>{S.tv.auto.speeds[sp]}</strong>
-              <span className="muted small">{S.tv.auto.summary(secs(decisionMs(sp, act)), secs(resultMs(sp, act)))}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }

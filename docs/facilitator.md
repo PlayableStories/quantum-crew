@@ -1,7 +1,7 @@
 # Running a Quantum Crew session
 
 For whoever runs event mode: one TV or projector, two tables of players with a phone each, and you at the host
-controls along the bottom of the TV. A session takes about 50 minutes for up to 8 players (4 pairs, at most 4
+controls along the bottom of the TV (or on your own phone: [Using the remote](#using-the-remote)). A session takes about 50 minutes for up to 8 players (4 pairs, at most 4
 players per table; CORA, the AI crewmate, fills any empty seat).
 
 Setting up the server: see [Run event mode at a venue](../README.md#run-event-mode-at-a-venue) in the README.
@@ -21,6 +21,8 @@ Setting up the server: see [Run event mode at a venue](../README.md#run-event-mo
       [Troubleshooting](#a-phone-cant-join).
 - [ ] **A real join:** scan the QR with your phone, join Table A, and check your name appears on the TV. Then tap
       **Leave** (or join with the real players' names later; a test seat is harmless but shows on the TV).
+- [ ] **Remote (optional):** press **Remote** at the top right of the TV, scan the code with your own phone, and
+      check the TV's button turns green ("Remote ✓"). See [Using the remote](#using-the-remote).
 - [ ] **Sound:** the TV plays a chime on good waves and an alarm on bad ones. Set the volume, or mute it with the
       speaker button at the top right.
 - [ ] **Two tables** far enough apart that they can't overhear each other easily, each with a card saying "Table A" or
@@ -67,6 +69,22 @@ play or pause.
   original fast timers, 3.5 s rounds, for a crowd that already knows the game). The menu shows each one's seconds.
   Picking one also presses Play. Changing speed mid-round counts the time already spent (at least 2 s stay).
 - Once you press Play or Pause, your choice holds for later waves (the defaults stop) until **Reset**.
+
+### Using the remote
+Your phone can run the session instead of the laptop, so you can walk between the tables.
+- **Pair:** press **Remote** at the top right of the TV. A dialog shows a QR code; scan it with your phone (same Wi-Fi
+  as the players). The page opens at `/host`, and the TV's button turns green ("Remote ✓"). Close the dialog with ✕
+  or Escape. A reload or a locked screen re-pairs by itself.
+- **What's on it:** the phase and round at the top, then one big button for the natural next step (**Start the
+  night shift**, **Start the rounds**, **Close the round**, **Next round**, **Start the wave**, Next in the report),
+  the other steps that apply now below it, and **▶ Play / ⏸** with the **▾** speed menu, as on the TV. Under that,
+  **Say** gives 1–3 talking points for the phase (from this guide), and **The room** shows who is still choosing in a
+  round, each pair's cause on a result, and the talking clock in a lull. It never shows anyone's sensor or pump.
+  **Reset the session** is at the bottom and asks first.
+- **The TV still works.** You and the TV (or two facilitators' remotes) can press at the same time: the room moves on
+  once, and the later press is ignored. **Show hint** stays on the TV.
+- **Unpair:** anyone with the remote's code can run the session. **Unpair remotes** in the same dialog makes a new
+  code; paired phones show "This remote link has expired". After a server restart, scan again.
 
 ## Troubleshooting
 

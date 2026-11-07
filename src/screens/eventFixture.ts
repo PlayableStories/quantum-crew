@@ -51,6 +51,7 @@ export function room(phase: RoomPhase, bot = false, act: Act = 1): RoomState {
     speed: "relaxed",
     autoChosen: false,
     lullSince: null,
+    remotes: 0,
     step: `${phase}:${act}:0:1:0`,
     ceilingRevealed: false,
     toolUnlocked: false,

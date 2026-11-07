@@ -212,7 +212,6 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - **Session:** a saved ending, then a reset and a short not-saved one (untuned dials: exactly 75%).
   - **Shots:** the resolution and every report step; a capture that doesn't appear within 5 s is skipped with a
     warning; host-button clicks time out after 5 s.
-  - **Next:** E3b, the facilitator's remote.
 - **Pacing (2026-11-05, after the first real playtest):** players read the full-width Leave as "continue", and
   event mode moved too fast to read results or talk.
   - **Room (v2, 2026-11-07, after a second playtest: a pace change wasn't immediate and the row was too big):**
@@ -226,7 +225,7 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     (`decisionMs`, `resultMs`, `secs`). The old freeze-everything pause is gone (players answer in manual). Lulls are
     untimed (`lullSince`; `STRATEGY_MS` is unused). Waves are `MP_WAVE_SIZE` 8.
   - **Stale commands:** `RoomState.step` (phase:act:wave:round:report step); a `host:command` carrying another step
-    gets `stale` and is ignored. The TV's `hostStore.command` always sends it (ready for E3b's remote).
+    gets `stale` and is ignored. The TV's `hostStore.command` and the remote's `remoteStore.command` always send it.
   - **CORA:** acts after `CORA_DELAY_MS` (from the room RNG) in every pace; in Act I her reading comes at once and her
     pump after the delay. She also covers a seated player who's away (`player:leave` or a dropped connection) until
     they rejoin with the same name and table; a rejoin before she moved takes that round back. Covered rounds don't
@@ -244,6 +243,27 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     auto later wave, and (after the reset) Play / Pause on a waiting result; `pnpm smoke` sets Brisk. `pnpm shots
     --event` presses Next round on manual results and captures the phone menu, the leave dialog, the speed menu and
     the auto countdown.
+- **Event E3b (2026-11-07, the facilitator's phone remote):**
+  - **Room:** a `remoteKey` (`deps.newId()`, separate from the TV's resume token) goes only to the TV, in
+    `host:created`; never in `RoomState`. `remote:pair { room, key }` (routed by code like `host:resume`) adds the
+    conn to `remotes` and answers `remote:paired`; a wrong key gets `not-host`. Remotes get everything the TV gets
+    (`toHost`: state and `round:results`) and may send any `host:command` except `unpairRemotes` (TV only: a new key,
+    every remote gets `not-host` and is dropped). `RoomState.remotes` is the count; `isIdle` and `disconnect` count
+    remotes. Several remotes may pair; the step check keeps simultaneous presses to one move.
+  - **Shared:** `src/screens/hostSteps.tsx` = `nextSteps`, `keyStep`, `enabledSteps`, `stepLabel`, `AutoToggle` (moved
+    out of `Screen.tsx`; the TV's output is unchanged).
+  - **Remote (`/host`, `screens/Remote.tsx`, `net/remoteStore.ts`):** room and key from the URL, kept in
+    sessionStorage (`qc-remote`) and removed from the address bar; `not-host` / `no-room` = "This remote link has
+    expired". `RemotePanel` (props-driven): the big button is `remoteSteps(state)[0]` (`keyStep` first, else the first
+    enabled step; the report: Next, Back), the other steps, `AutoToggle` (menu opens downward), `S.remote.talk`
+    talking points (`talkingPoints`), the room (aboard, talking clock, still choosing, each pair's cause; never a
+    sensor or pump), Reset behind a Sheet. **Show hint** stays TV-only.
+  - **TV:** **Remote** in the header beside mute (green "Remote ✓" when `remotes > 0`; kept out of the host row so it
+    stays one line), a Sheet with `RemotePairing` (QR + link `remoteUrl(join origin, room, key)`, the warning, the
+    count, **Unpair remotes**). `hostStore.remoteKey`.
+  - **Scripts:** `pnpm session` pairs a remote before the Act II wave, starts it from the remote, and presses Next on
+    the remote and the TV together (advances once). `pnpm shots --event` captures the pairing dialog, then the remote
+    joins and is in every later shot of all three (`-remote`).
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.
