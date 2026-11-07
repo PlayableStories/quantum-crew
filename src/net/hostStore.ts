@@ -12,6 +12,8 @@ type HostStore = {
   /** The room's deadline on this device's clock. */
   localDeadline: number | null;
   results: { roundId: string; results: RoundOutcome[] } | null;
+  /** The key a phone remote pairs with (`/host`); a new one after Unpair remotes. Never saved, never in RoomState. */
+  remoteKey: string | null;
   error: string | null;
   start(): () => void;
   /** Sends a host command with the room's current step, so a stale press (a double tap) is ignored by the room. */
@@ -25,6 +27,7 @@ export const useHost = create<HostStore>()((set) => ({
   state: null,
   localDeadline: null,
   results: null,
+  remoteKey: null,
   error: null,
 
   start() {
@@ -38,7 +41,7 @@ export const useHost = create<HostStore>()((set) => ({
         switch (msg.type) {
           case "host:created":
             session.set(KEY, { room: msg.room, token: msg.token });
-            return set({ error: null });
+            return set({ error: null, remoteKey: msg.remoteKey });
           case "room:state":
             return set({ state: msg.state, localDeadline: toLocalDeadline(msg.state.deadline, msg.state.serverNow) });
           case "round:results":

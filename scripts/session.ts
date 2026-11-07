@@ -185,13 +185,19 @@ send("phone0", { type: "player:strategy", act: 2, classical: { onGreen: 0, onRed
 send("phone2", { type: "player:strategy", act: 2, classical: { onGreen: 1, onRed: 0 } });
 const boSees = last("phone1", "room:state")!.state.pairs[0]!.plans.a;
 check(boSees.onGreen === 0 && boSees.onRed === 1, "Bo sees Ada's plan live in the lull");
-host("startBatch");
+// The facilitator's remote (E3b) pairs with the TV's key and starts the wave.
+const remote = "remote";
+send(remote, { type: "remote:pair", room, key: last(tv, "host:created")!.remoteKey });
+check(last(remote, "remote:paired")?.room === room && state().remotes === 1, "the facilitator's remote paired with the TV's key");
+send(remote, { type: "host:command", cmd: "startBatch", step: state().step });
+check(state().phase === "round" && state().act === 2, "the remote started the wave");
 let dropped = false;
 let rejoined = false;
 const bo = "phone1";
 const boId = last(bo, "player:joined")!.playerId;
 let closed = false;
 let doubled = false;
+let both = false;
 const reached = playUntil("batchDone", (round) => {
   // Manual (the first wave): the facilitator closes round 2 early with Next, and presses Next twice on round 3's
   // result from the same step: the room advances once.
@@ -205,6 +211,13 @@ const reached = playUntil("batchDone", (round) => {
     send(tv, { type: "host:command", cmd: "next", step });
     send(tv, { type: "host:command", cmd: "next", step });
     doubled = state().roundNo === 4 && last(tv, "error")?.code === "stale";
+  }
+  // Round 6's result: the TV and the remote press Next from the same step; the room advances once.
+  if (round === 6 && !both && state().phase === "roundResult") {
+    const step = state().step;
+    send(remote, { type: "host:command", cmd: "next", step });
+    send(tv, { type: "host:command", cmd: "next", step });
+    both = state().roundNo === 7 && last(tv, "error")?.code === "stale";
   }
   if (round === 4 && !dropped) {
     station.disconnect(bo);
@@ -221,6 +234,7 @@ check(reached, "one full Act II wave");
 check(paces.has("2:1:manual"), "the first wave was manual (no countdown; Next by the facilitator)");
 check(closed, "Next ended a manual round early");
 check(doubled, "a double Next round from the same step advanced once");
+check(both, "the remote and the TV pressed Next together: it advanced once");
 check(state().lastBatch?.rounds === 4 * MP_WAVE_SIZE, `the wave scored ${state().lastBatch?.rounds} pair-rounds`);
 const tried = [...state().triedPlans].sort().join(" ");
 check(tried === "0-0 1-0 2-0", `the plans locked at the wave start are recorded as tried (${tried})`);

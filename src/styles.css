@@ -3705,3 +3705,160 @@ button.board__cell:focus-visible {
 .tv__ceiling .board__cell {
   min-height: 36px;
 }
+
+/* The TV's Remote button (header, beside mute) and its pairing dialog. */
+.screen-top .tv__remote {
+  min-height: 36px;
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  margin-left: auto;
+}
+
+.tv__remote--on {
+  color: var(--green);
+  border-color: var(--green);
+}
+
+.tv__pairing-qr {
+  width: min(240px, 70vw, 30vh);
+  align-self: center;
+}
+
+.tv__pairing-link {
+  overflow-wrap: anywhere;
+  font-family: var(--mono, ui-monospace, monospace);
+}
+
+/* The facilitator's phone remote (/host): one column, the big next-step button at the top, Reset at the bottom. */
+.remote {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 520px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+}
+
+.remote--center {
+  justify-content: center;
+  text-align: center;
+}
+
+.remote__head {
+  display: grid;
+  gap: 4px;
+}
+
+.remote__title {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.remote__controls {
+  display: grid;
+  gap: 10px;
+}
+
+.remote__primary {
+  min-height: calc(var(--tap) * 1.3);
+  font-size: 1.15rem;
+}
+
+.remote__others {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 8px;
+}
+
+.remote__others .btn {
+  min-height: var(--tap);
+  font-size: 0.85rem;
+}
+
+.remote__auto {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.remote__auto .tv__auto-toggle {
+  min-width: 8em;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.remote__auto .tv__auto-more {
+  padding-inline: 14px;
+  margin-left: -1px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* On the remote the speed menu opens downward and fits the phone's width. */
+.remote__auto .tv__auto-menu {
+  top: calc(100% + 6px);
+  bottom: auto;
+  min-width: min(20rem, calc(100vw - 32px));
+}
+
+.remote__error {
+  margin: 0;
+  color: var(--red);
+}
+
+.remote__talk ul,
+.remote__room ul {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding-left: 1.1em;
+}
+
+.remote__room ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.remote__talk,
+.remote__room {
+  padding: 10px 14px;
+  font-size: 0.9rem;
+}
+
+/* Short phones (375×667): tighter, so the talking points and most of the room fit under the controls. */
+@media (max-height: 700px) {
+  .remote {
+    gap: 8px;
+    padding-top: 12px;
+  }
+
+  .remote__title {
+    font-size: 1.15rem;
+  }
+
+  .remote__others .btn {
+    min-height: 44px;
+  }
+
+  .remote__talk ul,
+  .remote__room ul {
+    gap: 3px;
+  }
+}
+
+.remote__line--win {
+  color: var(--green);
+}
+
+.remote__line--loss {
+  color: var(--red);
+}
+
+.remote__foot {
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+}

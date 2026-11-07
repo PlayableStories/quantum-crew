@@ -537,10 +537,13 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     );
   };
   // The TV's primary action is the host controls; a phone's is whatever it should press now.
+  // Since E3b the facilitator's phone remote (/host) joins after the lobby and is in every shot of all three.
+  let remote: View | null = null;
   const all = (primary: string | null = null): [View, string, string | null][] => [
     [tv, "", ".tv__controls .btn"],
     [a, "-a", primary],
     [b, "-b", primary],
+    ...(remote ? [[remote, "-remote", ".remote__primary"] as [View, string, string | null]] : []),
   ];
   const host = async (cmd: string) => tv.page.locator(".tv__controls").getByRole("button", { name: cmd, exact: true }).click({ timeout: 5000 });
   const banner = (phase: string) => tv.page.locator(`.tv__banner--${phase}`);
@@ -578,6 +581,26 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
   const crowd = joinCrowd(base.replace(/^http/, "ws") + "/ws", code);
   await tv.page.locator(".pair").nth(3).waitFor();
   await shot("lobby", all(), true);
+
+  // The phone remote (since E3b): the TV's pairing dialog, then a phone opens its link (on this test server's origin).
+  const remoteBtn = tv.page.locator(".tv__remote");
+  if (await remoteBtn.count()) {
+    await remoteBtn.click();
+    const pairing = tv.page.locator("[data-remote-url]");
+    if (await ready("remote pairing", pairing.waitFor({ timeout: 5000 }))) {
+      await tv.page.locator(".tv__pairing-qr").waitFor({ timeout: 3000 }).catch(() => {});
+      await shot("remote-pairing", [[tv, "", null]]);
+      const link = new URL((await pairing.getAttribute("data-remote-url")) ?? "");
+      await tv.page.keyboard.press("Escape");
+      const r = await open(phoneSize);
+      await r.page.goto(base + link.pathname + link.search);
+      if (await ready("remote page", r.page.locator(".remote__primary").waitFor({ timeout: 5000 }))) {
+        remote = r;
+        await tv.page.locator(".tv__remote--on").waitFor({ timeout: 3000 }).catch(() => {});
+        await shot("remote-lobby", [[r, "", ".remote__primary"], [tv, "", null]]);
+      }
+    }
+  }
 
   // The phone's "⋯" menu and the leave dialog (since pacing; staying is the primary action), then Stay.
   const menu = a.page.getByRole("button", { name: S.phone.menu?.open ?? "More" });
@@ -676,7 +699,7 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     }
 
   for (const ws of crowd) ws.close();
-  for (const v of [tv, a, b]) await v.context.close();
+  for (const v of [tv, a, b, ...(remote ? [remote] : [])]) await v.context.close();
   if (errors.length) throw new Error(`page errors:\n${errors.join("\n")}`);
   return rows.sort((p, q) => p.shot.localeCompare(q.shot));
 

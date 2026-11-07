@@ -42,6 +42,10 @@ export function saveChosenAddress(url: string) {
 
 export const joinUrl = (origin: string, room: string) => `${origin}/play?room=${room}`;
 
+/** The facilitator's phone remote: same origin as the join link, plus the room's remote key (only the TV has it). */
+export const remoteUrl = (origin: string, room: string, key: string) =>
+  `${origin}/host?room=${room}&key=${encodeURIComponent(key)}`;
+
 /** Asks the server where phones should join (null if it can't say, e.g. an older server or no network). */
 export async function fetchStationInfo(): Promise<StationInfo | null> {
   try {

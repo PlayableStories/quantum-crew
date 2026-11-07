@@ -240,6 +240,11 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
 2. Players scan the QR (or open **/play** and type the code), enter a name and pick **Table A** or **Table B**.
    The server pairs A₁↔B₁, A₂↔B₂… (up to 4 pairs). **CORA**, the AI crewmate (shown with an **AI** badge on the TV
    and on her partner's phone), fills any empty seat.
+   **Optional, the facilitator's phone remote:** press **Remote** at the top right of the TV and scan its QR code
+   with your own phone. It opens **/host**, which runs the session from anywhere in the room (the next step as one
+   big button, Play / Pause, what to say, who is still choosing). The remote's link carries its own key (not the TV's),
+   and **Unpair remotes** in the same dialog makes a new one. See
+   [Using the remote](docs/facilitator.md#using-the-remote).
 3. **Start the night shift:** the TV shows the briefing (Kestrel Station, the star, the two tables, the coolant ring
    and its rule); phones show the quick rule.
 4. **Start the rounds:** Act I, six rounds with the radio working. Each phone shows its own sensor and, on the radio,

@@ -47,6 +47,8 @@ export type HostCommand =
   | "auto"
   | "manual"
   | "next"
+  /** The TV only: a new remote key, and every paired remote is dropped. */
+  | "unpairRemotes"
   | "reset";
 
 export const HOST_COMMANDS: readonly HostCommand[] = [
@@ -63,6 +65,7 @@ export const HOST_COMMANDS: readonly HostCommand[] = [
   "auto",
   "manual",
   "next",
+  "unpairRemotes",
   "reset",
 ];
 
@@ -145,6 +148,8 @@ export type RoomState = {
   autoChosen: boolean;
   /** The lull: server time it began (the TV shows how long the room has been talking; it never ends by itself). */
   lullSince: number | null;
+  /** How many facilitator remotes are paired (the TV shows "Remote connected"). */
+  remotes: number;
   /** Changes with every phase, round or report step. A host command that carries an older `step` is ignored, so a
    *  double press (or the TV and a remote pressing at once) never skips two steps. */
   step: string;
@@ -167,6 +172,8 @@ export type MarginalRow = {
 export type ClientMsg =
   | { type: "host:create" }
   | { type: "host:resume"; room: string; token: string }
+  /** The facilitator's phone remote: pairs with the key from the TV's Remote QR code. */
+  | { type: "remote:pair"; room: string; key: string }
   | { type: "player:join"; room: string; name: string; table: Table }
   | { type: "player:strategy"; act: Act; classical?: ClassicalStrategy; tuning?: TuningConfig }
   | { type: "player:valve"; roundId: string; valve: Valve }
@@ -191,7 +198,10 @@ export type RoundOutcome = {
 export type PartnerCall = { light: Light; pump: Valve | null };
 
 export type ServerMsg =
-  | { type: "host:created"; room: string; token: string }
+  /** To the TV only: its resume token and the remote key for the Remote QR code (never in RoomState, which phones
+   *  receive). */
+  | { type: "host:created"; room: string; token: string; remoteKey: string }
+  | { type: "remote:paired"; room: string }
   | { type: "player:joined"; room: string; playerId: string; name: string; table: Table }
   | { type: "room:state"; state: RoomState }
   /** To one phone: its own light only. */
@@ -255,6 +265,10 @@ export function parseClientMsg(raw: string): ClientMsg | null {
       return { type: "host:create" };
     case "host:resume":
       return str(o.room) && str(o.token) ? { type: "host:resume", room: o.room as string, token: o.token as string } : null;
+    case "remote:pair":
+      return str(o.room) && str(o.key)
+        ? { type: "remote:pair", room: (o.room as string).toUpperCase(), key: o.key as string }
+        : null;
     case "player:join": {
       const name = str(o.name) ? (o.name as string).trim().slice(0, NAME_MAX) : "";
       if (!str(o.room) || !name || (o.table !== "A" && o.table !== "B")) return null;

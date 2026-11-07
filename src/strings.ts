@@ -620,6 +620,7 @@ export const S = {
       auto: "Play",
       manual: "Pause",
       next: "Next",
+      unpairRemotes: "Unpair remotes",
       reset: "Reset",
     },
     /** Next, in a round and on a result. */
@@ -658,6 +659,79 @@ export const S = {
       cool: "Clockwise when partner's side was COOL",
       hot: "Clockwise when partner's side was HOT",
       rounds: "Rounds",
+    },
+    /** The phone remote: a button in the TV's header and its pairing dialog. */
+    remote: {
+      button: "Remote",
+      /** The header button while remotes are paired. */
+      connected: (n: number) => (n === 1 ? "Remote ✓" : `Remotes ✓ ${n}`),
+      title: "Phone remote",
+      body: "Scan with the facilitator's phone to run the session from anywhere in the room: Next, Play / Pause, Start the wave.",
+      warning: "Anyone with this code can run the session. Unpair to make a new code.",
+      count: (n: number) => `Remotes connected: ${n}`,
+      unpair: "Unpair remotes",
+    },
+  },
+
+  /** The facilitator's phone remote (`/host`). Talking points come from docs/facilitator.md's run of show. */
+  remote: {
+    title: "Facilitator remote",
+    station: (code: string) => `Remote · Station ${code}`,
+    pairing: "Pairing with the TV…",
+    expired: "This remote link has expired",
+    expiredBody: "The TV made a new code (or the server restarted). On the TV, press Remote and scan the code again.",
+    noLink: "Open the remote from the TV",
+    noLinkBody: "On the TV, press Remote (top right) and scan the code with this phone.",
+    noPlayers: "Waiting for players to join.",
+    aboard: (players: number, pairs: number) => `${players} aboard · ${pairs} ${pairs === 1 ? "pair" : "pairs"}`,
+    reportStep: (step: number, of: number) => `Report step ${step}/${of}`,
+    /** A pair's line in the room list: on a result, what happened (as on the TV). */
+    pairLine: (id: number, text: string) => `Pair ${id}: ${text}`,
+    talkHead: "Say",
+    roomHead: "The room",
+    reset: "Reset the session",
+    resetTitle: "Reset the session?",
+    resetBody: "Scores are cleared and the session goes back to the lobby. Players stay.",
+    resetCancel: "Cancel",
+    resetConfirm: "Reset",
+    /** What to say now, per phase (Act I's rounds and the Act III lull have their own). */
+    talk: {
+      lobby: ["Players scan the TV's code, enter a name and pick Table A or B.", "Start the night shift once everyone is seated."],
+      briefing: [
+        "Read the story and the rule aloud: pumps match, unless both sensors are HOT, then they must differ.",
+        "Then start the rounds.",
+      ],
+      act1Round: ["The radio works: talking out loud is fine.", "A pump can change until the round ends."],
+      round: ["Radio down: no talking between tables.", "Next closes the round if someone is stuck (they count as too slow)."],
+      roundResult: ["Read the cause aloud, then Next round."],
+      storm: ["Read the storm log aloud: the waves will kill the radio.", "Then use the lull."],
+      strategy: [
+        "Last chance to talk: each player picks one of four plans and sees their partner's choice.",
+        "Start the wave when the room is ready (2–3 minutes is plenty).",
+      ],
+      act3Strategy: [
+        "Each player sets two dials (COOL and HOT) and sees their partner's.",
+        "Stuck after a wave? Show the hint on the TV.",
+      ],
+      batchDone: [
+        "Point at a ✗ case: the round that plan always loses.",
+        "\"By luck\" means the wave beat 80% but the plan can't.",
+        "After a second wave, reveal the ceiling.",
+      ],
+      act3BatchDone: [
+        "Pairs at 80% or more glow green.",
+        "\"Not yet\"? Play another lull and wave. Saved? The storm passes.",
+      ],
+      ceiling: [
+        "No plan beats 75%: the best plan loses one in four.",
+        "\"Turn to your partner. Did you blame each other? It was never either of you.\"",
+      ],
+      tool: ["Read engineering's note aloud: the crystals carry no messages, so the storm can't jam them."],
+      resolution: ["Ask each player to tell their partner what they were thinking during the storm.", "Give it a minute."],
+      debrief: [
+        "The three numbers: with the radio, the best plan, the crystals.",
+        "Then the best plan beside the crystals, and why the crystals can't send a message.",
+      ],
     },
   },
 

@@ -900,3 +900,88 @@ describe("pacing (facilitator-paced event mode)", () => {
     expect(t.roomState("tv").pairs[0]!.answered.b).toBe(true);
   });
 });
+
+describe("the facilitator's remote (E3b)", () => {
+  /** Ada and Bo in a manual first wave, and a remote paired with the TV's key. */
+  function withRemote() {
+    const t = setup(61, null);
+    t.join("a1", "Ada", "A");
+    t.join("b1", "Bo", "B");
+    const key = t.last("tv", "host:created")!.remoteKey;
+    t.send("r1", { type: "remote:pair", room: t.room, key });
+    return { t, key };
+  }
+  const answerBoth = (t: ReturnType<typeof setup>) => {
+    const id = t.last("a1", "round:start")!.roundId;
+    t.send("a1", { type: "player:valve", roundId: id, valve: 0 });
+    t.send("b1", { type: "player:valve", roundId: id, valve: 0 });
+  };
+
+  it("pairs with the TV's key, gets the room's state and runs the session", () => {
+    const { t } = withRemote();
+    expect(t.last("r1", "remote:paired")!.room).toBe(t.room);
+    expect(t.roomState("tv").remotes).toBe(1);
+    expect(t.roomState("r1").phase).toBe("lobby");
+    t.send("r1", { type: "host:command", cmd: "startBatch" });
+    expect(t.roomState("tv").phase).toBe("round");
+  });
+
+  it("a wrong key is refused, and its commands too", () => {
+    const t = setup(62, null);
+    t.join("a1", "Ada", "A");
+    t.send("r2", { type: "remote:pair", room: t.room, key: "nope" });
+    expect(t.last("r2", "error")!.code).toBe("not-host");
+    t.send("r2", { type: "host:command", cmd: "startBatch" });
+    expect(t.roomState("tv").phase).toBe("lobby");
+  });
+
+  it("gets each round's results, to read the causes aloud", () => {
+    const { t } = withRemote();
+    t.host("startBatch");
+    answerBoth(t);
+    expect(t.last("r1", "round:results")!.results).toHaveLength(1);
+  });
+
+  it("the TV and the remote pressing Next from the same step advance once", () => {
+    const { t } = withRemote();
+    t.host("startBatch");
+    answerBoth(t);
+    const step = t.roomState("tv").step;
+    t.send("tv", { type: "host:command", cmd: "next", step });
+    t.send("r1", { type: "host:command", cmd: "next", step });
+    expect(t.roomState("tv")).toMatchObject({ phase: "round", roundNo: 2 });
+    expect(t.last("r1", "error")!.code).toBe("stale");
+  });
+
+  it("unpairing (TV only) drops the remote and the old key stops working", () => {
+    const { t, key } = withRemote();
+    t.send("r1", { type: "host:command", cmd: "unpairRemotes" });
+    expect(t.roomState("tv").remotes).toBe(1); // a remote can't unpair
+    t.host("unpairRemotes");
+    expect(t.roomState("tv").remotes).toBe(0);
+    expect(t.last("r1", "error")!.code).toBe("not-host");
+    expect(t.last("tv", "host:created")!.remoteKey).not.toBe(key);
+    t.send("r1", { type: "host:command", cmd: "startBatch" });
+    expect(t.roomState("tv").phase).toBe("lobby");
+    t.send("r3", { type: "remote:pair", room: t.room, key });
+    expect(t.last("r3", "error")!.code).toBe("not-host");
+  });
+
+  it("a remote that disconnects is no longer counted", () => {
+    const { t } = withRemote();
+    t.station.disconnect("r1");
+    expect(t.roomState("tv").remotes).toBe(0);
+  });
+
+  it("phones and remotes never receive the remote key or the TV's token", () => {
+    const { t, key } = withRemote();
+    t.host("startBatch");
+    answerBoth(t);
+    const token = t.last("tv", "host:created")!.token;
+    for (const conn of ["a1", "b1", "r1"]) {
+      const sent = JSON.stringify(t.msgs(conn));
+      expect(sent).not.toContain(key);
+      expect(sent).not.toContain(token);
+    }
+  });
+});

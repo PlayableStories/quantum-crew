@@ -1,8 +1,10 @@
-// Routes: / landing · /solo the solo demo · /credits · /screen the TV (event host) · /play a phone.
+// Routes: / landing · /solo the solo demo · /credits · /screen the TV (event host) · /play a phone · /host the
+// facilitator's phone remote (paired from the TV).
 import { usePath } from "./lib/router.ts";
 import { Credits } from "./screens/Credits.tsx";
 import { Landing } from "./screens/Landing.tsx";
 import { Play } from "./screens/Play.tsx";
+import { Remote } from "./screens/Remote.tsx";
 import { Poster } from "./screens/Poster.tsx";
 import { Screen } from "./screens/Screen.tsx";
 import { Solo } from "./solo/Solo.tsx";
@@ -17,6 +19,8 @@ export function App() {
       return <Screen />;
     case "/play":
       return <Play />;
+    case "/host":
+      return <Remote />;
     case "/poster":
       return <Poster />;
     default:
