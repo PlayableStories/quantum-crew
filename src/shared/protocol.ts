@@ -28,10 +28,10 @@ export type RoomPhase =
   | "resolution"
   | "debrief";
 
-/** How the facilitator paces rounds: Guided (no countdown; the facilitator closes rounds and moves on), Relaxed
- *  (generous timers), Brisk (the original timers). */
-export type Pace = "guided" | "relaxed" | "brisk";
-export const PACES: readonly Pace[] = ["guided", "relaxed", "brisk"];
+/** How fast rounds run in auto: Relaxed (generous timers) or Brisk (the original timers). In manual nothing is timed:
+ *  the facilitator presses Next. */
+export type Speed = "relaxed" | "brisk";
+export const SPEEDS: readonly Speed[] = ["relaxed", "brisk"];
 
 export type HostCommand =
   | "startNightShift"
@@ -43,11 +43,10 @@ export type HostCommand =
   | "debrief"
   | "reportBack"
   | "reportNext"
-  | "setPace"
-  | "pause"
-  | "resume"
-  | "closeRound"
-  | "nextRound"
+  | "setSpeed"
+  | "auto"
+  | "manual"
+  | "next"
   | "reset";
 
 export const HOST_COMMANDS: readonly HostCommand[] = [
@@ -60,11 +59,10 @@ export const HOST_COMMANDS: readonly HostCommand[] = [
   "debrief",
   "reportBack",
   "reportNext",
-  "setPace",
-  "pause",
-  "resume",
-  "closeRound",
-  "nextRound",
+  "setSpeed",
+  "auto",
+  "manual",
+  "next",
   "reset",
 ];
 
@@ -111,7 +109,8 @@ export type RoomState = {
   batchNo: number;
   roundNo: number;
   batchSize: number;
-  /** Server clock (ms) when the round, the lull or the storm's static ends. Compare with `serverNow`. */
+  /** Server clock (ms) when the round, an auto result or the storm's static ends (null in manual and in the lull).
+   *  Compare with `serverNow`; it changes at once when the facilitator switches auto / manual or the speed. */
   deadline: number | null;
   serverNow: number;
   players: PlayerInfo[];
@@ -138,12 +137,12 @@ export type RoomState = {
   savedDialsRate: number | null;
   /** The incident report's step (0–3), held by the server so a reconnecting TV (and the remote) keep their place. */
   debriefStep: number;
-  /** The facilitator's pace (null: the default, Guided for each act's first wave and Relaxed after), and the pace
-   *  of the current round (or of the next one, between rounds). */
-  paceChoice: Pace | null;
-  pace: Pace;
-  /** Paused: everything that was counting down is frozen; `left` is what the round's countdown had left. */
-  paused: { left: number | null } | null;
+  /** Auto: rounds and results run on timers at `speed`. Manual: nothing is timed; a round closes when every seat has
+   *  answered (or on Next) and a result waits for Next. By default the night shift and each act's first wave are
+   *  manual and later waves auto; once the facilitator picks (`autoChosen`), their choice holds until Reset. */
+  auto: boolean;
+  speed: Speed;
+  autoChosen: boolean;
   /** The lull: server time it began (the TV shows how long the room has been talking; it never ends by itself). */
   lullSince: number | null;
   /** Changes with every phase, round or report step. A host command that carries an older `step` is ignored, so a
@@ -174,7 +173,7 @@ export type ClientMsg =
   | { type: "player:measure"; roundId: string }
   /** The player leaves: their seat stays theirs and CORA covers it until they rejoin (same name and table). */
   | { type: "player:leave" }
-  | { type: "host:command"; cmd: HostCommand; step?: string; pace?: Pace }
+  | { type: "host:command"; cmd: HostCommand; step?: string; speed?: Speed }
 
 /** A pair's round once it's over: both sensors and pumps (a null pump = not set in time) and what happened. */
 export type RoundOutcome = {
@@ -201,7 +200,7 @@ export type ServerMsg =
       roundId: string;
       act: Act;
       light: Light;
-      /** Null in a Guided round: no countdown; the facilitator closes it. */
+      /** Null in manual: no countdown (the room's `deadline` follows any later switch). */
       deadline: number | null;
       serverNow: number;
       dialDeg?: number;
@@ -277,13 +276,13 @@ export function parseClientMsg(raw: string): ClientMsg | null {
     case "host:command": {
       if (!HOST_COMMANDS.includes(o.cmd as HostCommand)) return null;
       if (o.step !== undefined && !str(o.step)) return null;
-      if (o.pace !== undefined && !PACES.includes(o.pace as Pace)) return null;
-      if (o.cmd === "setPace" && o.pace === undefined) return null;
+      if (o.speed !== undefined && !SPEEDS.includes(o.speed as Speed)) return null;
+      if (o.cmd === "setSpeed" && o.speed === undefined) return null;
       return {
         type: "host:command",
         cmd: o.cmd as HostCommand,
         ...(o.step !== undefined && { step: o.step as string }),
-        ...(o.pace !== undefined && { pace: o.pace as Pace }),
+        ...(o.speed !== undefined && { speed: o.speed as Speed }),
       };
     }
     case "player:leave":

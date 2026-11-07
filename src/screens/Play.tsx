@@ -24,6 +24,7 @@ import { usePlayer } from "../net/playerStore.ts";
 import { useRemainingMs } from "../net/useCountdown.ts";
 import type { Light, Table, Valve } from "../shared/chsh.ts";
 import { ANTICLOCKWISE, CLOCKWISE, COOL, HOT } from "../shared/fiction.ts";
+import { decisionMs } from "../shared/pace.ts";
 import { planId } from "../shared/plans.ts";
 import { NAME_MAX, ROOM_CODE, type PairInfo, type PartnerCall, type Seat as RoomSeat } from "../shared/protocol.ts";
 import { pairReport } from "../shared/report.ts";
@@ -167,20 +168,18 @@ function InRoom() {
   // The partner is a player who's away: CORA covers their seat until they rejoin.
   const partnerAway = !!partner?.playerId && !state.players.find((pl) => pl.id === partner.playerId)?.connected;
   const S_ = S.phone.status;
-  const status_ = state.paused
-    ? S_.paused
-    : round
+  const status_ = round
+    ? null
+    : // The lull and the tool reveal already say what to do (and need the room on a small phone).
+      state.phase === "strategy" || state.phase === "tool"
       ? null
-      : // The lull and the tool reveal already say what to do (and need the room on a small phone).
-        state.phase === "strategy" || state.phase === "tool"
-        ? null
-        : state.phase === "roundResult" || (state.phase === "round" && flash)
-          ? state.pace === "guided"
-            ? S_.guidedResult
-            : S_.timedResult
-          : state.phase === "lobby"
-            ? null
-            : S_.watch;
+      : state.phase === "roundResult" || (state.phase === "round" && flash)
+        ? state.auto
+          ? S_.autoResult
+          : S_.manualResult
+        : state.phase === "lobby"
+          ? null
+          : S_.watch;
   const theirs = mine === "a" ? "b" : "a";
   // Act II: the plans locked for this wave (the reminder and the plan tag), and the partner's choice in the lull.
   const locked = pair?.locked ?? null;
@@ -198,13 +197,16 @@ function InRoom() {
   if (round && (round.act === 1 || round.answered === null)) {
     return wrap(
       <main className="screen">
-        {state.paused && (
-          <p className="phone-status" role="status">
-            {S.phone.status.paused}
-          </p>
+        {/* The countdown follows the room's deadline, so switching to manual (none) or auto, or a new speed, shows at
+            once. */}
+        {state.phase === "round" && state.deadline !== null && (
+          <Countdown
+            id={`${round.roundId}-${state.deadline}`}
+            ms={decisionMs(state.speed, round.act)}
+            left={state.deadline - state.serverNow}
+            paused={round.measuring}
+          />
         )}
-        {/* Guided rounds have no countdown. */}
-        {round.ms !== null && <Countdown id={round.roundId} ms={round.ms} paused={round.measuring || !!state.paused} />}
         <SensorLight light={round.light} label={S.batch.yourLight} />
         {round.act === 1 && round.partner && partner && <PartnerRadio seat={partner} call={round.partner} />}
         {round.act === 2 && locked && partner && (

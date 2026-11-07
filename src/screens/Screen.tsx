@@ -36,9 +36,9 @@ import { FourCases } from "../components/FourCases.tsx";
 import { PlanBoard } from "../components/PlanBoard.tsx";
 import { useHost } from "../net/hostStore.ts";
 import { useElapsedMs, useRemainingMs } from "../net/useCountdown.ts";
-import { decisionMs } from "../shared/pace.ts";
+import { decisionMs, resultMs, secs } from "../shared/pace.ts";
 import { fetchStationInfo, joinUrl, loadChosenAddress, pickJoinOrigin, saveChosenAddress } from "../net/joinOrigin.ts";
-import { PACES, roundIdOf, type Pace, type HostCommand, type PairInfo, type RateSummary, type RoomState, type RoundOutcome, type StationInfo, type JoinAddress } from "../shared/protocol.ts";
+import { SPEEDS, roundIdOf, type Speed, type HostCommand, type PairInfo, type RateSummary, type RoomState, type RoundOutcome, type StationInfo, type JoinAddress } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 
 const rate = (r: RateSummary) => (r.rounds ? r.wins / r.rounds : null);
@@ -161,7 +161,7 @@ export function Screen() {
         />
       </aside>
 
-      <HostControls state={state} onCommand={command} error={error} hint={hint} onHint={() => setHint((h) => !h)} />
+      <HostControls state={state} localDeadline={localDeadline} onCommand={command} error={error} hint={hint} onHint={() => setHint((h) => !h)} />
     </main>
   );
 }
@@ -205,30 +205,28 @@ function PhaseBanner({ state, localDeadline }: { state: RoomState; localDeadline
   const talking = useElapsedMs(state.phase === "strategy" ? lullStart : null);
   const inBatch = state.phase === "round" || state.phase === "roundResult";
   const act1 = inBatch && state.act === 1;
-  // Guided rounds have no countdown; Relaxed and Brisk show the pace's time, frozen while paused.
-  const roundMs = decisionMs(state.pace, state.act);
+  // The countdown follows the room's deadline (a round, or an auto result), so a switch shows at once; none in manual.
+  const totalMs = state.phase === "round" ? decisionMs(state.speed, state.act) : resultMs(state.speed, state.act);
   const title =
     state.phase === "storm" && !(left !== null && left > 0) ? S.storm.logTitle : act1 ? S.tv.act1Banner : S.tv.phase[state.phase];
   return (
     <div className={`tv__banner tv__banner--${state.phase} ${act1 ? "tv__banner--act1" : ""}`}>
       <h1>{title}</h1>
       {state.phase === "strategy" && talking !== null && <p className="tv__talking">{S.tv.talking(clock(talking))}</p>}
-      {state.paused && (
-        <p className="tv__paused" role="status">
-          <strong>{S.tv.paused}</strong> · {S.tv.pausedSub}
-        </p>
-      )}
       {inBatch && (
         <>
           <p className="kicker">
             {act1 ? S.tv.act1RoundOf(state.roundNo) : S.tv.roundOf(state.batchNo, state.roundNo, state.batchSize)}
           </p>
-          {roundMs !== null && (
+          {state.deadline !== null ? (
             <Countdown
-              id={roundIdOf(state.act, state.batchNo, state.roundNo)}
-              ms={roundMs}
-              paused={state.phase !== "round" || !!state.paused}
+              id={`${roundIdOf(state.act, state.batchNo, state.roundNo)}-${state.phase}-${state.deadline}`}
+              ms={totalMs}
+              left={state.deadline - state.serverNow}
+              paused={false}
             />
+          ) : (
+            !state.auto && <p className="tv__manual muted small">{S.tv.auto.manualNote}</p>
           )}
         </>
       )}
@@ -643,8 +641,8 @@ function PairCard({ pair, state, result }: { pair: PairInfo; state: RoomState; r
   );
 }
 
-/** What the facilitator can do now, in the order they'd usually do it (the row shows only these, plus Pause, the
- *  pace and Reset). */
+/** What the facilitator can do now, in the order they'd usually do it (the row shows only these, plus Play / Pause,
+ *  the speed and Reset). */
 function nextSteps(state: RoomState): HostCommand[] {
   switch (state.phase) {
     case "lobby":
@@ -652,9 +650,8 @@ function nextSteps(state: RoomState): HostCommand[] {
     case "briefing":
       return ["startBatch"];
     case "round":
-      return ["closeRound"];
     case "roundResult":
-      return state.pace === "guided" ? ["nextRound"] : [];
+      return ["next"];
     case "storm":
       return ["startStrategy", "startBatch"];
     case "strategy":
@@ -674,11 +671,10 @@ function nextSteps(state: RoomState): HostCommand[] {
   }
 }
 
-/** The natural next step for Space / →: close the round, then Next round; start the wave from the lull. */
+/** The natural next step for Space / →: Next in a round or on a result (in either mode); start the wave from the
+ *  lull; the report's Next. */
 function keyStep(state: RoomState): HostCommand | null {
-  if (state.paused) return null;
-  if (state.phase === "round") return "closeRound";
-  if (state.phase === "roundResult" && state.pace === "guided") return "nextRound";
+  if (state.phase === "round" || state.phase === "roundResult") return "next";
   if (state.phase === "strategy") return "startBatch";
   if (state.phase === "debrief") return "reportNext";
   return null;
@@ -686,13 +682,15 @@ function keyStep(state: RoomState): HostCommand | null {
 
 function HostControls({
   state,
+  localDeadline,
   onCommand,
   error,
   hint,
   onHint,
 }: {
   state: RoomState;
-  onCommand: (c: HostCommand, pace?: Pace) => void;
+  localDeadline: number | null;
+  onCommand: (c: HostCommand, speed?: Speed) => void;
   error: string | null;
   hint: boolean;
   onHint: () => void;
@@ -709,14 +707,21 @@ function HostControls({
     // The ending: after at least one Act III wave.
     stormPasses: state.stability.act3.rounds > 0,
     debrief: true,
-    closeRound: true,
-    nextRound: true,
+    next: true,
   };
-  const steps = nextSteps(state).filter((cmd) => enabled[cmd] && !state.paused);
+  const steps = nextSteps(state).filter((cmd) => enabled[cmd]);
   const send = (cmd: HostCommand) => () => (cmd !== "reset" || confirm(S.tv.resetConfirm)) && onCommand(cmd);
-  const label = (cmd: HostCommand) => (cmd === "startBatch" && state.phase === "briefing" ? S.tv.startRounds : S.tv.cmd[cmd]);
+  const label = (cmd: HostCommand) =>
+    cmd === "startBatch" && state.phase === "briefing"
+      ? S.tv.startRounds
+      : cmd === "next"
+        ? state.phase === "round"
+          ? S.tv.closeRound
+          : S.tv.nextRound
+        : S.tv.cmd[cmd];
+  const toggle = () => onCommand(state.auto ? "manual" : "auto");
 
-  // Keyboard for a facilitator at a laptop: Space or → for the natural next step, P to pause and resume. Not while a
+  // Keyboard for a facilitator at a laptop: Space or → for the natural next step, P for play / pause. Not while a
   // button, a field or the reset confirm has focus (Space would press that button too).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -725,7 +730,7 @@ function HostControls({
       if (target?.closest("button, input, select, textarea, [contenteditable], dialog")) return;
       if (e.key === "p" || e.key === "P") {
         e.preventDefault();
-        onCommand(state.paused ? "resume" : "pause");
+        onCommand(state.auto ? "manual" : "auto");
       } else if (e.key === " " || e.key === "ArrowRight") {
         const cmd = keyStep(state);
         if (!cmd) return;
@@ -744,25 +749,7 @@ function HostControls({
           {label(cmd)}
         </button>
       ))}
-      <button className={`btn ${state.paused ? "btn--selected" : ""}`} onClick={send(state.paused ? "resume" : "pause")}>
-        {state.paused ? S.tv.cmd.resume : S.tv.cmd.pause}
-      </button>
-      {/* The pace: from the next round. "Default" while it follows the schedule (Guided first waves, then Relaxed). */}
-      <div className="tv__pace" role="radiogroup" aria-label={S.tv.pace.label}>
-        <span className="kicker">{state.paceChoice ? S.tv.pace.label : S.tv.pace.byDefault}</span>
-        {PACES.map((p) => (
-          <button
-            key={p}
-            type="button"
-            role="radio"
-            aria-checked={state.pace === p}
-            className={`btn tv__pace-btn ${state.pace === p ? "btn--selected" : ""}`}
-            onClick={() => onCommand("setPace", p)}
-          >
-            {S.tv.pace[p]}
-          </button>
-        ))}
-      </div>
+      <AutoToggle state={state} localDeadline={localDeadline} onToggle={toggle} onSpeed={(sp) => onCommand("setSpeed", sp)} />
       {state.act === 3 && state.phase !== "debrief" && !inBatch && (
         <button className={`btn ${hint ? "btn--selected" : ""}`} onClick={onHint}>
           {hint ? S.tv.hideHint : S.tv.showHint}
@@ -775,5 +762,80 @@ function HostControls({
       {keyStep(state) && <span className="muted small tv__keys">{S.tv.keys}</span>}
       {error && <span className="tv__error">{error}</span>}
     </footer>
+  );
+}
+
+/** Play / Pause (auto / manual, at once) with the seconds left while auto counts down, and a small ▾ beside it that
+ *  opens the speeds (each with its times; picking one also plays). Closed by default. */
+function AutoToggle({
+  state,
+  localDeadline,
+  onToggle,
+  onSpeed,
+}: {
+  state: RoomState;
+  localDeadline: number | null;
+  onToggle: () => void;
+  onSpeed: (speed: Speed) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+  const inBatch = state.phase === "round" || state.phase === "roundResult";
+  const left = useRemainingMs(inBatch && state.auto ? localDeadline : null);
+  // Escape or a click elsewhere closes the menu.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onDown = (e: PointerEvent) => !wrap.current?.contains(e.target as Node) && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onDown);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onDown);
+    };
+  }, [open]);
+  const act = state.act;
+  return (
+    <div className="tv__auto" ref={wrap}>
+      <button
+        type="button"
+        className={`btn tv__auto-toggle ${state.auto ? "" : "btn--selected"}`}
+        aria-label={state.auto ? S.tv.auto.pauseLabel : S.tv.auto.playLabel}
+        title={state.auto ? S.tv.auto.pauseLabel : S.tv.auto.playLabel}
+        onClick={onToggle}
+      >
+        {!state.auto ? S.tv.auto.play : left !== null ? S.tv.auto.counting(Math.ceil(left / 1000)) : S.tv.auto.pause}
+      </button>
+      <button
+        type="button"
+        className="btn tv__auto-more"
+        aria-label={S.tv.auto.menu}
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        ▾
+      </button>
+      {open && (
+        <div className="tv__auto-menu" role="radiogroup" aria-label={S.tv.auto.menu}>
+          {SPEEDS.map((sp) => (
+            <button
+              key={sp}
+              type="button"
+              role="radio"
+              aria-checked={state.speed === sp}
+              className={`tv__auto-speed ${state.speed === sp ? "tv__auto-speed--on" : ""}`}
+              onClick={() => {
+                onSpeed(sp);
+                setOpen(false);
+              }}
+            >
+              <strong>{S.tv.auto.speeds[sp]}</strong>
+              <span className="muted small">{S.tv.auto.summary(secs(decisionMs(sp, act)), secs(resultMs(sp, act)))}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

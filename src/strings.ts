@@ -616,18 +616,29 @@ export const S = {
       debrief: "Incident report",
       reportBack: "Back",
       reportNext: "Next",
-      setPace: "Pace",
-      pause: "Pause",
-      resume: "Resume",
-      closeRound: "Close the round",
-      nextRound: "Next round",
+      setSpeed: "Speed",
+      auto: "Play",
+      manual: "Pause",
+      next: "Next",
       reset: "Reset",
     },
-    /** The pace setting (from the next round). */
-    pace: { label: "Pace", byDefault: "Pace (default)", guided: "Guided", relaxed: "Relaxed", brisk: "Brisk" },
-    keys: "Space / → next · P pause",
-    paused: "Paused",
-    pausedSub: "Press P or Resume to carry on.",
+    /** Next, in a round and on a result. */
+    closeRound: "Close the round",
+    nextRound: "Next round",
+    /** Auto / manual (takes effect at once): Pause switches to manual, Play back to auto; the speed sits behind ▾. */
+    auto: {
+      play: "▶ Play",
+      pause: "⏸ Pause",
+      /** Auto, while something is counting down: the seconds left. */
+      counting: (secs: number) => `⏸ ${secs} s`,
+      playLabel: "Play: rounds and results move on by themselves",
+      pauseLabel: "Pause: switch to manual, then press Next to move on",
+      menu: "Speed",
+      speeds: { relaxed: "Relaxed", brisk: "Brisk" },
+      summary: (choose: string, result: string) => `${choose} s to choose · ${result} s result`,
+      manualNote: "Manual: press Next",
+    },
+    keys: "Space / → next · P play / pause",
     /** The lull: how long the room has been talking (a guide, not a countdown). */
     talking: (time: string) => `Talking for ${time}`,
     /** A round, on a pair card: who hasn't chosen yet (never what anyone chose). */
@@ -684,9 +695,8 @@ export const S = {
     /** Where the Leave button used to be: what's happening while there's nothing to press. */
     status: {
       watch: "Look at the big screen. The facilitator will move things on.",
-      guidedResult: "Result on the big screen. The facilitator starts the next round.",
-      timedResult: "Result on the big screen. The next round starts by itself.",
-      paused: "Paused. The facilitator will carry on.",
+      manualResult: "Result on the big screen. The facilitator starts the next round.",
+      autoResult: "Result on the big screen. The next round starts by itself.",
     },
     /** After setting your pump: whether your partner has (never what they chose). */
     partnerChosen: (name: string) => `${name} has chosen.`,

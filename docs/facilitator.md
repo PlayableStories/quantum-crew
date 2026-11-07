@@ -39,12 +39,12 @@ The host controls only work at the right moments; the others are greyed out.
 | 0:07 | **Act I, the night shift.** Six rounds with the radio working: each phone shows the partner's reading and pump, and talking out loud is fine. A pump can change until the round ends; a round ends after 8 s, or as soon as both pumps have settled. Every round is winnable. | **Start the rounds** (then it runs itself) |
 | 0:09 | **The storm.** It follows by itself: the radio breaks up mid-line on every phone, then the TV shows the storm log. Read it aloud: the waves will kill the radio. | nothing |
 | 0:10 | **The lull.** The last chance to talk: each player picks one of four named plans and sees their partner's choice live. The lull isn't timed: the TV shows how long they've been talking. Start the wave when the room is ready (2–3 minutes is plenty). | **Use the lull**, then **Start the wave** |
-| 0:13 | **Act II's first wave, Guided.** 8 rounds. The radio is down: phones show their own sensor, both locked plans and two pump buttons. No talking between tables. Each round waits until every pair has chosen (the TV shows who is still choosing; **Close the round** if someone is stuck). The result stays up: read the cause aloud, then **Next round**. About 3–4 minutes. | **Close the round** if needed, **Next round** (or Space / →) |
-| 0:17 | **Wave passed.** The TV shows every pair's plans case by case and their true rate. Point at a ✗ case: that's the round the plan always loses. A "by luck" line means the wave beat 80% but the plan can't. Run one more lull and wave so they feel the ceiling; later waves are Relaxed (12 s to decide, 8 s per result, running by themselves). | **Use the lull**, then **Start the wave** |
+| 0:13 | **Act II's first wave, manual.** 8 rounds. The radio is down: phones show their own sensor, both locked plans and two pump buttons. No talking between tables. Each round waits until every pair has chosen (the TV shows who is still choosing; **Next** closes the round if someone is stuck). The result stays up: read the cause aloud, then **Next**. About 3–4 minutes. Press **▶ Play** any time to let the rest run by itself. | **Next** (or Space / →) |
+| 0:17 | **Wave passed.** The TV shows every pair's plans case by case and their true rate. Point at a ✗ case: that's the round the plan always loses. A "by luck" line means the wave beat 80% but the plan can't. Run one more lull and wave so they feel the ceiling; later waves play by themselves (Relaxed: 12 s to decide, 8 s per result). | **Use the lull**, then **Start the wave** |
 | 0:18 | **Engineering report.** The plan board: every pairing of plans, exactly 75% or 25%. The crew's pairings are marked as tried; engineering ran the rest. No plan beats 75% ("the best plan loses one in four"). Read the prompt aloud: "Turn to your partner. Did you blame each other? It was never either of you." | **Reveal ceiling** |
 | 0:19 | **The tool.** A supply pod brings every pair linked crystals; engineering's note says they carry no messages, so the storm can't jam them. Read it aloud. Phones explain how the tool behaves. | **Unlock tool** |
 | 0:20 | **Act III lull.** Each player sets two dials (COOL and HOT) and sees their partner's live. If they're stuck after a wave, show the hint. | **Use the lull**; **Show hint** if needed |
-| 0:21 | **Act III waves.** Tap MEASURE, the crystal suggests a pump, then set the pump (following it or not). The first wave is Guided (as in Act II), later ones Relaxed. | **Start the wave**; **Close the round** / **Next round** in the Guided wave; **Use the lull** between waves |
+| 0:21 | **Act III waves.** Tap MEASURE, the crystal suggests a pump, then set the pump (following it or not). The first wave is manual (as in Act II), later ones play by themselves. | **Start the wave**; **Next** in the manual wave; **Use the lull** between waves |
 | 0:23 | **Act III wave passed.** The TV shows every pair's dials case by case and their true rate; pairs at 80% or more glow green. The top line says whether the crew's dials average 80% (the station holds) and how often the crew followed the crystal. Play another lull and wave if it says "Not yet". | **Use the lull**, then **Start the wave** |
 | 0:28 | **The storm passes.** The station clears: calm if the crew saved it, damaged if not. Phones tell each player to tell their partner what they were thinking during the storm; give the room a minute to talk. | **The storm passes** |
 | 0:30 | **Incident report.** Step through with Back / Next on the TV: the three numbers (with the radio, the best plan, the crystals), the best plan beside the crystals, why the crystals can't send a message (every pump ≈ 50%), then credits. Each phone shows its own pair's three numbers. | **Incident report**, then **Next** |
@@ -52,20 +52,21 @@ The host controls only work at the right moments; the others are greyed out.
 
 Short on time? From the lobby, **Use the lull** skips the night shift and the storm and starts Act II.
 
-### Pacing: Guided, Relaxed, Brisk
-The host row on the TV shows only what you can do now, plus **Pause**, the pace and **Reset**. The keyboard works too:
-**Space** or **→** for the next step (Close the round, then Next round; Start the wave in a lull; Next in the report),
-**P** to pause and resume.
-- **Guided** (the default for each act's first wave, including the night shift): no countdown. A round closes when
-  every pair has chosen, or when you press **Close the round** (anyone who hasn't chosen counts as too slow). The
-  result stays on the TV and phones until you press **Next round**. Use it to read each cause aloud and let people
-  talk about it.
-- **Relaxed** (the default after that): rounds run by themselves with generous timers (12 s to decide, 15 s in the
-  night shift, 8 s on each result).
-- **Brisk:** the original fast timers (3.5 s rounds), for a crowd that already knows the game.
-- Changing the pace takes effect from the next round and overrides the default until you change it again.
-- **Pause** freezes whatever is counting down, for the whole room; phones say the game is paused. **Resume** carries
-  on with the time that was left.
+### Pacing: Play, Pause and Next
+The host row on the TV shows only what you can do now, plus **▶ Play / ⏸ Pause**, a small **▾** for the speed, and
+**Reset**. Every change takes effect at once, even in the middle of a round or a result. The keyboard works too:
+**Space** or **→** for Next (Close the round, then Next round; Start the wave in a lull; Next in the report), **P** to
+play or pause.
+- **Pause = manual** (the default for each act's first wave, including the night shift): no countdown. A round
+  closes when every pair has chosen, or when you press **Next** (anyone who hasn't chosen counts as too slow). The
+  result stays on the TV and phones until you press **Next**. Use it to read each cause aloud and let people talk.
+  Players can still answer while you're in manual.
+- **Play = auto** (the default after that): rounds and results move on by themselves, and the button shows the
+  seconds left (e.g. "⏸ 7 s"). **Next** still skips ahead. Press **⏸** whenever the room needs a moment.
+- **Speed (▾ beside Play):** **Relaxed** (12 s to decide, 15 s in the night shift, 8 s per result) or **Brisk** (the
+  original fast timers, 3.5 s rounds, for a crowd that already knows the game). The menu shows each one's seconds.
+  Picking one also presses Play. Changing speed mid-round counts the time already spent (at least 2 s stay).
+- Once you press Play or Pause, your choice holds for later waves (the defaults stop) until **Reset**.
 
 ## Troubleshooting
 
@@ -83,7 +84,7 @@ The host row on the TV shows only what you can do now, plus **Pause**, the pace 
 - **"Table A is full." / "Table B is full.":** each table takes 4. Ask them to join the other table, or wait for the next group.
 
 ### A phone dropped out, or a player left (locked screen, lost Wi-Fi, closed the tab, the ⋯ menu's Leave)
-- **CORA covers their seat** straight away, so their partner keeps playing normally, and a Guided round never waits
+- **CORA covers their seat** straight away, so their partner keeps playing normally, and a manual round never waits
   for an absent phone. The TV and the partner's phone show "CORA (covering for …)".
 - It reconnects by itself when the page comes back. If the tab was closed, open the link again and join with **the
   same name and the same table**: the player gets their seat back.

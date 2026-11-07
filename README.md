@@ -297,15 +297,17 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
 At the engineering report, human pairs get a prompt instead of CORA's personal line ("Did you blame each other? No
 plan beats 75%: it was never either of you."); pairs with CORA hear her line.
 
-**Pacing.** The facilitator paces the room from the TV (the host row shows only what applies now, plus Pause, the
-pace and Reset; Space or → for the next step, P to pause):
-- **Guided** (the default for each act's first wave, the night shift included): no countdown. A round closes when
-  every pair has chosen (the TV shows who is still choosing) or on **Close the round**; the result stays on the TV
-  and phones until **Next round**.
-- **Relaxed** (the default after that): rounds run by themselves with generous timers (12 s to decide, 15 s in the
-  night shift, 8 s per result).
-- **Brisk:** the original timers. The facilitator's choice applies from the next round until changed.
-- **Pause** freezes every countdown for the whole room; **Resume** carries on with the time that was left.
+**Pacing.** The facilitator paces the room from the TV. The host row shows only what applies now, plus Play / Pause
+with a small **▾** for the speed, and Reset. Space or → presses Next; P switches between play and pause. Every change
+takes effect at once, on the running round or result too.
+- **Manual (Pause;** the default for each act's first wave, the night shift included): no countdown. A round closes
+  when every pair has chosen (the TV shows who is still choosing) or on **Next** ("Close the round"); the result stays
+  on the TV and phones until **Next** ("Next round"). Players can still answer.
+- **Auto (Play;** the default after that): rounds and results run by themselves; the button shows the seconds left.
+  **Next** still skips ahead.
+- **Speed (▾):** **Relaxed** (12 s to decide, 15 s in the night shift, 8 s per result) or **Brisk** (the original
+  timers). Picking one also plays. A speed change mid-round counts the time already spent (at least 2 s stay).
+- Once the facilitator presses Play or Pause, that choice holds for later waves until **Reset**.
 - Every host command carries the room's current step, and the server ignores one sent from a step it has already
   left, so a double press never skips two steps (ready for a phone remote).
 

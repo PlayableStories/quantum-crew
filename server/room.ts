@@ -40,7 +40,7 @@ import type {
   ClientMsg,
   ErrorCode,
   HostCommand,
-  Pace,
+  Speed,
   PairInfo,
   RateSummary,
   RoomPhase,
@@ -95,11 +95,11 @@ type PairRound = {
 /** Act III no-signalling record for one seat: its OPEN count split by the partner's light. */
 type SeatMarginal = { name: string; table: Table; green: { open: number; n: number }; red: { open: number; n: number } };
 
-/** `deadline` is null in a Guided round (no countdown: it closes when everyone has chosen, or by the facilitator). */
-type LiveRound = { id: string; deadline: number | null; pace: Pace; byPair: Map<number, PairRound> };
+/** `deadline` is null in manual (no countdown: it closes when everyone has chosen, or on Next). */
+type LiveRound = { id: string; deadline: number | null; byPair: Map<number, PairRound> };
 
-/** A pending timer, so pause can freeze it and resume restart it with the time it had left. */
-type Pending = { fn: () => void; at: number; cancel: () => void };
+/** The least an auto round or result keeps when the speed changes under it, so a switch never ends it on the spot. */
+const MIN_LEFT_MS = 2000;
 
 const emptyRate = (): RateSummary => ({ rounds: 0, wins: 0, timeouts: 0 });
 const emptyActs = (): Record<Act, RateSummary> => ({ 1: emptyRate(), 2: emptyRate(), 3: emptyRate() });
@@ -135,11 +135,13 @@ export function createRoom(code: string, deps: RoomDeps) {
   let live: LiveRound | null = null;
   /** Everything counting down, by key: "phase" (a round's deadline, a result, the storm's static), "settle" (Act I:
    *  the round closes once every pump has stayed put for ACT1_SETTLE_MS) and "cora-<pair>-<side>" (CORA's moves). */
-  const timers = new Map<string, Pending>();
-  /** Paused: the timers' remaining times (restarted on resume), and the round's countdown. */
-  let paused: { timers: Map<string, { fn: () => void; left: number }>; left: number | null } | null = null;
-  /** Pacing: the facilitator's choice (null = the default) and how many waves each act has started. */
-  let paceChoice: Pace | null = null;
+  const timers = new Map<string, () => void>();
+  /** Pacing (see RoomState.auto): auto or manual, the auto speed, whether the facilitator has chosen (then the
+   *  default stops applying), when the running round / result timer started, and how many waves each act started. */
+  let auto = false;
+  let speed: Speed = "relaxed";
+  let autoChosen = false;
+  let timerSince = 0;
   let wavesInAct: Record<Act, number> = { 1: 0, 2: 0, 3: 0 };
   let lullSince: number | null = null;
   /** Act I: each pair's sensor order for the night shift (every combination, no double HOT first). */
@@ -227,9 +229,9 @@ export function createRoom(code: string, deps: RoomDeps) {
       stationSaved,
       savedDialsRate,
       debriefStep,
-      paceChoice,
-      pace: live?.pace ?? upcomingPace(),
-      paused: paused ? { left: paused.left } : null,
+      auto,
+      speed,
+      autoChosen,
       lullSince,
       step: stepSig(),
       ceilingRevealed,
@@ -280,73 +282,59 @@ export function createRoom(code: string, deps: RoomDeps) {
 
   // --- Timers (pausable) -------------------------------------------------------------------------
 
-  /** Runs `fn` after `ms` under `key` (replacing any timer with that key). While paused it waits for resume. */
+  /** Runs `fn` after `ms` under `key` (replacing any timer with that key). */
   function later(key: string, ms: number, fn: () => void) {
     cancel(key);
-    if (paused) {
-      paused.timers.set(key, { fn, left: ms });
-      return;
-    }
     const cancelIt = deps.schedule(() => {
       timers.delete(key);
       fn();
     }, ms);
-    timers.set(key, { fn, at: deps.now() + ms, cancel: cancelIt });
+    timers.set(key, cancelIt);
   }
 
   function cancel(key: string) {
-    timers.get(key)?.cancel();
+    timers.get(key)?.();
     timers.delete(key);
-    paused?.timers.delete(key);
   }
 
-  /** Cancels every timer (a phase change); the pause, if any, stays. */
+  /** Cancels every timer (a phase change). */
   function clearTimer() {
-    for (const t of timers.values()) t.cancel();
+    for (const cancelIt of timers.values()) cancelIt();
     timers.clear();
-    paused?.timers.clear();
   }
 
   /** Cancels a round's timers: its deadline, Act I's settle and CORA's pending moves. */
   function clearRoundTimers() {
-    for (const key of [...timers.keys(), ...(paused?.timers.keys() ?? [])])
-      if (key === "phase" || key === "settle" || key.startsWith("cora-")) cancel(key);
-  }
-
-  function pause() {
-    const now = deps.now();
-    const saved = new Map<string, { fn: () => void; left: number }>();
-    for (const [key, t] of timers) {
-      t.cancel();
-      saved.set(key, { fn: t.fn, left: Math.max(0, t.at - now) });
-    }
-    timers.clear();
-    paused = { timers: saved, left: deadline === null ? null : Math.max(0, deadline - now) };
-    deadline = null;
-  }
-
-  function resume() {
-    if (!paused) return;
-    const { timers: saved, left } = paused;
-    paused = null;
-    for (const [key, t] of saved) later(key, t.left, t.fn);
-    deadline = left === null ? null : deps.now() + left;
-    if (live) live.deadline = live.pace === "guided" ? null : deadline;
+    for (const key of [...timers.keys()]) if (key === "phase" || key === "settle" || key.startsWith("cora-")) cancel(key);
   }
 
   // --- Pacing ----------------------------------------------------------------------------------
 
-  /** The pace for wave `n` of the current act (Act I is one "wave"): the facilitator's choice, else Guided for each
-   *  act's first wave and Relaxed after it. */
-  const paceFor = (n: number): Pace => paceChoice ?? (n <= 1 ? "guided" : "relaxed");
+  /** At each wave (and the night shift): unless the facilitator has chosen, the act's first wave is manual and later
+   *  waves are auto. */
+  function applyDefaultPace() {
+    if (!autoChosen) auto = wavesInAct[act] > 1;
+  }
 
-  /** Between rounds: the pace the next round will have. */
-  function upcomingPace(): Pace {
-    if (phase === "roundResult" || phase === "round") return paceFor(wavesInAct[act]);
-    if (phase === "lobby" || phase === "briefing") return paceFor(1);
-    // The storm leads into Act II's first wave; otherwise the next wave of this act.
-    const nextAct: Act = act === 1 ? 2 : act;
-    return paceFor(wavesInAct[nextAct] + 1);
+  /** (Re)starts the running round's or result's timer from the mode and speed, effective at once. `fresh`: the full
+   *  time from now (a new round or result, or switching to auto); otherwise (a speed change) the new total minus the
+   *  time already spent, keeping at least MIN_LEFT_MS. In manual it stops the timer. */
+  function startPhaseTimer(fresh: boolean) {
+    if (phase !== "round" && phase !== "roundResult") return;
+    if (!auto) return stopPhaseTimer();
+    const now = deps.now();
+    const total = phase === "round" ? decisionMs(speed, act) : resultMs(speed, act);
+    if (fresh) timerSince = now;
+    const ms = fresh ? total : Math.max(total - (now - timerSince), MIN_LEFT_MS);
+    later("phase", ms, phase === "round" ? resolveRound : afterResult);
+    deadline = now + ms;
+    if (phase === "round" && live) live.deadline = deadline;
+  }
+
+  function stopPhaseTimer() {
+    cancel("phase");
+    deadline = null;
+    if (phase === "round" && live) live.deadline = null;
   }
 
   /** The room's current step: changes with every phase, round or report step (see RoomState.step). */
@@ -418,6 +406,7 @@ export function createRoom(code: string, deps: RoomDeps) {
     // From the lobby or the storm, a wave starts Act II (Act I is only ever started from the briefing).
     if (act === 1) act = 2;
     wavesInAct[act]++;
+    applyDefaultPace();
     batchNo++;
     roundNo = 0;
     batchStats = emptyRate();
@@ -443,6 +432,7 @@ export function createRoom(code: string, deps: RoomDeps) {
     repair();
     act = 1;
     wavesInAct[1] = 1;
+    applyDefaultPace();
     roundNo = 0;
     act1Orders = new Map(pairs.map((pair) => [pair.id, act1Order(deps.rng)]));
     nextRound();
@@ -454,7 +444,7 @@ export function createRoom(code: string, deps: RoomDeps) {
     live = null;
     phase = "storm";
     deadline = deps.now() + STORM_STATIC_MS;
-    // The static has a deadline (the TV shows the log after it); a timer marks it so pause can freeze it too.
+    // The static has a deadline (the TV shows the log after it); a timer re-broadcasts when it ends.
     later("phase", STORM_STATIC_MS, broadcast);
     broadcast();
   }
@@ -478,15 +468,12 @@ export function createRoom(code: string, deps: RoomDeps) {
       };
       byPair.set(pair.id, pr);
     }
-    const pace = paceFor(wavesInAct[act]);
-    const ms = decisionMs(pace, act);
-    live = { id, deadline: ms === null ? null : now + ms, pace, byPair };
+    live = { id, deadline: null, byPair };
     phase = "round";
-    deadline = live.deadline;
+    startPhaseTimer(true);
     for (const pair of pairs) sendRoundStart(pair);
     // CORA plays empty and covered seats after a natural delay (in Act III she follows her crystal).
     for (const pair of pairs) for (const side of ["a", "b"] as const) if (coraSeat(pair, side)) scheduleCora(pair, side);
-    if (ms !== null) later("phase", ms, resolveRound);
     broadcast();
   }
 
@@ -535,7 +522,7 @@ export function createRoom(code: string, deps: RoomDeps) {
   /** Act I / II: a valve tap. Act III: a MEASURE tap (`valve` undefined) reads the crystal, then a valve tap sets the
    *  pump (only after measuring; it may go against the crystal, and changes until every pump is set). */
   function answer(player: Player, roundId: string, valve?: Valve) {
-    if (paused || phase !== "round" || !live || live.id !== roundId) return;
+    if (phase !== "round" || !live || live.id !== roundId) return;
     if (live.deadline !== null && deps.now() > live.deadline) return;
     const pair = pairs.find((p) => p.a === player || p.b === player);
     const pr = pair && live.byPair.get(pair.id);
@@ -617,10 +604,8 @@ export function createRoom(code: string, deps: RoomDeps) {
     rolling = rolling.slice(-ROLLING_WINDOW);
     toHost({ type: "round:results", roundId: live.id, results });
     phase = "roundResult";
-    deadline = null;
-    // Guided: the result stays until the facilitator presses Next round. Otherwise the pace's timer moves on.
-    const ms = resultMs(live.pace, act);
-    if (ms !== null) later("phase", ms, afterResult);
+    // Manual: the result stays until the facilitator presses Next. Auto: the speed's timer moves on.
+    startPhaseTimer(true);
     broadcast();
   }
 
@@ -651,31 +636,40 @@ export function createRoom(code: string, deps: RoomDeps) {
 
   // --- Host commands ----------------------------------------------------------------------------
 
-  function command(conn: Conn, cmd: HostCommand, step?: string, pace?: Pace) {
+  function command(conn: Conn, cmd: HostCommand, step?: string, newSpeed?: Speed) {
     const notNow = () => error(conn, "not-now", `Can't ${cmd} during ${phase}.`);
     // Sent from a step the room has already left (a double press, or two controllers): ignore it.
     if (step !== undefined && step !== stepSig()) return error(conn, "stale", `Already past that step (${cmd}).`);
     switch (cmd) {
-      case "setPace":
-        // From the next round (the current round keeps its pace).
-        if (!pace) return notNow();
-        paceChoice = pace;
+      // Pacing changes take effect at once, on the running round or result too.
+      case "setSpeed":
+        // Picking a speed also means "run by itself".
+        if (!newSpeed) return notNow();
+        speed = newSpeed;
+        autoChosen = true;
+        if (auto) startPhaseTimer(false);
+        else {
+          auto = true;
+          startPhaseTimer(true);
+        }
         return broadcast();
-      case "pause":
-        if (paused) return notNow();
-        pause();
+      case "auto":
+        autoChosen = true;
+        if (!auto) {
+          auto = true;
+          startPhaseTimer(true);
+        }
         return broadcast();
-      case "resume":
-        if (!paused) return notNow();
-        resume();
+      case "manual":
+        autoChosen = true;
+        auto = false;
+        stopPhaseTimer();
         return broadcast();
-      case "closeRound":
-        // Anyone who hasn't chosen counts as too slow.
-        if (phase !== "round" || paused) return notNow();
-        return resolveRound();
-      case "nextRound":
-        if (phase !== "roundResult" || paused) return notNow();
-        return afterResult();
+      case "next":
+        // In a round: close it now (anyone who hasn't chosen counts as too slow). On a result: move on now.
+        if (phase === "round") return resolveRound();
+        if (phase === "roundResult") return afterResult();
+        return notNow();
       case "startNightShift":
         if (phase !== "lobby" || players.length === 0) return notNow();
         repair();
@@ -743,8 +737,9 @@ export function createRoom(code: string, deps: RoomDeps) {
         batchNo = roundNo = 0;
         deadline = null;
         live = null;
-        paused = null;
-        paceChoice = null;
+        auto = false;
+        speed = "relaxed";
+        autoChosen = false;
         wavesInAct = { 1: 0, 2: 0, 3: 0 };
         lullSince = null;
         ceilingRevealed = toolUnlocked = false;
@@ -853,7 +848,7 @@ export function createRoom(code: string, deps: RoomDeps) {
           return broadcast();
         case "host:command":
           if (conn !== hostConn) return error(conn, "not-host", "Only the TV can run the session.");
-          return command(conn, msg.cmd, msg.step, msg.pace);
+          return command(conn, msg.cmd, msg.step, msg.speed);
         case "player:leave":
           return disconnect(conn);
         case "player:join":

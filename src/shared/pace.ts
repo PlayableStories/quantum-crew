@@ -1,5 +1,5 @@
-// Event pacing's times, shared by the room (which runs them) and the TV (which shows the countdown). Guided has no
-// timers: the facilitator closes rounds and moves on. Relaxed is generous; Brisk is the original event timing.
+// Event pacing's times, shared by the room (which runs them) and the TV (which labels the speeds). In manual nothing
+// is timed: the facilitator presses Next. Relaxed is generous; Brisk is the original event timing.
 import {
   MP_ACT1_RESULT_MS,
   MP_ACT1_ROUND_MS,
@@ -10,18 +10,19 @@ import {
   RELAXED_RESULT_MS,
   RELAXED_ROUND_MS,
 } from "../config.ts";
-import type { Act, Pace } from "./protocol.ts";
+import type { Act, Speed } from "./protocol.ts";
 
-/** Time to decide in a round (null: no countdown). */
-export function decisionMs(pace: Pace, act: Act): number | null {
-  if (pace === "guided") return null;
-  if (pace === "relaxed") return act === 1 ? RELAXED_ACT1_ROUND_MS : RELAXED_ROUND_MS;
+/** Time to decide in an auto round. */
+export function decisionMs(speed: Speed, act: Act): number {
+  if (speed === "relaxed") return act === 1 ? RELAXED_ACT1_ROUND_MS : RELAXED_ROUND_MS;
   return act === 1 ? MP_ACT1_ROUND_MS : act === 3 ? MP_ACT3_ROUND_MS : MP_ROUND_MS;
 }
 
-/** How long a result shows before the next round (null: until the facilitator presses Next round). */
-export function resultMs(pace: Pace, act: Act): number | null {
-  if (pace === "guided") return null;
-  if (pace === "relaxed") return RELAXED_RESULT_MS;
+/** How long an auto result shows before the next round. */
+export function resultMs(speed: Speed, act: Act): number {
+  if (speed === "relaxed") return RELAXED_RESULT_MS;
   return act === 1 ? MP_ACT1_RESULT_MS : MP_RESULT_MS;
 }
+
+/** Seconds, for labels: 12000 → "12", 3500 → "3.5". */
+export const secs = (ms: number) => String(Math.round(ms / 100) / 10);

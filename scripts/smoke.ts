@@ -72,8 +72,8 @@ const pairsReady = (m: ServerMsg): m is Extract<ServerMsg, { type: "room:state" 
 const lobby = (await tv.wait(pairsReady)).state;
 console.log(`Pairs: ${lobby.pairs.map((p) => `${p.a.name}+${p.b.name}`).join(", ")}`);
 
-// Brisk: the original timers (rounds run by themselves); pacing is covered by pnpm session and the room tests.
-tv.send({ type: "host:command", cmd: "setPace", pace: "brisk" });
+// Auto at Brisk: the original timers (rounds run by themselves); pacing is covered by pnpm session and the room tests.
+tv.send({ type: "host:command", cmd: "setSpeed", speed: "brisk" });
 tv.send({ type: "host:command", cmd: "startBatch" });
 const t0 = Date.now();
 const done = await tv.wait(
