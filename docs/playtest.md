@@ -14,7 +14,7 @@ One sheet per session. Watch, don't help (unless someone is stuck for over a min
 | Act I: six rounds (how many ended early, when both pumps settled?) | | | |
 | The storm (static → log → the lull) | | | |
 | First lull (untimed: how long did they talk before you started the wave?) | | | |
-| First Guided wave (did people read each result? how long did you wait on Next round?) | | | |
+| First wave, manual (did people read each result? how long did you wait before Next?) | | | |
 | Act II waves (how many?) | | | |
 | Engineering report | | | |
 | Tool and Act III huddle | | | |
@@ -33,9 +33,9 @@ One sheet per session. Watch, don't help (unless someone is stuck for over a min
 - [ ] Notices the radio is gone in the first wave (or keeps looking for it)
 - [ ] Looks at the TV instead of the phone during a round (or waits for the TV to say something)
 - [ ] Talks across tables during a wave
-- [ ] Too slow: rounds time out, or you had to **Close the round** (how often in the first wave? ___ )
-- [ ] Reads the result on the TV before you press Next round, or looks to you to move on
-- [ ] In a Relaxed wave, still has time to read each result (or asks you to pause)
+- [ ] Too slow: rounds time out, or you had to press **Next** to close a round (how often in the first wave? ___ )
+- [ ] Reads the result on the TV before you press Next, or looks to you to move on
+- [ ] In an auto wave (Relaxed), still has time to read each result (or you pressed Pause to talk)
 - [ ] Finds the ⋯ menu when they need to leave (nobody should mistake anything for "continue" now)
 - [ ] Act III: taps MEASURE but expects to pick the pump, or doesn't know what the dial does
 - [ ] Thinks the crystal sends a message to the partner

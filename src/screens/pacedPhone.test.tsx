@@ -1,6 +1,6 @@
 // Facilitator-paced event mode on a phone (server-rendered, no browser): no full-width Leave button (it's in the "⋯"
 // menu, behind a confirmation), a status line where it was, whether the partner has chosen, CORA covering an away
-// partner, and the paused screen.
+// partner, and the countdown following the room's deadline (none in manual).
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
 import { S } from "../strings.ts";
@@ -21,15 +21,13 @@ describe("a phone, paced", () => {
     expect(markup).toContain(S.phone.status.watch);
   });
 
-  it("the status line by phase: none in the lull, a Guided or timed result, paused", () => {
+  it("the status line by phase: none in the lull, a manual or an auto result", () => {
     seat(room("strategy", false, 2));
     expect(html()).not.toContain("phone-status"); // the lull already says to talk
-    seat({ ...room("roundResult", false, 2), pace: "guided" });
-    expect(html()).toContain(S.phone.status.guidedResult);
-    seat({ ...room("roundResult", false, 2), pace: "relaxed" });
-    expect(html()).toContain(S.phone.status.timedResult);
-    seat({ ...room("batchDone", false, 2), paused: { left: null } });
-    expect(html()).toContain(S.phone.status.paused);
+    seat({ ...room("roundResult", false, 2), auto: false });
+    expect(html()).toContain(S.phone.status.manualResult);
+    seat({ ...room("roundResult", false, 2), auto: true });
+    expect(html()).toContain(S.phone.status.autoResult);
   });
 
   it("after setting the pump: whether the partner has chosen, never what", () => {
@@ -49,11 +47,16 @@ describe("a phone, paced", () => {
     expect(html()).toContain(esc(S.phone.partnerCovered("Bo", "B")));
   });
 
-  it("a Guided round has no countdown; a paused round says so", () => {
-    seat({ ...room("round", false, 2), paused: { left: 2000 } });
+  it("the countdown follows the room's deadline: none in manual, part-drained in auto", () => {
+    // The round started with a countdown (ms), but the room has since switched to manual: no countdown.
+    put({ round: { roundId: "1-1", act: 2, light: 0, ms: 3500, dialDeg: null, answered: null, measuring: false, partner: null, crystal: null } });
+    seat({ ...room("round", false, 2), deadline: null });
+    expect(html()).not.toContain("countdown");
+    // Auto at Relaxed with 9 s of 12 left: the bar starts 3 s in.
+    seat({ ...room("round", false, 2), auto: true, deadline: 9000, serverNow: 0 });
     put({ round: { roundId: "1-1", act: 2, light: 0, ms: null, dialDeg: null, answered: null, measuring: false, partner: null, crystal: null } });
     const markup = html();
-    expect(markup).not.toContain("countdown");
-    expect(markup).toContain(S.phone.status.paused);
+    expect(markup).toContain("countdown");
+    expect(markup).toContain("animation-duration:12000ms;animation-delay:-3000ms");
   });
 });

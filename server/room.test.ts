@@ -15,15 +15,15 @@ import {
   RELAXED_RESULT_MS,
   RELAXED_ROUND_MS,
 } from "../src/config.ts";
-import type { ClientMsg, Pace, RoomState, ServerMsg } from "../src/shared/protocol.ts";
+import type { ClientMsg, RoomState, Speed, ServerMsg } from "../src/shared/protocol.ts";
 import { OPTIMAL_TUNING, QUANTUM_LIMIT, quantumExpectedWinRate } from "../src/shared/chsh.ts";
 import { mulberry32 } from "../src/shared/rng.ts";
 import { BOT_NAME } from "./room.ts";
 import { createStation } from "./station.ts";
 
-/** A station with a fake clock and timers, recording every message per connection. Most tests run at the Brisk
- *  pace (the original timers); the pacing tests pass `null` for the default schedule (Guided first waves). */
-function setup(seed = 1, pace: Pace | null = "brisk") {
+/** A station with a fake clock and timers, recording every message per connection. Most tests run in auto at Brisk
+ *  (the original timers); the pacing tests pass `null` for the default (manual first waves, auto later). */
+function setup(seed = 1, speed: Speed | null = "brisk") {
   let now = 0;
   let timers: { at: number; fn: () => void; id: number }[] = [];
   let nextId = 0;
@@ -63,7 +63,7 @@ function setup(seed = 1, pace: Pace | null = "brisk") {
   const room = last("tv", "host:created")!.room;
   const join = (conn: string, name: string, table: "A" | "B") => send(conn, { type: "player:join", room, name, table });
   const host = (cmd: Extract<ClientMsg, { type: "host:command" }>["cmd"]) => send("tv", { type: "host:command", cmd });
-  if (pace) send("tv", { type: "host:command", cmd: "setPace", pace });
+  if (speed) send("tv", { type: "host:command", cmd: "setSpeed", speed });
 
   return { station, send, msgs, last, roomState, advance, clear, room, join, host };
 }
@@ -708,9 +708,9 @@ describe("the ending and the incident report (E3a)", () => {
 });
 
 describe("pacing (facilitator-paced event mode)", () => {
-  /** Ada and Bo, one pair; the default schedule unless `pace` is given. */
-  function pair(pace: Pace | null = null, seed = 51) {
-    const t = setup(seed, pace);
+  /** Ada and Bo, one pair; the default (manual first waves) unless `speed` is given (auto at that speed). */
+  function pair(speed: Speed | null = null, seed = 51) {
+    const t = setup(seed, speed);
     t.join("a1", "Ada", "A");
     t.join("b1", "Bo", "B");
     return t;
@@ -722,29 +722,38 @@ describe("pacing (facilitator-paced event mode)", () => {
   };
   const cmd = (t: ReturnType<typeof setup>, c: Extract<ClientMsg, { type: "host:command" }>) => t.send("tv", c);
 
-  it("Guided (each act's first wave by default): no countdown; the round waits for every player, the result for Next round", () => {
+  it("manual (each act's first wave by default): no countdown; the round waits for every player, the result for Next", () => {
     const t = pair();
     t.host("startBatch");
     let s = t.roomState("tv");
-    expect(s).toMatchObject({ phase: "round", pace: "guided", paceChoice: null, deadline: null, batchSize: MP_WAVE_SIZE });
+    expect(s).toMatchObject({ phase: "round", auto: false, autoChosen: false, deadline: null, batchSize: MP_WAVE_SIZE });
     expect(t.last("a1", "round:start")!.deadline).toBeNull();
     t.advance(10 * 60_000);
     expect(t.roomState("tv").phase).toBe("round"); // nobody has chosen; it waits
     answerBoth(t);
-    expect(t.roomState("tv").phase).toBe("roundResult");
+    expect(t.roomState("tv")).toMatchObject({ phase: "roundResult", deadline: null });
     t.advance(10 * 60_000);
     expect(t.roomState("tv").phase).toBe("roundResult"); // the result waits for the facilitator
-    t.host("nextRound");
+    t.host("next");
     s = t.roomState("tv");
     expect(s).toMatchObject({ phase: "round", roundNo: 2 });
   });
 
-  it("Close the round: anyone who hasn't chosen counts as too slow", () => {
+  it("Next in a round closes it: anyone who hasn't chosen counts as too slow", () => {
     const t = pair();
     t.host("startBatch");
     t.send("a1", { type: "player:valve", roundId: t.last("a1", "round:start")!.roundId, valve: 0 });
-    t.host("closeRound");
+    t.host("next");
     expect(t.last("a1", "round:result")).toMatchObject({ timedOut: true, a: 0, b: null, cause: "slow" });
+  });
+
+  it("Next works in auto too: it skips the rest of the result", () => {
+    const t = pair("brisk");
+    t.host("startBatch");
+    answerBoth(t);
+    expect(t.roomState("tv").phase).toBe("roundResult");
+    t.host("next");
+    expect(t.roomState("tv")).toMatchObject({ phase: "round", roundNo: 2 });
   });
 
   it("a repeated command from the same step only advances once", () => {
@@ -752,35 +761,103 @@ describe("pacing (facilitator-paced event mode)", () => {
     t.host("startBatch");
     answerBoth(t);
     const step = t.roomState("tv").step;
-    cmd(t, { type: "host:command", cmd: "nextRound", step });
-    cmd(t, { type: "host:command", cmd: "nextRound", step }); // a double press, or a second controller
+    cmd(t, { type: "host:command", cmd: "next", step });
+    cmd(t, { type: "host:command", cmd: "next", step }); // a double press, or a second controller
     expect(t.roomState("tv")).toMatchObject({ phase: "round", roundNo: 2 });
     expect(t.last("tv", "error")!.code).toBe("stale");
   });
 
-  it("later waves default to Relaxed; the facilitator's choice overrides from the next round", () => {
+  it("later waves default to auto at Relaxed, with a countdown on the round and the result", () => {
     const t = pair();
     t.host("startBatch");
     for (let r = 0; r < MP_WAVE_SIZE; r++) {
       answerBoth(t);
-      t.host("nextRound");
+      t.host("next");
     }
-    expect(t.roomState("tv")).toMatchObject({ phase: "batchDone", pace: "relaxed" });
+    expect(t.roomState("tv")).toMatchObject({ phase: "batchDone", auto: false });
     t.host("startBatch");
     let s = t.roomState("tv");
-    expect(s.pace).toBe("relaxed");
+    expect(s).toMatchObject({ auto: true, speed: "relaxed" });
     expect(s.deadline! - s.serverNow).toBe(RELAXED_ROUND_MS);
-    // Brisk from the next round: this one keeps its timer.
-    cmd(t, { type: "host:command", cmd: "setPace", pace: "brisk" });
-    expect(t.roomState("tv")).toMatchObject({ paceChoice: "brisk", pace: "relaxed" });
     t.advance(RELAXED_ROUND_MS);
-    expect(t.roomState("tv").phase).toBe("roundResult");
-    t.advance(RELAXED_RESULT_MS);
     s = t.roomState("tv");
-    expect(s).toMatchObject({ phase: "round", pace: "brisk" });
+    expect(s.phase).toBe("roundResult");
+    expect(s.deadline! - s.serverNow).toBe(RELAXED_RESULT_MS);
+    t.advance(RELAXED_RESULT_MS);
+    expect(t.roomState("tv")).toMatchObject({ phase: "round", roundNo: 2 });
+  });
+
+  it("auto on a waiting result takes effect at once: the result moves on after its time", () => {
+    const t = pair();
+    t.host("startBatch");
+    answerBoth(t);
+    t.advance(60_000); // the result has waited a minute in manual
+    t.host("auto");
+    const s = t.roomState("tv");
+    expect(s).toMatchObject({ auto: true, autoChosen: true, phase: "roundResult" });
+    expect(s.deadline! - s.serverNow).toBe(RELAXED_RESULT_MS);
+    t.advance(RELAXED_RESULT_MS);
+    expect(t.roomState("tv")).toMatchObject({ phase: "round", roundNo: 2 });
+    // The round that follows is timed too.
+    expect(t.last("a1", "round:start")!.deadline).not.toBeNull();
+  });
+
+  it("manual mid-round takes effect at once: the deadline goes, and players can still answer", () => {
+    const t = pair("brisk");
+    t.host("startBatch");
+    t.advance(1000);
+    t.host("manual");
+    expect(t.roomState("tv")).toMatchObject({ auto: false, deadline: null });
+    t.advance(60_000);
+    expect(t.roomState("tv").phase).toBe("round");
+    answerBoth(t);
+    expect(t.roomState("tv").phase).toBe("roundResult");
+    t.advance(60_000);
+    expect(t.roomState("tv").phase).toBe("roundResult");
+  });
+
+  it("a speed change mid-round takes effect at once (the time already spent counts, at least 2 s left)", () => {
+    const t = pair("relaxed");
+    t.host("startBatch");
+    t.advance(1000);
+    cmd(t, { type: "host:command", cmd: "setSpeed", speed: "brisk" });
+    let s = t.roomState("tv");
+    expect(s.speed).toBe("brisk");
+    expect(s.deadline! - s.serverNow).toBe(MP_ROUND_MS - 1000);
+    t.advance(MP_ROUND_MS - 1000);
+    expect(t.roomState("tv").phase).toBe("roundResult");
+    // Late in a Relaxed round, switching to Brisk still leaves 2 s.
+    t.host("next");
+    cmd(t, { type: "host:command", cmd: "setSpeed", speed: "relaxed" });
+    t.advance(10_000);
+    cmd(t, { type: "host:command", cmd: "setSpeed", speed: "brisk" });
+    s = t.roomState("tv");
+    expect(s.deadline! - s.serverNow).toBe(2000);
+  });
+
+  it("picking a speed in manual switches to auto, starting the full time now", () => {
+    const t = pair();
+    t.host("startBatch");
+    t.advance(30_000);
+    cmd(t, { type: "host:command", cmd: "setSpeed", speed: "brisk" });
+    const s = t.roomState("tv");
+    expect(s).toMatchObject({ auto: true, speed: "brisk" });
     expect(s.deadline! - s.serverNow).toBe(MP_ROUND_MS);
-    t.advance(MP_ROUND_MS + MP_RESULT_MS);
-    expect(t.roomState("tv")).toMatchObject({ phase: "round", roundNo: 3 });
+  });
+
+  it("the facilitator's choice holds into the next wave; Reset restores the default", () => {
+    const t = pair();
+    t.host("startBatch");
+    t.host("auto"); // chosen in the first wave
+    t.host("manual");
+    for (let r = 0; r < MP_WAVE_SIZE; r++) {
+      answerBoth(t);
+      t.host("next");
+    }
+    t.host("startBatch"); // a second wave would default to auto; the choice (manual) holds
+    expect(t.roomState("tv")).toMatchObject({ auto: false, autoChosen: true, deadline: null });
+    t.host("reset");
+    expect(t.roomState("tv")).toMatchObject({ auto: false, autoChosen: false, speed: "relaxed" });
   });
 
   it("Relaxed gives Act I 15 s to decide", () => {
@@ -789,28 +866,6 @@ describe("pacing (facilitator-paced event mode)", () => {
     t.host("startBatch");
     const s = t.roomState("tv");
     expect(s.deadline! - s.serverNow).toBe(RELAXED_ACT1_ROUND_MS);
-  });
-
-  it("pause freezes every countdown; resume restores the time left", () => {
-    const t = pair("brisk");
-    t.host("startBatch");
-    t.advance(1000);
-    t.host("pause");
-    let s = t.roomState("tv");
-    expect(s.paused).toEqual({ left: MP_ROUND_MS - 1000 });
-    expect(s.deadline).toBeNull();
-    t.send("a1", { type: "player:valve", roundId: t.last("a1", "round:start")!.roundId, valve: 0 });
-    expect(t.roomState("tv").pairs[0]!.answered.a).toBe(false); // nobody plays while paused
-    t.advance(60_000);
-    expect(t.roomState("tv").phase).toBe("round");
-    t.host("resume");
-    s = t.roomState("tv");
-    expect(s.paused).toBeNull();
-    expect(s.deadline! - s.serverNow).toBe(MP_ROUND_MS - 1000);
-    t.advance(MP_ROUND_MS - 1001);
-    expect(t.roomState("tv").phase).toBe("round");
-    t.advance(1);
-    expect(t.roomState("tv").phase).toBe("roundResult");
   });
 
   it("the lull never ends by itself; the TV gets the time it began", () => {

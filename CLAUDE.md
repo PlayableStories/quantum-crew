@@ -100,8 +100,8 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   1 Act II batch before the engineering report; the meter spans 50–100%; the 75 line appears from the ceiling reveal
   and 85.4 in Act III; debrief unlocks at a ≥ 80% 1,000-round test or after 2 Act III batches; hint after 1 Act III
   batch under 80% (both lowered 2026-10-06 at the user's request). No framer-motion yet (CSS animations suffice); sounds and mute toggle are M5.
-  Event: facilitator-paced (see "Pacing" below): Guided rounds have no timer; Relaxed uses `RELAXED_*`; Brisk the
-  original `MP_ACT1_ROUND_MS` 8 s / `MP_ROUND_MS` 3.5 s / `MP_ACT3_ROUND_MS` 7 s. Lulls are untimed (the facilitator
+  Event: facilitator-paced (see "Pacing" below): manual rounds have no timer; auto at Relaxed uses `RELAXED_*`, at
+  Brisk the original `MP_ACT1_ROUND_MS` 8 s / `MP_ROUND_MS` 3.5 s / `MP_ACT3_ROUND_MS` 7 s. Lulls are untimed (the facilitator
   starts the wave); waves are `MP_WAVE_SIZE` 8 rounds; a round resolves early once every seat answered; joiners
   mid-wave are seated after it; max 4 per table; empty or away seat = CORA. The join address follows E0's order and Phase F's
   ranking. Act III: bots measure at round start (always first); tunings snap to the 8 dial stops; the tool unlocks only
@@ -215,29 +215,35 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - **Next:** E3b, the facilitator's remote.
 - **Pacing (2026-11-05, after the first real playtest):** players read the full-width Leave as "continue", and
   event mode moved too fast to read results or talk.
-  - **Room:** `Pace` = guided / relaxed / brisk; `paceChoice` (null = default: Guided for each act's first wave, the
-    night shift included, Relaxed after) and `pace` (the current or next round's). Times live in `src/shared/pace.ts`
-    (`decisionMs`, `resultMs`, used by the room and the TV). Guided: no deadline (`round:start.deadline` null); the
-    round closes when every seat answered (Act I after `ACT1_SETTLE_MS`) or on `closeRound` (missing = too slow); the
-    result waits for `nextRound`. One pausable timer helper (`later` / `cancel` / `pause` / `resume`) runs the round
-    deadline, results, Act I's settle, the storm's static and CORA's moves; `paused.left` is the countdown's rest.
-    Lulls are untimed (`lullSince`; `STRATEGY_MS` is unused). Waves are `MP_WAVE_SIZE` 8.
+  - **Room (v2, 2026-11-07, after a second playtest: a pace change wasn't immediate and the row was too big):**
+    `auto` (Play) / manual (Pause), `speed` = relaxed / brisk (`Speed`), `autoChosen`. Default: manual for each act's
+    first wave (the night shift included), auto after; once the facilitator presses Play / Pause / a speed, the
+    choice holds until Reset. Every change is immediate: `startPhaseTimer(fresh)` / `stopPhaseTimer()` (re)start or
+    cancel the running round's or result's timer; a speed change keeps the time spent (`MIN_LEFT_MS` 2 s left).
+    Manual: no deadline; a round closes when every seat answered (Act I after `ACT1_SETTLE_MS`) or on `next`; a
+    result waits for `next`. Commands `auto`, `manual`, `next` (closes a round / moves past a result, both modes),
+    `setSpeed` (also plays). `deadline` is set for an auto result too. Times live in `src/shared/pace.ts`
+    (`decisionMs`, `resultMs`, `secs`). The old freeze-everything pause is gone (players answer in manual). Lulls are
+    untimed (`lullSince`; `STRATEGY_MS` is unused). Waves are `MP_WAVE_SIZE` 8.
   - **Stale commands:** `RoomState.step` (phase:act:wave:round:report step); a `host:command` carrying another step
     gets `stale` and is ignored. The TV's `hostStore.command` always sends it (ready for E3b's remote).
   - **CORA:** acts after `CORA_DELAY_MS` (from the room RNG) in every pace; in Act I her reading comes at once and her
     pump after the delay. She also covers a seated player who's away (`player:leave` or a dropped connection) until
     they rejoin with the same name and table; a rejoin before she moved takes that round back. Covered rounds don't
     count in the away player's followed / marginal rows (`PairRound.covered`).
-  - **TV:** the host row shows only `nextSteps(state)`, plus Pause / Resume, the pace (radio group; "Pace (default)")
-    and Reset; Space / → = `keyStep`, P = pause. Guided rounds show no countdown and "Still choosing: …" on pair cards;
-    the lull shows "Talking for m:ss"; paused shows `S.tv.paused`. An away seat reads "CORA for …". Report step 3 has
+  - **TV:** the host row shows only `nextSteps(state)` (one Next in a round or result), plus `AutoToggle` (▶ Play /
+    ⏸ with the seconds left, and a ▾ speed menu, closed by default, with each speed's seconds) and Reset; Space / → =
+    `keyStep`, P = play / pause. Countdowns (TV and phones) follow the room's `deadline` (`Countdown left`), never a
+    computed pace. Manual shows `S.tv.auto.manualNote`; pair cards show "Still choosing: …"; the lull shows "Talking
+    for m:ss". An away seat reads "CORA for …". Report step 3 has
     no per-seat table any more (it didn't fit); the crew's real line stays.
   - **Phones:** no full-width Leave: `components/PhoneMenu.tsx` ("⋯" beside mute, one Sheet that moves from the menu
     to the confirmation, Stay primary). A status line (`S.phone.status.*`) where Leave was; after setting a pump,
-    `partnerChosen` / `waitingFor`; an away partner reads `partnerCovered`. Guided rounds have no countdown.
-  - **Scripts:** `pnpm session` plays Guided first waves (Close the round once, a double Next round that advances
-    once) and a Relaxed later wave; `pnpm smoke` sets Brisk. `pnpm shots --event` presses Next round on Guided
-    results and captures the phone menu, the leave dialog and a paused room.
+    `partnerChosen` / `waitingFor`; an away partner reads `partnerCovered`. Manual rounds have no countdown.
+  - **Scripts:** `pnpm session` plays manual first waves (Next closes a round once, a double Next advances once), an
+    auto later wave, and (after the reset) Play / Pause on a waiting result; `pnpm smoke` sets Brisk. `pnpm shots
+    --event` presses Next round on manual results and captures the phone menu, the leave dialog, the speed menu and
+    the auto countdown.
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.

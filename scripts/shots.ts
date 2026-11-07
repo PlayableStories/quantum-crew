@@ -550,8 +550,8 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
       () => true,
       () => (console.warn(`  skipped: ${what} (${tvSize.name})`), false),
     );
-  // Guided results (since pacing) wait for the facilitator: press Next round when the TV offers it.
-  const nextRoundBtn = tv.page.locator(".tv__controls").getByRole("button", { name: S.tv.cmd.nextRound ?? "Next round", exact: true });
+  // Manual results (each act's first wave) wait for the facilitator: press Next round when the TV offers it.
+  const nextRoundBtn = tv.page.locator(".tv__controls").getByRole("button", { name: S.tv.nextRound, exact: true });
   const moveOn = async () => {
     if (await nextRoundBtn.count()) await nextRoundBtn.click({ timeout: 2000 }).catch(() => {});
   };
@@ -760,12 +760,20 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
         await shot(`${prefix}-round`, all(control));
         gotRound = (await Promise.all([a, b].map((v) => v.page.locator(control).first().isVisible()))).every(Boolean);
         if (!gotRound) n--; // moved on mid-shot: take it again next round, over the same files
-        // Pause (since pacing): the TV and both phones while paused, then Resume.
-        const pauseBtn = tv.page.locator(".tv__controls").getByRole("button", { name: S.tv.cmd.pause ?? "Pause", exact: true });
-        if (gotRound && prefix === "act2" && (await pauseBtn.count())) {
-          await pauseBtn.click();
-          if (await ready("paused", tv.page.locator(".tv__paused").waitFor({ timeout: 5000 }))) await shot("paused", all());
-          await tv.page.locator(".tv__controls").getByRole("button", { name: S.tv.cmd.resume, exact: true }).click().catch(() => {});
+        // The speed menu (▾ beside Play), open over the host row, then closed with Escape.
+        const moreBtn = tv.page.locator(".tv__auto-more");
+        if (gotRound && prefix === "act2" && (await moreBtn.count())) {
+          await moreBtn.click();
+          if (await ready("speed menu", tv.page.locator(".tv__auto-menu").waitFor({ timeout: 5000 }))) await shot("speed-menu", [[tv, "", null]]);
+          await tv.page.keyboard.press("Escape");
+          // Play: auto at once, the button counting down (and the TV's bar); then Pause, back to manual.
+          const toggle = tv.page.locator(".tv__auto-toggle");
+          await toggle.click();
+          if (await ready("auto countdown", tv.page.locator(".tv__banner .countdown__bar").waitFor({ timeout: 5000 }))) {
+            await tv.page.waitForTimeout(1200);
+            await shot("auto-countdown", [[tv, "", null]]);
+          }
+          await toggle.click().catch(() => {});
         }
       }
       await a.page.locator(control).first().click();

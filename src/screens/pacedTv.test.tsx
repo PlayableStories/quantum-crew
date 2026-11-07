@@ -1,6 +1,6 @@
-// Facilitator-paced event mode on the TV (server-rendered, no browser): the host row shows only what applies now,
-// plus Pause, the pace and Reset; a Guided round has no countdown and shows who is still choosing; the lull shows how
-// long the room has been talking; a paused room says so.
+// Facilitator-paced event mode on the TV (server-rendered, no browser): the host row shows only what applies now
+// (one Next in a round or on a result), plus Play / Pause with its seconds, a closed speed menu (▾) and Reset; manual
+// has no countdown and shows who is still choosing; the countdown follows the room's deadline; the lull's clock.
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { RoomState } from "../shared/protocol.ts";
@@ -19,21 +19,33 @@ function tv(state: RoomState) {
 }
 
 describe("the TV's host row (paced)", () => {
-  it("a Guided round: Close the round, no countdown, and who is still choosing", () => {
+  it("a manual round: one Next (Close the round), Play, no countdown, and who is still choosing", () => {
     const s = room("round", false, 2);
     s.pairs[0]!.answered = { a: true, b: false };
-    const markup = tv({ ...s, pace: "guided" });
-    expect(markup).toContain(`>${S.tv.cmd.closeRound}</button>`);
-    expect(markup).not.toContain(`>${S.tv.cmd.nextRound}</button>`);
-    expect(markup).not.toContain("countdown");
+    const markup = tv(s);
+    expect(markup).toContain(`>${S.tv.closeRound}</button>`);
+    expect(markup).not.toContain(`>${S.tv.nextRound}</button>`);
+    expect(markup).toContain(`>${S.tv.auto.play}</button>`);
+    expect(markup).toContain(S.tv.auto.manualNote);
+    expect(markup).not.toContain("countdown__bar");
     expect(markup).toContain(S.tv.stillChoosing("Bo"));
     expect(markup).toContain(S.tv.keys);
   });
 
-  it("a Guided result waits for Next round; a Relaxed one moves on by itself", () => {
+  it("a result offers Next round in either mode; auto shows Pause and drains the result's countdown", () => {
     const s = room("roundResult", false, 2);
-    expect(tv({ ...s, pace: "guided" })).toContain(`>${S.tv.cmd.nextRound}</button>`);
-    expect(tv({ ...s, pace: "relaxed" })).not.toContain(`>${S.tv.cmd.nextRound}</button>`);
+    expect(tv(s)).toContain(`>${S.tv.nextRound}</button>`);
+    const auto = tv({ ...s, auto: true, deadline: 4000, serverNow: 0 });
+    expect(auto).toContain(`>${S.tv.nextRound}</button>`);
+    expect(auto).toContain(`aria-label="${S.tv.auto.pauseLabel}"`);
+    expect(auto).toContain("animation-duration:8000ms;animation-delay:-4000ms"); // Relaxed: 8 s result, 4 s left
+  });
+
+  it("the speed menu is closed by default (a small ▾ beside Play)", () => {
+    const markup = tv(room("round", false, 2));
+    expect(markup).toContain(`aria-label="${S.tv.auto.menu}"`);
+    expect(markup).toContain('aria-expanded="false"');
+    expect(markup).not.toContain("tv__auto-menu");
   });
 
   it("the lull: Start the wave and the talking clock; no countdown", () => {
@@ -42,15 +54,5 @@ describe("the TV's host row (paced)", () => {
     expect(markup).toContain(`>${S.tv.cmd.startBatch}</button>`);
     expect(markup).toContain(S.tv.talking("1:23"));
     expect(markup).not.toContain(`>${S.tv.cmd.revealCeiling}</button>`); // not this step's
-  });
-
-  it("paused: the Paused line and Resume; the pace shows its default until chosen", () => {
-    const s = { ...room("round", false, 2), paused: { left: 2000 } };
-    const markup = tv(s);
-    expect(markup).toContain(S.tv.paused);
-    expect(markup).toContain(`>${S.tv.cmd.resume}</button>`);
-    expect(markup).not.toContain(`>${S.tv.cmd.closeRound}</button>`); // nothing moves on while paused
-    expect(markup).toContain(S.tv.pace.byDefault);
-    expect(tv({ ...s, paceChoice: "relaxed", pace: "relaxed" })).toMatch(/aria-checked="true"[^>]*>Relaxed</);
   });
 });
