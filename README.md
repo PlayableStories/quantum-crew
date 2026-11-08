@@ -271,23 +271,22 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    25%), every pairing the crew played marked as tried and the rest run by engineering. No plan beats 75%.
 10. **Unlock tool**: a supply pod from engineering brings two linked crystals for every pair, one at each table;
    engineering's note says they carry no messages, so the storm can't jam them, and *"The crystals don't replace your
-   plan. They change what a plan can say."* **Clue 1** comes with it: the TV shows **the crystals' rule** in three
-   lines (since E3d): each crystal alone says CLOCKWISE or ANTICLOCKWISE at random, like a coin flip, whatever its
+   plan. They change what a plan can say."* The TV shows **the crystals' rule** in three lines (basic information,
+   not a clue; since E3e): each crystal alone says CLOCKWISE or ANTICLOCKWISE at random, like a coin flip, whatever its
    setting; two linked crystals land the same way more often the closer their settings (the gap table: 0° 100%,
    22.5° 85%, 45° 50%, 67.5° 15%, 90° 0%, from `matchProbability`); and followed crystals make the pumps match
    exactly when the crystals agree, so keep settings close in the three cases that need matching pumps and far apart
    when both sensors are HOT. The TV shows the rule on the tool reveal and in every Act III lull; phones have it and
-   the clues in sheets (**Crystal rule**, **Clues (n)**) from here on.
+   the clues in sheets (**Crystal rule**, **Clues (n)**, counting 0–2) from here on.
 11. **The Act III lull: a crystal plan.** Each player's card has the same shape as an Act II plan: *"When your sensor
    reads COOL or HOT, the station measures your crystal at:"* COOL [0° ▾] and HOT [0° ▾], each picked from the 8
    settings (0° to 157.5°). The partner's plan shows live (CORA's is read-only: she has set her own). The card's first
    line says *"Like an Act II plan, but for each reading you choose a crystal setting, not a direction."* A read-only
    fan shows the pair's four settings and the gap in each case (folded modulo
-   180°, so 0°–90°: 0° and 157.5° are 22.5° apart). A starting line comes from the maths: two players at 0° match in
-   every case, *"just like your best Act II plan: 75%"*; with CORA, her settings and the pair's rate with your plan
-   (67.7% at 0°), and an invitation to beat it. From clue 2 the fan shows each case's chance beside its gap
-   ("gap 22.5° · 85% same"), and the starting line gives way to the pair's hint. The TV shows the situation, what players can do and the question
-   (Act III's explainer), the rule's table and the clues so far.
+   180°, so 0°–90°: 0° and 157.5° are 22.5° apart). The first Act III lull opens with **clue 1** (below): each phone shows the
+   pair's live rate and hint (*"Your plans hold 75%. Your weakest case: …"*; with CORA 67.7% at 0°), and the fan shows
+   each case's chance beside its gap ("gap 22.5° · 85% same"). The TV shows the situation, what players can do and
+   the question (Act III's explainer), the rule and the clues so far.
 12. **Act III rounds.** There is no MEASURE: at round start the room measures both crystals, each at its player's
    planned setting for their sensor reading (Table A's is a fair coin, Table B's matches it with cos² of the gap),
    and each phone gets only its own result. The phone shows the chain *"Your sensor: HOT → your plan: 45° → the
@@ -299,18 +298,21 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    the true rate disagree about 80%, the wave's score, plus the crew's followed count and its crystal plans'
    average. **Saved or not:** once a wave ends with that average at 80% or more, the station counts as saved (it
    stays saved).
-14. **The clue ladder** (replaces the old hint): **Next clue** on the TV or the remote releases one clue at a time,
-   never lowered except by Reset, and the room keeps it (a reconnecting TV keeps it too):
-   1. with the tool: the crystals' rule (above);
-   2. after a wave, **a hint** for the pairs not yet at 80% (the button says how many: *"Next clue: a hint (2 pairs
-      not yet)"*): their phones and their card on the TV show their weakest case, its gap, its chance and which way
-      to move (*"… needs your settings close: bring them closer"* for a match case, *"… far apart: move them further
-      apart"* for both HOT); pairs at 80% or more see **Found it: 80%+**;
-   3. the nudge: *"Going around your four settings, the differ gap can never be bigger than the three match gaps
-      added together. You want the match gaps small and the differ gap near 90°. How would you spread them?"* (true
-      for every plan: a folded gap obeys the triangle inequality; a test checks all 4,096 combinations);
-   4. the answer: spread the four settings 22.5° apart (A: COOL 0°, HOT 45°; B: COOL 22.5°, HOT 157.5°), three
-      match gaps of 22.5° (85% the same) and a differ gap of 67.5° (85% different): 85.4%.
+14. **The clue ladder** (two steps since E3e; it only rises, until Reset, and the room keeps it):
+   1. **The hint and the nudge**, automatically when the first Act III lull opens (or with a wave started straight
+      from the tool). Each pair's hint is computed from its **current** crystal plans and follows every setting
+      change, live: at the start (0° everywhere) every pair's weakest case is both HOT, gap 0°, differ 0% of the time:
+      move those settings further apart. Phones show their own pair's hint (with CORA as partner, it only asks the
+      player to move their own setting); the TV lists every pair's; pairs at 80%+ see **Found it: 80%+**, live. The
+      nudge (*"the differ gap can never be bigger than the three match gaps added together…"*, true for every plan;
+      a test checks all 4,096 combinations) is on the TV and in the phones' Clues sheet. After a wave, a pair below 80%
+      gets its weakest case outlined on the TV with which way to move.
+   2. **The answer**, released by the facilitator with **Next clue** (TV or remote) once an Act III wave has been
+      played: *"Next clue: the answer (2 pairs not yet at 80%)"*. Spread the four settings 22.5° apart (A: COOL 0°,
+      HOT 45°; B: COOL 22.5°, HOT 157.5°): three match gaps of 22.5° (85% the same), a differ gap of 67.5° (85%
+      different), 85.4%. The TV shows it in one line on the wave done and in full with its fan in the lull; each phone
+      shows its own row, and pairs still below 80% get **Use these settings** (each partner applies their own row;
+      with CORA, the player's row completes her fixed plan).
 15. **The storm passes** (after at least one Act III wave): the TV clears the storm from the station, calm if the
    crew saved it and damaged if not, with the station log's line. The radio comes back: each phone prompts the
    player to tell their partner what they were thinking during the storm, and CORA's partners hear her own saved
@@ -446,7 +448,7 @@ pnpm session   # a whole session in-process with a fake clock (see below)
 
 **Debug jump (testing):** on the TV (`/screen`), **D** opens a small panel with **Jump to Act II (lull)** and **Jump
 to Act III (tool reveal)** (the room's `debugAct2` / `debugAct3` host commands; TV only, never from the remote, not
-during a wave). Act III arrives as Reveal ceiling + Unlock tool leave it (clue 1). It works in every build.
+during a wave). Act III arrives as Reveal ceiling + Unlock tool leave it (no clue yet). It works in every build.
 **F** on the TV toggles full screen (the browser's own, so no frame shows; F or Esc leaves it).
 
 `pnpm session` (`scripts/session.ts`) runs the station in-process with a fake clock and a seeded RNG, so it takes
@@ -454,9 +456,10 @@ about a second and is the same every run. It plays a whole session: 4 pairs join
 the night shift (the briefing, then Act I played by the rule over the radio, with one player changing their mind and
 every round held) and the storm; a player drops out mid-wave and rejoins their seat; the TV disconnects and resumes; one Act II wave; the engineering
 report; the tool (clue 1); Act III, where the room measures the crystals (no phone ever sends `player:measure`): one
-wave with one pair at the clue 4 settings and three at the starting plans (not saved), clue 2 from the remote (the
-button counts 3 pairs not yet; each phone sees its pair's hint or "found it"), clues 3–4, and a wave at the clue 4
-settings (85.4%, saved); the debrief. CI runs it after `pnpm smoke`.
+lull that opens with clue 1 (every pair's live hint is both HOT at 0°; Ada's pair moves to the answer and sees "found
+it" before any wave; the answer is refused before a wave), wave 1 (77.6%, not saved), the answer from the remote (the
+button counts 3 pairs not yet; a double press moves once), every player uses their own row, and wave 2 (85.4%,
+saved); the debrief. CI runs it after `pnpm smoke`.
 
 ### Screenshots (`pnpm shots`)
 `pnpm shots` plays the whole solo flow like a player in headless Chromium and saves a screenshot of every screen:

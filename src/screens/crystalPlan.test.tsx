@@ -5,10 +5,10 @@
 // MEASURE, and "Plan locked" on the plans in Act II and Act III rounds.
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
-import { CrystalFan, CrystalPlanCard, CrystalRuleTable, ClueList, answerText, hintText, rateText } from "../components/CrystalPlan.tsx";
+import { AnswerRow, CrystalFan, CrystalPlanCard, CrystalRuleTable, ClueList, answerText, hintText, rateText } from "../components/CrystalPlan.tsx";
 import { DEFAULT_TUNING } from "../config.ts";
-import { OPTIMAL_TUNING, matchProbability } from "../shared/chsh.ts";
-import { CRYSTAL_RULE, coraPlan, pairRateFor } from "../shared/crystalPlan.ts";
+import { OPTIMAL_TUNING, QUANTUM_LIMIT, matchProbability } from "../shared/chsh.ts";
+import { CRYSTAL_RULE, answerPlanFor, coraPlan, pairRateFor, planRate } from "../shared/crystalPlan.ts";
 import type { RoomState } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 import { put, room, seat } from "./eventFixture.ts";
@@ -45,34 +45,38 @@ describe("the crystal plan card", () => {
     expect(markup).toContain("157.5°");
   });
 
-  it("the first lull: the like line, my card, the partner's live, the 75% starting line and the fan", () => {
+  it("the first lull (clue 1): the like line, my card, the partner's live, the live hint with the pair's rate, the fan", () => {
     seat(act3("strategy"));
     const markup = html();
     expect(markup).toContain(esc(S.event.crystalPlan.like));
-    expect(markup).not.toContain("plan-compare");
     expect(markup.match(/<select/g)).toHaveLength(2);
     expect(markup).toContain(esc(S.event.crystalPlan.partnerHead("Bo")));
-    expect(markup).toContain(esc(S.event.crystalPlan.startHumans("75%")));
+    expect(markup).toContain(esc(S.event.clues.liveRate("75%")));
+    expect(markup).toContain(esc(S.event.clues.hint("A HOT · B HOT", "0°", "0%", "differ")));
     expect(markup).toContain('class="fan"');
     expect(markup).toContain(`>${S.event.clues.chip(1)}</button>`);
   });
 
-  it("the starting line goes once a plan moves", () => {
+  it("the hint is live: it follows the partner's plan with no wave played", () => {
     const s = act3("strategy");
-    s.stability.act3 = { rounds: 8, wins: 6, timeouts: 0 };
-    s.pairs[0] = { ...s.pairs[0]!, dials: { a: DEFAULT_TUNING, b: { greenDeg: 22.5, redDeg: 0 } } };
+    s.pairs[0] = { ...s.pairs[0]!, dials: { a: DEFAULT_TUNING, b: { greenDeg: 0, redDeg: 90 } } };
     seat(s);
     const markup = html();
-    expect(markup).not.toContain(esc(S.event.crystalPlan.startHumans("75%")));
+    expect(s.stability.act3.rounds).toBe(0);
+    expect(markup).not.toContain(esc(S.event.clues.hint("A HOT · B HOT", "0°", "0%", "differ")));
+    expect(markup).toContain("Your weakest case: A COOL · B HOT");
   });
 
-  it("with CORA: her settings and the pair's computed rate with my plan, and her card says she set her own", () => {
+  it("with CORA: the pair's computed rate, and the hint moves only the player's own setting", () => {
     seat(act3("strategy", true));
     const markup = html();
     const rate = rateText(pairRateFor("A", DEFAULT_TUNING, coraPlan("B")));
     expect(rate).toBe("67.7%");
-    expect(markup).toContain(esc(S.event.crystalPlan.startCora("22.5°", "157.5°", rate)));
+    expect(markup).toContain(esc(S.event.clues.liveRate(rate)));
     expect(markup).toContain(esc(S.event.crystalPlan.coraSet));
+    expect(markup).toMatch(/CORA&#x27;s plan is fixed: (bring|move) your (COOL|HOT) setting/);
+    expect(markup).not.toContain("bring them closer");
+    expect(markup).not.toContain("move them further apart");
   });
 });
 
@@ -84,7 +88,7 @@ describe("the fan, the rule and the clues", () => {
     expect(markup).not.toMatch(/<(input|select|button)/);
   });
 
-  it("before clue 2 the fan shows gaps and same / differ only; from clue 2, each case's chance too", () => {
+  it("the fan shows gaps and same / differ only without chances; with them (from clue 1), each case's chance too", () => {
     const plans = { a: OPTIMAL_TUNING.A, b: OPTIMAL_TUNING.B };
     const before = renderToString(<CrystalFan {...plans} />);
     expect(before).not.toMatch(/\d%/);
@@ -113,57 +117,85 @@ describe("the fan, the rule and the clues", () => {
     expect(S.remote.talk.clue.toString()).not.toMatch(/\d+(\.\d+)?%/);
   });
 
-  it("clues stack up; clue 1 is the rule; clue 2 the pair's hint; clue 4 gives the settings and 85.4%", () => {
-    const one = renderToString(<ClueList clue={1} pairs={[{ id: 1, plans: null }]} />);
-    expect(one).toContain(esc(S.event.crystalRule.coin));
+  it("clue 1 = the hint and the nudge; clue 2 = the answer (computed), its fan and the player's own row", () => {
+    const plans = { a: DEFAULT_TUNING, b: DEFAULT_TUNING };
+    const one = renderToString(<ClueList clue={1} pairs={[{ id: 1, plans }]} table="A" onUse={() => {}} />);
+    expect(one).toContain(esc(S.event.clues.hint("A HOT · B HOT", "0°", "0%", "differ")));
+    expect(one).toContain(esc(S.event.clues.nudge));
     expect(one).not.toContain(S.event.clues.titles[1]!);
-    const four = renderToString(<ClueList clue={4} pairs={[{ id: 1, plans: { a: DEFAULT_TUNING, b: DEFAULT_TUNING } }]} />);
-    expect(four).toContain(esc(S.event.clues.hint("A HOT · B HOT", "0°", "0%", "differ")));
-    expect(four).toContain(esc(S.event.clues.nudge));
-    expect(answerText()).toContain(S.event.clues.sameSetting("157.5°", "-22.5°"));
+    const two = renderToString(<ClueList clue={2} pairs={[{ id: 1, plans }]} table="B" onUse={() => {}} />);
+    expect(two).toContain(esc(answerText()));
+    expect(two).toContain(esc(S.event.clues.yourRow("22.5°", "157.5°")));
+    expect(two).toContain(`>${S.event.clues.useThese}</button>`);
+    expect(two).toContain('class="fan"');
     expect(answerText()).toContain("22.5°");
     expect(answerText()).toContain("67.5°");
     expect(answerText()).toContain("85.4%");
-    expect(answerText()).toContain(`COOL ${OPTIMAL_TUNING.B.greenDeg}°, HOT ${OPTIMAL_TUNING.B.redDeg}°`);
+    expect(answerText()).toContain(S.event.clues.sameSetting("157.5°", "-22.5°"));
   });
 });
 
-describe("clue 2 on a phone: a hint for pairs not yet at 80%", () => {
-  const withPlans = (clue: number, plans: { a: typeof DEFAULT_TUNING; b: typeof DEFAULT_TUNING }) => {
+/** The button inside a rendered element tree (props-driven; no DOM needed). */
+function findButton(node: unknown): { onClick: () => void } | null {
+  if (!node || typeof node !== "object") return null;
+  const el = node as { type?: unknown; props?: { onClick?: () => void; children?: unknown } };
+  if (el.type === "button" && el.props?.onClick) return { onClick: el.props.onClick };
+  const kids = el.props?.children;
+  for (const k of Array.isArray(kids) ? kids : [kids]) {
+    const b = findButton(k);
+    if (b) return b;
+  }
+  return null;
+}
+
+describe("clue 1 and 2 on a phone", () => {
+  const withPlans = (clue: number, dials: { a: typeof DEFAULT_TUNING; b: typeof DEFAULT_TUNING }) => {
     const s = act3("strategy");
     s.clue = clue;
-    s.stability.act3 = { rounds: 8, wins: 6, timeouts: 0 };
-    s.pairs[0] = { ...s.pairs[0]!, lockedDials: plans, dials: plans };
+    s.pairs[0] = { ...s.pairs[0]!, dials };
     return s;
   };
 
-  it("a pair below 80% sees its weakest case (both HOT at 0°: further apart); the starting line gives way", () => {
-    seat(withPlans(2, { a: DEFAULT_TUNING, b: DEFAULT_TUNING }));
-    const markup = html();
-    expect(markup).toContain(esc(S.event.clues.hint("A HOT · B HOT", "0°", "0%", "differ")));
-    expect(markup).not.toContain(esc(S.event.crystalPlan.startHumans("75%")));
-    expect(markup).toContain(`· ${S.event.fan.chance("100%", "same")}`);
-  });
-
-  it("a match case as the weakest: bring them closer", () => {
-    // A COOL 0°, HOT 90°; B COOL 45°, HOT 45°: the weakest is a match case.
-    const plans = { a: { greenDeg: 0, redDeg: 90 }, b: { greenDeg: 45, redDeg: 135 } };
-    const text = hintText(plans);
-    expect(text).toContain("bring them closer");
-  });
-
-  it("a pair at 80%+ sees Found it, no hint", () => {
+  it("a pair at 80%+ sees Found it live in the lull, no hint and no button", () => {
+    put({ tuning: OPTIMAL_TUNING.A });
     seat(withPlans(2, { a: OPTIMAL_TUNING.A, b: OPTIMAL_TUNING.B }));
     const markup = html();
     expect(markup).toContain(S.event.clues.foundIt("80%"));
     expect(markup).not.toContain("Your weakest case");
+    expect(markup).not.toContain(`>${S.event.clues.useThese}</button>`);
   });
 
-  it("before clue 2: no hint, and the fan shows no chances", () => {
-    seat(withPlans(1, { a: DEFAULT_TUNING, b: DEFAULT_TUNING }));
+  it("clue 0: no hint, no Clues chip, and the fan shows no chances", () => {
+    seat(withPlans(0, { a: DEFAULT_TUNING, b: DEFAULT_TUNING }));
     const markup = html();
     expect(markup).not.toContain("Your weakest case");
+    expect(markup).not.toContain(S.event.clues.chip(0));
     expect(markup).not.toContain(`· ${S.event.fan.chance("100%", "same")}`);
+  });
+
+  it("from clue 1 the fan shows each case's chance", () => {
+    seat(withPlans(1, { a: DEFAULT_TUNING, b: DEFAULT_TUNING }));
+    expect(html()).toContain(`· ${S.event.fan.chance("100%", "same")}`);
+  });
+
+  it("clue 2 below 80%: the own row and Use these settings in the lull; the chip counts 2", () => {
+    seat(withPlans(2, { a: DEFAULT_TUNING, b: DEFAULT_TUNING }));
+    const markup = html();
+    expect(markup).toContain(esc(S.event.clues.yourRow("0°", "45°")));
+    expect(markup).toContain(`>${S.event.clues.useThese}</button>`);
+    expect(markup).toContain(`>${S.event.clues.chip(2)}</button>`);
+  });
+
+  it("Use these settings sets exactly the player's own row; with both rows the pair holds 85.4%", () => {
+    const used: Record<string, typeof DEFAULT_TUNING> = {};
+    for (const table of ["A", "B"] as const) {
+      const btn = findButton(AnswerRow({ table, plans: { a: DEFAULT_TUNING, b: DEFAULT_TUNING }, onUse: (t) => (used[table] = t) }));
+      btn!.onClick();
+    }
+    expect(used).toEqual({ A: answerPlanFor("A"), B: answerPlanFor("B") });
+    expect(planRate(used.A!, used.B!)).toBeCloseTo(QUANTUM_LIMIT, 12);
+    // With CORA at B, A's row completes her fixed plan.
+    expect(planRate(used.A!, coraPlan("B"))).toBeCloseTo(QUANTUM_LIMIT, 12);
   });
 });
 

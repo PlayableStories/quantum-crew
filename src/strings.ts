@@ -530,12 +530,6 @@ export const S = {
       line: (cool: string, hot: string) => `COOL ${cool} · HOT ${hot}`,
       coraSet: `${CREW_NAME} has set her own plan.`,
       seeCard: "See both",
-      /** Two humans, both still at the start (0°): the starting line. */
-      startHumans: (pct: string) =>
-        `Both your plans start at 0°. Measured at the same setting, the crystals always agree, so this plan matches in every case, just like your best Act II plan: ${pct}.`,
-      /** With CORA: her settings, and what the pair holds with the player's plan as it is now. */
-      startCora: (cool: string, hot: string, pct: string) =>
-        `${CREW_NAME} measures at COOL ${cool}, HOT ${hot}. With your plan as it is, your pair holds ${pct}. Can you do better?`,
       body: "Agree on your crystal plans. When the wave hits, the radio goes dark.",
       /** The first time: one line at the top of the card (it replaced E3c's comparison table). */
       like: "Like an Act II plan, but for each reading you choose a crystal setting, not a direction.",
@@ -570,12 +564,20 @@ export const S = {
     clues: {
       chip: (n: number) => `Clues (${n})`,
       head: "Clues",
-      titles: ["The crystals' rule", "A hint", "A nudge", "The answer"],
-      /** Clue 2, for one pair below 80%: its weakest case, its gap and chance, and which way to move. */
+      /** Clue 1 (from the first Act III lull): each pair's live hint and the nudge. Clue 2 (the facilitator): the answer. */
+      titles: ["A hint", "The answer"],
+      /** Before the hint: what the pair's plans hold right now (live). */
+      liveRate: (pct: string) => `Your plans hold ${pct}.`,
+      /** Clue 1, for a pair of two players below 80%: its weakest case, its gap and chance, and which way to move. */
       hint: (caseName: string, gap: string, pct: string, need: "same" | "differ") =>
         need === "same"
           ? `Your weakest case: ${caseName}, gap ${gap}, same only ${pct} of the time. This case needs your settings close: bring them closer.`
           : `Your weakest case: ${caseName}, gap ${gap}, differ only ${pct} of the time. Both HOT needs your settings far apart: move them further apart.`,
+      /** Clue 1 with CORA as partner: her plan is fixed, so only the player's own setting (`mine`: COOL or HOT) moves. */
+      coraHint: (caseName: string, gap: string, pct: string, need: "same" | "differ", mine: string) =>
+        need === "same"
+          ? `Your weakest case: ${caseName}, gap ${gap}, same only ${pct} of the time. ${CREW_NAME}'s plan is fixed: bring your ${mine} setting closer to hers.`
+          : `Your weakest case: ${caseName}, gap ${gap}, differ only ${pct} of the time. ${CREW_NAME}'s plan is fixed: move your ${mine} setting further from hers.`,
       /** The TV's pair card, beside the true rate: the case as its card reads ("HOT · HOT"; the outlined card shows
        *  its gap and chance) and which way to move. */
       tvHint: (cardName: string, need: "same" | "differ") =>
@@ -585,10 +587,15 @@ export const S = {
         need === "same"
           ? `${caseName}, gap ${gap}, same ${pct}: bring closer.`
           : `${caseName}, gap ${gap}, differ ${pct}: move further apart.`,
+      /** The TV's lull list for a pair with CORA: the player (`name`) moves their own setting. */
+      coraListHint: (name: string, caseName: string, gap: string, pct: string, need: "same" | "differ", mine: string) =>
+        need === "same"
+          ? `${caseName}, gap ${gap}, same ${pct}: ${name}, bring your ${mine} setting closer to ${CREW_NAME}'s.`
+          : `${caseName}, gap ${gap}, differ ${pct}: ${name}, move your ${mine} setting further from ${CREW_NAME}'s.`,
+      /** The TV's lull list: each pair and its live rate. */
+      pairRate: (pair: number, pct: string) => `Pair ${pair} · ${pct}`,
       /** A pair already at 80%+ (`pct` = the 80% line). */
       foundIt: (pct: string) => `Found it: ${pct}+`,
-      weakestPair: (pair: number) => `Pair ${pair}`,
-      noWave: "After your first wave.",
       nudge:
         "Going around your four settings, the differ gap can never be bigger than the three match gaps added together. You want the match gaps small and the differ gap near 90°. How would you spread them?",
       /** `fold` names a setting over 90° and the same setting below 0° (computed), or is empty. */
@@ -596,6 +603,11 @@ export const S = {
         `Spread the four settings evenly, ${spacing} apart. For example ${a}; ${b}${fold}. The three match gaps are ${matchGap} (${same} the same) and the differ gap is ${differGap} (${differ} different): ${rate}.`,
       sameSetting: (a: string, b: string) => ` (${a} is the same setting as ${b})`,
       plan: (table: string, cool: string, hot: string) => `${table}: COOL ${cool}, HOT ${hot}`,
+      /** Clue 2 on a phone: the player's own row of the answer, and a button that fills it in. */
+      yourRow: (cool: string, hot: string) => `Your row: COOL ${cool} · HOT ${hot}`,
+      useThese: "Use these settings",
+      /** Clue 2 on the TV's wave done, in one line (the full answer and its fan show in the lull). */
+      answerOut: (a: string, b: string, rate: string) => `The answer is out: ${a}; ${b}: ${rate}.`,
     },
     /** An Act III round on a phone: what the station did with the plan. */
     chain: {
@@ -609,7 +621,7 @@ export const S = {
     explain: {
       tool: {
         now: "Engineering has sent linked crystals: one at each table, for every pair.",
-        can: "Read the crystals' rule. Next, each pair plans their settings in the lull.",
+        can: "Read the crystals' rule. In the lull each pair plans their settings, with a live hint.",
         question: "Which settings keep three gaps small and one far apart?",
       },
       strategy: {
@@ -823,11 +835,9 @@ export const S = {
     startRounds: "Start the rounds",
     resetConfirm: "Reset the session? Scores are cleared; players stay.",
     /** Next clue, labelled with the clue it releases (1 comes with the tool). */
-    /** `notYet` = pairs not yet at 80% (for clue 2, the hint). */
-    nextClue: (n: number, notYet = 0) =>
-      n === 2
-        ? `Next clue: a hint (${notYet === 0 ? "every pair at 80%+" : `${notYet} ${notYet === 1 ? "pair" : "pairs"} not yet`})`
-        : `Next clue: ${["", "the rule", "", "a nudge", "the answer"][n] ?? ""}`,
+    /** The only clue the facilitator releases: clue 2, the answer. `notYet` = pairs not yet at the `line` (80%). */
+    nextClue: (notYet: number, line: string) =>
+      `Next clue: the answer (${notYet === 0 ? `every pair at ${line}+` : `${notYet} ${notYet === 1 ? "pair" : "pairs"} not yet at ${line}`})`,
     wholeCrew: "Whole crew",
     wobble: "A few rounds each makes the numbers wobble. Over many rounds every row settles at 50%, whatever the partner's sensor read.",
     marginalHead: {
@@ -887,7 +897,7 @@ export const S = {
       ],
       act3Strategy: [
         "Each player picks a crystal plan: a setting for COOL and one for HOT. Partners see each other's live.",
-        "Stuck after a wave? Release the next clue.",
+        "Each pair's live hint and the nudge are on the TV and their phones.",
       ],
       batchDone: [
         "Point at a ✗ case: the round that plan always loses.",
@@ -906,25 +916,26 @@ export const S = {
         "Read engineering's note aloud: the crystals carry no messages, so the storm can't jam them.",
         "\"The crystals don't replace your plan. They change what a plan can say.\"",
       ],
-      /** Act III, for the latest clue released (1–4); every number comes from the maths (`ClueTalk`). */
-      clue: (n: number, k: ClueTalk): string[] =>
-        [
-          [
-            "Clue 1, the crystals' rule: each crystal alone is a coin flip, whatever its setting.",
-            `Read the table aloud: a gap of ${k.minGap} always lands the same way, ${k.maxGap} never does. Followed crystals make matching pumps exactly when they agree.`,
-          ],
-          [
-            `Clue 2: the pairs not yet at ${k.line} see their weakest case, with which way to move. Ask them what that case needs.`,
-          ],
-          [
-            "Clue 3: the differ gap is never bigger than the three match gaps added together.",
-            `Equal match gaps and the biggest differ gap: three times one match gap (three gaps of ${k.matchGap} make ${k.differGap}).`,
-          ],
-          [
-            `Clue 4, the answer: settings ${k.matchGap} apart. ${k.planA}; ${k.planB}.`,
-            `Three match gaps of ${k.matchGap} (${k.same} the same) and a differ gap of ${k.differGap} (${k.differ} different): ${k.rate}.`,
-          ],
-        ][n - 1] ?? [],
+      /** The tool reveal: the crystals' rule, read aloud (numbers from the maths). */
+      rule: (k: ClueTalk): string[] => [
+        "Read the crystals' rule aloud: each crystal alone is a coin flip, whatever its setting.",
+        `A gap of ${k.minGap} always lands the same way, ${k.maxGap} never does. Followed crystals make matching pumps exactly when they agree.`,
+      ],
+      /** Act III: clue 1 in a lull (the hints and the nudge); after a wave with clue 1 (release the answer?); clue 2. */
+      clue: (n: number, k: ClueTalk, waveDone = false): string[] =>
+        n === 1
+          ? waveDone
+            ? [`Pairs still below ${k.line}? Release the answer (Next clue). Close? Give them another lull.`]
+            : [
+                "Point the room at each pair's live hint on the TV: it follows their settings as they change.",
+                "And the nudge: the differ gap can never be bigger than the three match gaps added together.",
+              ]
+          : n === 2
+            ? [
+                `The answer: settings ${k.matchGap} apart. ${k.planA}; ${k.planB}. Each player taps Use these settings.`,
+                `Three match gaps of ${k.matchGap} (${k.same} the same) and a differ gap of ${k.differGap} (${k.differ} different): ${k.rate}.`,
+              ]
+            : [],
       resolution: ["Ask each player to tell their partner what they were thinking during the storm.", "Give it a minute."],
       debrief: [
         "The three numbers: with the radio, the best plan, the crystals.",

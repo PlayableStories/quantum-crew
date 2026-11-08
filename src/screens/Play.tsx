@@ -21,17 +21,16 @@ import { PlanBox } from "../components/PlanBox.tsx";
 import { RuleChip } from "../components/RuleChip.tsx";
 import { Rule } from "../components/Rule.tsx";
 import {
+  AnswerRow,
   ClueList,
   ClueHint,
+  type HumanWithCora,
   CrystalFan,
   CrystalPlanCard,
   CrystalRuleTable,
   LockedPlan,
   planLine,
-  rateText,
 } from "../components/CrystalPlan.tsx";
-import { DEFAULT_TUNING } from "../config.ts";
-import { pairRateFor, planRate } from "../shared/crystalPlan.ts";
 import { navigate } from "../lib/router.ts";
 import { usePlayer } from "../net/playerStore.ts";
 import { useRemainingMs } from "../net/useCountdown.ts";
@@ -279,21 +278,16 @@ function InRoom() {
   const planA = mine === "a" ? tuning : partnerPlan;
   const planB = mine === "b" ? tuning : partnerPlan;
   const cora = partner?.playerId === null;
-  const startLine =
-    partner && partnerPlan
-      ? cora
-        ? S.event.crystalPlan.startCora(
-            formatDeg(partnerPlan.greenDeg),
-            formatDeg(partnerPlan.redDeg),
-            rateText(pairRateFor(seat.table, tuning, partnerPlan)),
-          )
-        : sameTuning(tuning, DEFAULT_TUNING) && sameTuning(partnerPlan, DEFAULT_TUNING)
-          ? S.event.crystalPlan.startHumans(rateText(planRate(DEFAULT_TUNING, DEFAULT_TUNING)))
-          : null
-      : null;
-  // From clue 2: this pair's hint, and each case's chance on the fan.
-  const chances = state.clue >= 2;
-  const hint = chances && !!pair;
+  // Clue 1 (from the first Act III lull): the pair's live hint (from the plans as they are now, the player's own as
+  // set here), and each case's chance on the fan. With CORA, the hint names only the player's own setting.
+  const livePlans = planA && planB ? { a: planA, b: planB } : null;
+  const human: HumanWithCora = cora && me ? { table: seat.table, name: me.name } : null;
+  const chances = state.clue >= 1;
+  const hint = chances && !!livePlans;
+  // Clue 2 (the answer): the player's own row, and a button that fills it in (while the pair is under 80%).
+  const answerRow = state.clue >= 2 && (
+    <AnswerRow table={seat.table} plans={livePlans} onUse={setTuning} />
+  );
   const planCard = (
     <CrystalPlanCard title={S.event.crystalPlan.head} value={tuning} onChange={setTuning} like className="crystal-plan--phone" />
   );
@@ -310,7 +304,12 @@ function InRoom() {
       {state.clue > 0 && (
         <SheetChip label={S.event.clues.chip(state.clue)} title={S.event.clues.head} fresh>
           <p className="kicker">{S.event.clues.head}</p>
-          <ClueList clue={state.clue} pairs={pair ? [{ id: pair.id, plans: pair.lockedDials }] : []} />
+          <ClueList
+            clue={state.clue}
+            pairs={pair ? [{ id: pair.id, plans: livePlans, human }] : []}
+            table={seat.table}
+            onUse={setTuning}
+          />
         </SheetChip>
       )}
     </div>
@@ -433,8 +432,8 @@ function InRoom() {
               {partner && partnerPlan && (
                 <PartnerCard name={partner.name} cora={cora} plan={partnerPlan} a={planA!} b={planB!} chances={chances} />
               )}
-              {/* Clue 2 replaces the starting line with this pair's hint (or "Found it"). */}
-              {hint ? <ClueHint plans={pair!.lockedDials} /> : startLine && <p className="start-line">{startLine}</p>}
+              {hint && <ClueHint plans={livePlans} human={human} />}
+              {answerRow}
               {planA && planB && <CrystalFan a={planA} b={planB} chances={chances} />}
             </>
           )}
@@ -462,7 +461,8 @@ function InRoom() {
       {!round && state.phase === "batchDone" && state.act === 3 && (
         <>
           {act3Chips}
-          {hint && <ClueHint plans={pair!.lockedDials} />}
+          {hint && <ClueHint plans={livePlans} human={human} />}
+          {answerRow}
           <details className="panel">
             <summary className="kicker">{S.event.crystalPlan.retune}</summary>
             {planCard}
@@ -601,4 +601,3 @@ function ringLabels(mine: Table, partnerName: string) {
 
 const plannedPump = (plan: { onGreen: Valve; onRed: Valve }, light: Light) => (light === COOL ? plan.onGreen : plan.onRed);
 
-const sameTuning = (p: TuningConfig, q: TuningConfig) => p.greenDeg === q.greenDeg && p.redDeg === q.redDeg;

@@ -261,7 +261,7 @@ describe("Act III rounds", () => {
 
   it("unlocks the tool into Act III; the round starts with this phone's setting and crystal, and sets no pump", () => {
     const { t } = act3Room(1);
-    expect(t.roomState("tv")).toMatchObject({ phase: "tool", act: 3, toolUnlocked: true, clue: 1 });
+    expect(t.roomState("tv")).toMatchObject({ phase: "tool", act: 3, toolUnlocked: true, clue: 0 });
     t.host("startBatch");
     const start = t.last("a1", "round:start")!;
     expect(start).toMatchObject({ act: 3, dialDeg: OPTIMAL_TUNING.A[start.light === 0 ? "greenDeg" : "redDeg"] });
@@ -725,13 +725,17 @@ describe("crystal plans and the clue ladder (E3c)", () => {
     expect(s.stationSaved).toBe(true);
   });
 
-  it("the clue ladder: 1 with the tool, 2 only after a wave, one step per press, kept on reconnect, 0 on Reset", () => {
+  it("the clue ladder (E3e): 0 at the tool, 1 when the first Act III lull opens, 2 (the answer) only after a wave, once; 0 on Reset", () => {
     const t = setup(64);
     expect(t.roomState("tv").clue).toBe(0);
     toTool(t);
-    expect(t.roomState("tv").clue).toBe(1);
+    expect(t.roomState("tv").clue).toBe(0); // the tool reveal: the rule, no clue
     t.host("nextClue");
-    expect(t.last("tv", "error")!.code).toBe("not-now"); // clue 2 needs an Act III wave
+    expect(t.last("tv", "error")!.code).toBe("not-now");
+    t.host("startStrategy");
+    expect(t.roomState("tv")).toMatchObject({ phase: "strategy", clue: 1 }); // the first lull: the hint and the nudge
+    t.host("nextClue");
+    expect(t.last("tv", "error")!.code).toBe("not-now"); // the answer needs an Act III wave
     t.host("startBatch");
     t.host("nextClue");
     expect(t.roomState("tv").clue).toBe(1); // not during a wave
@@ -745,16 +749,22 @@ describe("crystal plans and the clue ladder (E3c)", () => {
     t.send("r1", { type: "host:command", cmd: "nextClue", step });
     expect(t.last("r1", "error")!.code).toBe("stale");
     expect(t.roomState("tv").clue).toBe(2);
-    t.send("r1", { type: "host:command", cmd: "nextClue", step: t.roomState("r1").step });
     t.host("nextClue");
-    expect(t.roomState("tv").clue).toBe(4);
-    t.host("nextClue");
-    expect(t.last("tv", "error")!.code).toBe("not-now"); // never past 4
+    expect(t.last("tv", "error")!.code).toBe("not-now"); // never past 2
+    t.host("startStrategy");
+    expect(t.roomState("tv").clue).toBe(2); // a later lull keeps it
     // A reconnecting TV keeps it.
     t.send("tv2", { type: "host:resume", room, token });
-    expect(t.roomState("tv2").clue).toBe(4);
+    expect(t.roomState("tv2").clue).toBe(2);
     t.send("tv2", { type: "host:command", cmd: "reset" });
     expect(t.roomState("tv2").clue).toBe(0);
+  });
+
+  it("a wave started straight from the tool reveal (no lull) brings clue 1, so the answer can follow", () => {
+    const t = setup(65);
+    toTool(t);
+    t.host("startBatch");
+    expect(t.roomState("tv").clue).toBe(1);
   });
 });
 
@@ -1111,9 +1121,9 @@ describe("the debug jump (TV key D)", () => {
     t.join("b1", "Bo", "B");
     t.host("debugAct3");
     const s = t.roomState("tv");
-    expect([s.phase, s.act, s.ceilingRevealed, s.toolUnlocked, s.clue]).toEqual(["tool", 3, true, true, 1]);
+    expect([s.phase, s.act, s.ceilingRevealed, s.toolUnlocked, s.clue]).toEqual(["tool", 3, true, true, 0]);
     t.host("startStrategy");
-    expect(t.roomState("tv").phase).toBe("strategy");
+    expect(t.roomState("tv")).toMatchObject({ phase: "strategy", clue: 1 });
     t.host("startBatch");
     expect(t.roomState("tv").phase).toBe("round");
     expect(t.last("a1", "round:start")!.act).toBe(3);

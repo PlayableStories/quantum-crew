@@ -668,36 +668,25 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     await tv.page.keyboard.press("Escape");
   }
 
-  // Act III: the huddle (dials on the phones), then one wave.
+  // Act III (E3e's rhythm): the first lull opens with clue 1 (each pair's live hint and the nudge) at 0°; pair 1 then
+  // moves (Ada 0° / 45°, Bo 22.5° / 22.5°: 67.5%) and the hint follows. The crowd's Cy and Di play the answer (85.4%,
+  // found it) and the rest stay at 0°, so the crew's average stays under 80% after wave 1.
   await host(S.tv.cmd.startStrategy);
   await banner("strategy").waitFor();
-  // The first Act III lull at the starting plans (0°), then pair 1 picks a plan that isn't there yet (Ada 0° / 45°, Bo
-  // 22.5° / 22.5°: 67.5%, both HOT the weakest), so after clue 2 the phones show a hint (since E3d). The crowd's
-  // Cy and Di play the clue 4 settings (85.4%, found it) and the rest stay at 0°: the crew's average stays under 80%.
-  // Bo sees Ada's plan live. Since E3c the plan is a card of two lists; older phones turned dials.
   await shot("act3-huddle-start", all(), true);
-  const setting = (v: View, sensor: "COOL" | "HOT") => v.page.getByLabel(S.event.crystalPlan?.row(sensor) ?? sensor);
-  if (await setting(a, "HOT").count()) {
-    await setting(a, "HOT").selectOption("45");
-    await setting(b, "COOL").selectOption("22.5");
-    await setting(b, "HOT").selectOption("22.5");
-  } else {
-    const turn = async (v: View, dial: 0 | 1, name: string, times: number) => {
-      for (let i = 0; i < times; i++) await v.page.getByRole("button", { name }).nth(dial).click();
-    };
-    await turn(a, 1, S.dial.next, 2);
-    await turn(b, 0, S.dial.next, 1);
-    await turn(b, 1, S.dial.prev, 1);
-  }
+  const setting = (v: View, sensor: "COOL" | "HOT") => v.page.getByLabel(S.event.crystalPlan.row(sensor));
+  await setting(a, "HOT").selectOption("45");
+  await setting(b, "COOL").selectOption("22.5");
+  await setting(b, "HOT").selectOption("22.5");
   await b.page.locator(".partner-plan").filter({ hasText: "45°" }).waitFor({ timeout: 3000 }).catch(() => {});
   await shot("act3-huddle", all(), true);
-  // The phone's sheets (since E3c): the crystals' rule (with the comparison) and the clues so far.
+  // The phone's sheets: the crystals' rule, and the clues so far (the hint and the nudge).
   for (const [chip, name] of [
-    [S.event.crystalRule?.chip, "crystal-rule-sheet"],
-    [S.event.clues?.chip(1), "clues-sheet"],
+    [S.event.crystalRule.chip, "crystal-rule-sheet"],
+    [S.event.clues.chip(1), "clues-sheet"],
   ] as const) {
-    const btn = chip ? a.page.getByRole("button", { name: chip, exact: true }) : null;
-    if (!btn || !(await btn.count())) continue;
+    const btn = a.page.getByRole("button", { name: chip, exact: true });
+    if (!(await btn.count())) continue;
     await btn.click();
     if (await ready(name, a.page.locator("dialog[open]").waitFor({ timeout: 5000 }))) await shot(name, [[a, "", null]]);
     await a.page.keyboard.press("Escape");
@@ -706,46 +695,31 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
   await playWave("act3");
   await shot("act3-wave-done", all(), true);
 
-  // The clue ladder (since E3c), released from the remote: clue 2 (each pair's weakest case) on the wave done, then
-  // clues 3 and 4 in the lull, on the TV, a phone's Clues sheet and the remote.
-  // Clue 2's label counts the pairs not yet at 80% (since E3d), so it's matched by its start.
-  const clueBtn = (n: number) =>
-    (remote ?? tv).page.getByRole(
-      "button",
-      n === 2 ? { name: /^Next clue: (a hint|weakest case)/ } : { name: (S.tv as Record<string, unknown>).nextClue ? S.tv.nextClue(n) : "-", exact: true },
-    );
-  const clueOn = (n: number) =>
-    n === 2 ? tv.page.locator(".case--weakest").first() : tv.page.locator(".clues__title--latest").filter({ hasText: S.event.clues?.titles[n - 1] ?? "-" });
-  if (await clueBtn(2).count()) {
-    await clueBtn(2).click({ timeout: 5000 });
-    if (await ready("clue 2", clueOn(2).waitFor({ timeout: 5000 }))) await shot("clue-2", all(), true);
+  // Clue 2, the answer, from the remote (its label counts the pairs not yet at 80%): on the wave done, then the lull,
+  // where each phone uses its own row.
+  const answerBtn = (remote ?? tv).page.getByRole("button", { name: /^Next clue: the answer/ });
+  if (await ready("answer button", answerBtn.click({ timeout: 5000 }))) {
+    if (await ready("answer", tv.page.locator(".tv__answer-out").waitFor({ timeout: 5000 }))) await shot("answer", all(), true);
     await host(S.tv.cmd.startStrategy);
     await banner("strategy").waitFor();
-    // The lull after clue 2: the pairs not yet at 80% on the TV, the hint on the phones, the fan's chances.
-    await shot("act3-lull-clue-2", all(), true);
-    for (const n of [3, 4]) {
-      if (!(await ready(`clue ${n} button`, clueBtn(n).click({ timeout: 5000 })))) break;
-      if (!(await ready(`clue ${n}`, clueOn(n).waitFor({ timeout: 5000 })))) break;
-      await shot(`clue-${n}`, all(), true);
-    }
-    const sheet = a.page.getByRole("button", { name: S.event.clues.chip(4), exact: true });
+    await shot("act3-lull-answer", all(), true);
+    const sheet = a.page.getByRole("button", { name: S.event.clues.chip(2), exact: true });
     if (await sheet.count()) {
       await sheet.click();
-      if (await ready("clues sheet 4", a.page.locator("dialog[open]").waitFor({ timeout: 5000 }))) await shot("clues-sheet-4", [[a, "", null]]);
+      if (await ready("clues sheet 2", a.page.locator("dialog[open]").waitFor({ timeout: 5000 }))) await shot("clues-sheet-2", [[a, "", null]]);
       await a.page.keyboard.press("Escape");
-    }    // A last wave with the answer's settings (Next closes each round and result at once), so the ending can follow.
-    for (const v of [a, b]) {
-      await setting(v, "COOL").selectOption(v === a ? "0" : "22.5").catch(() => {});
-      await setting(v, "HOT").selectOption(v === a ? "45" : "157.5").catch(() => {});
     }
-    await host(S.tv.cmd.startBatch);
-    const nextBtn = tv.page.locator(".tv__controls .btn--primary");
-    for (let i = 0; i < 60 && !(await banner("batchDone").isVisible()); i++) {
-      await nextBtn.click({ timeout: 2000 }).catch(() => {});
-      await tv.page.waitForTimeout(150);
-    }
+    for (const v of [a, b]) await ready("use these", v.page.getByRole("button", { name: S.event.clues.useThese }).click({ timeout: 5000 }));
+    await a.page.locator(".clue-hint--found").waitFor({ timeout: 5000 }).catch(() => {});
+    await shot("use-these", all(), true);
   }
-
+  // A last wave (Next closes each round and result at once), so the ending can follow.
+  await host(S.tv.cmd.startBatch);
+  const nextBtn = tv.page.locator(".tv__controls .btn--primary");
+  for (let i = 0; i < 60 && !(await banner("batchDone").isVisible()); i++) {
+    await nextBtn.click({ timeout: 2000 }).catch(() => {});
+    await tv.page.waitForTimeout(150);
+  }
 
   // The storm passes (since E3a; a TV without it goes straight to the report): the TV and both phones.
   const stormPasses = (S.tv.cmd as Record<string, string>).stormPasses;

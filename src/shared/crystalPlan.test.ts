@@ -4,9 +4,11 @@ import { QUANTUM_LIMIT } from "./chsh.ts";
 import {
   CLUE_SETTINGS,
   CRYSTAL_RULE,
+  answerPlanFor,
   clueAnswer,
   clueHint,
   coraPlan,
+  moverFor,
   pairRateFor,
   pairsNotYet,
   planCases,
@@ -63,9 +65,24 @@ describe("clue 2 and clue 4 (E3d)", () => {
     expect(m.kind === "hint" && m.weakest.need).toBe("same");
   });
 
-  it("pairsNotYet counts pairs under 80% and pairs with no wave yet", () => {
-    const pairs = [{ lockedDials: { a: CLUE_SETTINGS.A, b: CLUE_SETTINGS.B } }, { lockedDials: { a: DEFAULT_TUNING, b: DEFAULT_TUNING } }, { lockedDials: null }];
-    expect(pairsNotYet(pairs)).toBe(2);
+  it("pairsNotYet counts pairs under 80% on their live plans", () => {
+    const pairs = [{ dials: { a: CLUE_SETTINGS.A, b: CLUE_SETTINGS.B } }, { dials: { a: DEFAULT_TUNING, b: DEFAULT_TUNING } }];
+    expect(pairsNotYet(pairs)).toBe(1);
+  });
+
+  it("the hint follows the current plans: both HOT at 0° first, then whichever case is weakest after a change", () => {
+    const start = clueHint({ a: DEFAULT_TUNING, b: DEFAULT_TUNING });
+    expect(start.kind === "hint" && [start.weakest.x, start.weakest.y, start.weakest.gap, start.weakest.pWin]).toEqual([1, 1, 0, 0]);
+    // A moves HOT to 90°: both HOT is now perfect, and a match case (A HOT · B COOL, gap 90°) is the weakest.
+    const moved = clueHint({ a: { greenDeg: 0, redDeg: 90 }, b: DEFAULT_TUNING });
+    expect(moved.kind === "hint" && [moved.weakest.x, moved.weakest.y, moved.weakest.need]).toEqual([1, 0, "same"]);
+  });
+
+  it("the answer's row completes CORA's fixed plan to 85.4% at either table; moverFor names the player's setting", () => {
+    expect(planRate(answerPlanFor("A"), coraPlan("B"))).toBeCloseTo(QUANTUM_LIMIT, 12);
+    expect(planRate(coraPlan("A"), answerPlanFor("B"))).toBeCloseTo(QUANTUM_LIMIT, 12);
+    expect(moverFor({ x: 1, y: 0 }, "A")).toBe(1);
+    expect(moverFor({ x: 1, y: 0 }, "B")).toBe(0);
   });
 
   it("clue 4: settings 22.5° apart, three match gaps of 22.5° (85% the same), a differ gap of 67.5° (85% different), 85.4%", () => {

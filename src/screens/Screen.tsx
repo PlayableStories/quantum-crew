@@ -40,7 +40,7 @@ import { useElapsedMs, useRemainingMs } from "../net/useCountdown.ts";
 import { decisionMs, resultMs } from "../shared/pace.ts";
 import { Sheet } from "../components/Sheet.tsx";
 import { toggleFullscreen } from "../lib/fullscreen.ts";
-import { ClueList, CrystalRuleTable } from "../components/CrystalPlan.tsx";
+import { ClueList, CrystalRuleTable, answerOutText, humanWithCora } from "../components/CrystalPlan.tsx";
 import { weakestCase } from "../shared/crystalPlan.ts";
 import { fetchStationInfo, joinUrl, remoteUrl, loadChosenAddress, pickJoinOrigin, saveChosenAddress } from "../net/joinOrigin.ts";
 import { roundIdOf, type Speed, type HostCommand, type PairInfo, type RateSummary, type RoomState, type RoundOutcome, type StationInfo, type JoinAddress } from "../shared/protocol.ts";
@@ -132,7 +132,7 @@ export function Screen() {
         ) : state.phase === "ceiling" ? (
           <CeilingPanel state={state} />
         ) : state.phase === "tool" ? (
-          <ToolPanel clue={state.clue} />
+          <ToolPanel />
         ) : state.phase === "strategy" && state.act === 3 ? (
           <CrystalLull state={state} />
         ) : state.phase === "debrief" ? (
@@ -391,7 +391,7 @@ export function CeilingPanel({ state }: { state: RoomState }) {
 }
 
 /** The tool reveal: the supply pod from engineering, with its note (the crystals carry no messages). */
-export function ToolPanel({ clue = 1 }: { clue?: number }) {
+export function ToolPanel() {
   const art = atlasUrl("entanglement-reveal");
   return (
     <div className="tv__tool">
@@ -405,9 +405,11 @@ export function ToolPanel({ clue = 1 }: { clue?: number }) {
           </p>
         ))}
       </div>
-      {/* Clue 1 comes with the tool: the crystals' rule (three lines and the table). */}
+      {/* The crystals' rule (three lines and the table): basic information, no longer a clue; it stays up in every
+          Act III lull. */}
       <div className="panel stack tv__clues">
-        <ClueList clue={clue} pairs={[]} className="clues--tv" titlesInline tv />
+        <p className="kicker">{S.event.crystalRule.head}</p>
+        <CrystalRuleTable fold={false} />
       </div>
     </div>
   );
@@ -452,19 +454,18 @@ export function Explainer({ state, compact = false, withNow = false }: { state: 
  *  pair's weakest case from its latest locked plans. */
 export function CrystalLull({ state }: { state: RoomState }) {
   return (
-    <div className={`tv__lull3 ${state.clue >= 2 ? "tv__lull3--clues" : ""}`}>
+    <div className={`tv__lull3 ${state.clue >= 1 ? "tv__lull3--clues" : ""}`}>
       <div className="panel stack">
         <p className="kicker">{S.event.crystalRule.head}</p>
         <CrystalRuleTable />
       </div>
-      {/* From clue 2: the clues so far (the rule is above), the latest in full. */}
-      {state.clue >= 2 && (
+      {/* Clue 1: every pair's live hint (from the plans as they are now) and the nudge; clue 2: the answer and its fan. */}
+      {state.clue >= 1 && (
         <div className="panel stack tv__clues">
           <ClueList
             clue={state.clue}
-            pairs={state.pairs.map((p) => ({ id: p.id, plans: p.lockedDials }))}
+            pairs={state.pairs.map((p) => ({ id: p.id, plans: p.dials, human: humanWithCora(p) }))}
             className="clues--tv"
-            rule={false}
             titlesInline
             tv
           />
@@ -488,6 +489,8 @@ export function CrystalWave({ state }: { state: RoomState }) {
         {crew !== null && <strong>{crew >= SURVIVAL_THRESHOLD ? W.saved(pct(crew)) : W.notSaved(pct(crew))}</strong>}
         {followed && followed.of > 0 && <span className="muted"> · {W.crewFollowed(followed.n, followed.of)}</span>}
       </p>
+      {/* Clue 2 is out: the answer in one line (in full, with its fan, in the lull). */}
+      {state.clue >= 2 && <p className="tv__answer-out">{answerOutText()}</p>}
       {/* What players can do now and the question, in one line (the full width belongs to the pairs' cases). */}
       <Explainer state={state} compact />
       {state.pairs.map((pair) => {
@@ -496,17 +499,18 @@ export function CrystalWave({ state }: { state: RoomState }) {
         const trueRate = quantumExpectedWinRate(a, b);
         const holds = trueRate >= SURVIVAL_THRESHOLD;
         const wave = pair.lastWave;
-        const hint = state.clue >= 2 && !holds ? weakestCase(a, b) : null;
+        // Clue 1 (before the answer): a pair below 80% gets its weakest case outlined and which way to move.
+        const hint = state.clue === 1 && !holds ? weakestCase(a, b) : null;
         return (
           <div key={pair.id} className={`panel stack tv__pair-cases ${holds ? "tv__pair-cases--holds" : ""}`}>
             <p className="kicker">
               {S.tv.pair(pair.id)} · {W.pairPlans(pair.a.name, dials(a), pair.b.name, dials(b))}
             </p>
-            <CrystalCases tuning={a} crew={b} order={S.event.casesOrder} gaps weakest={state.clue >= 2 && !holds} />
+            <CrystalCases tuning={a} crew={b} order={S.event.casesOrder} gaps weakest={!!hint} />
             <p className="tv__pair-total">
               <strong>{S.readout.trueRate(pct(trueRate))}</strong>
               {holds && <span className="tv__found"> · ✓ {W.foundIt}</span>}
-              {/* Clue 2: a pair not yet at 80% gets which way to move (its weakest case is outlined). */}
+              {/* Clue 1: a pair not yet at 80% gets which way to move (its weakest case is outlined). */}
               {hint && <span className="tv__pair-hint"> · {S.event.clues.tvHint(`${S.light[hint.x]} · ${S.light[hint.y]}`, hint.need)}</span>}
               {wave && <span className="muted"> · {W.wave(wave.wins, wave.rounds)}</span>}
             </p>

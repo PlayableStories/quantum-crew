@@ -264,7 +264,7 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - **Scripts:** `pnpm session` pairs a remote before the Act II wave, starts it from the remote, and presses Next on
     the remote and the TV together (advances once). `pnpm shots --event` captures the pairing dialog, then the remote
     joins and is in every later shot of all three (`-remote`).
-- **Event E3c (2026-11-07, Act III as a crystal plan; event mode only, solo unchanged):** the first playtest read the
+- **Event E3c (2026-11-07, Act III as a crystal plan; event mode only, solo unchanged; its 4-clue ladder was replaced in E3e):** the first playtest read the
   dials as a control and Act III as guessing.
   - **`src/shared/crystalPlan.ts`** (on chsh.ts, which is untouched): `settingGap` (mod 180°, 0–90°), `CRYSTAL_RULE`
     (gaps 0–90° → `matchProbability`), `planCases` (gap, `need` same / differ), `weakestCase`, `coraPlan(table)`
@@ -297,7 +297,7 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - **Scripts:** `pnpm session`: clue 1 with the tool, a wave at 0° (75%, not saved), the remote releases clues 2–4,
     a wave at `CLUE_SETTINGS` (85.4%, saved), and no `player:measure`. `pnpm shots --event`: the starting lull, picks
     settings from the lists, both sheets, clues 2–4 (TV, phones, remote), a quick final wave, then the ending.
-- **Event E3d (2026-11-08, Act III said plainly; event mode only, solo unchanged):** a player-eye review found two
+- **Event E3d (2026-11-08, Act III said plainly; event mode only, solo unchanged; its clue 2–4 order was replaced in E3e):** a player-eye review found two
   essentials never said (each crystal alone is a coin flip; followed crystals match exactly when they agree), and
   clue 3 was false ("the match gaps add up to the differ gap"; true: the differ gap ≤ their sum).
   - **Copy rule:** every number in Act III copy is computed (`clueAnswer`, `settingGap`, `RULE_GAPS`,
@@ -317,9 +317,26 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - **Scripts:** `pnpm session` wave 1 has one pair at the clue 4 settings (77.6% average), checks the label count
     and each phone's hint / found it. `pnpm shots --event`: pair 1 at 67.5% (Ada 0°/45°, Bo 22.5°/22.5°), the crowd's
     Cy and Di at the clue 4 settings; new capture `act3-lull-clue-2`.
+- **Event E3e (2026-11-08, a two-step clue rhythm; event mode only):** the rule is no longer a clue (the tool reveal
+  and every Act III lull show it; no clue panel at the tool). `CLUE_COUNT` 2: `clue` 1 = each pair's **live** hint
+  (`clueHint` on `pair.dials`, or the phone's own `tuning` + the partner's) and the nudge, set by the room when the
+  first Act III lull opens (`startStrategy`, or `startBatch` from the tool); `clue` 2 = the answer, by `nextClue` only
+  after clue 1 and an Act III wave (`S.tv.nextClue(notYet, "80%")`, `pairsNotYet` on live dials). `unlockTool` sets no
+  clue; `debugAct3` sets 0.
+  - **Copy:** `S.event.clues` `liveRate` (the hint leads with the pair's live rate; the starting line and
+    `startHumans` / `startCora` are gone), `coraHint` / `coraListHint` (CORA's plan is fixed: only the human's
+    setting, `moverFor`), `pairRate`, `yourRow`, `useThese`, `answerOut`. `S.remote.talk.rule(k)` at the tool;
+    `talk.clue(n, k, waveDone)` for 1–2.
+  - **Phones:** `ClueHint` (live) in the lull and on wave done; `AnswerRow` (own row, `answerPlanFor(table)`; "Use
+    these settings" calls `setTuning`, hidden at 80%+); fan chances from clue 1. **TV:** `CrystalLull` = rule | clues
+    from clue 1 (every pair's live hint with `pairRate`, the nudge; at 2 the answer + its fan); `CrystalWave` outlines
+    the weakest case at clue 1 and shows `answerOutText()` at clue 2.
+  - **Scripts:** session (clue 0 → 1 at the lull, live hints, the answer refused before a wave, double press,
+    `answerPlanFor` rows, 85.4% saved); shots (`act3-huddle-start`, `act3-huddle`, `answer`, `act3-lull-answer`,
+    `clues-sheet-2`, `use-these`).
 - **Debug jump (2026-11-08, user request; testing):** **D** on the TV opens `DebugJump` (a Sheet in `HostControls`):
   host commands `debugAct2` (Act II lull; clears ceiling, tool and clue) and `debugAct3` (Act III tool reveal, as
-  Reveal ceiling + Unlock tool: clue ≥ 1). TV only (a remote gets `not-host`), refused in a wave or the debrief,
+  Reveal ceiling + Unlock tool: clue 0). TV only (a remote gets `not-host`), refused in a wave or the debrief,
   step-checked; never in `nextSteps` / the remote. Works in every build (the user's choice). Played stats are kept.
   **F** on the TV toggles full screen (`src/lib/fullscreen.ts`, the Fullscreen API on the whole page; webkit
   fallback; a refusal is ignored). `S.tv.keys` mentions it.

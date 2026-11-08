@@ -70,13 +70,14 @@ export const CLUE_SETTINGS: Record<Table, TuningConfig> = OPTIMAL_TUNING;
 /** The eight settings a plan can pick from. */
 export const SETTINGS = DIAL_POSITIONS;
 
-/** How many clues the ladder has; the room's `clue` runs 0 (none yet) to this. */
-export const CLUE_COUNT = 4;
+/** How many clues the ladder has; the room's `clue` runs 0 (none yet) to this: 1 = each pair's live hint and the
+ *  nudge (from the first Act III lull), 2 = the answer (the facilitator, after a wave). */
+export const CLUE_COUNT = 2;
 
-/** A pair's latest locked plans (Table A's, Table B's), or null before its first Act III wave. */
+/** A pair's crystal plans (Table A's, Table B's): live in the lull, or the latest locked ones; null when unknown. */
 export type LockedPlans = { a: TuningConfig; b: TuningConfig } | null;
 
-/** Clue 2 for one pair: nothing yet (no wave), found it (its locked plans hold 80%+), or a hint on its weakest case. */
+/** Clue 1 for one pair: nothing (no plans), found it (its plans hold 80%+), or a hint on its weakest case. */
 export type ClueHint =
   | { kind: "none" }
   | { kind: "found"; rate: number }
@@ -89,9 +90,16 @@ export function clueHint(plans: LockedPlans): ClueHint {
   return { kind: "hint", rate, weakest: weakestCase(plans.a, plans.b) };
 }
 
-/** How many pairs are not yet at 80% with their latest locked plans (a pair with no wave yet counts). */
-export const pairsNotYet = (pairs: readonly { lockedDials: LockedPlans }[]) =>
-  pairs.filter((p) => clueHint(p.lockedDials).kind !== "found").length;
+/** How many pairs are not yet at 80% with their live plans. */
+export const pairsNotYet = (pairs: readonly { dials: LockedPlans }[]) =>
+  pairs.filter((p) => clueHint(p.dials).kind !== "found").length;
+
+/** Clue 2 on a phone: the player's own row of the answer. With CORA as partner it completes her fixed plan
+ *  (`coraPlan` is the answer's other row). */
+export const answerPlanFor = (table: Table): TuningConfig => CLUE_SETTINGS[table];
+
+/** Which of a player's two settings a case uses: Table A's reading is the case's `x`, Table B's its `y`. */
+export const moverFor = (c: Pick<PlanCase, "x" | "y">, table: Table): Light => (table === "A" ? c.x : c.y);
 
 /** Clue 4's numbers, from the maths: the spacing of the four settings, the match gap and its chance, the differ gap
  *  and its chance, and the rate. */
