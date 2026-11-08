@@ -3,7 +3,6 @@
 import {
   MP_ACT1_RESULT_MS,
   MP_ACT1_ROUND_MS,
-  MP_ACT3_ROUND_MS,
   MP_RESULT_MS,
   MP_ROUND_MS,
   RELAXED_ACT1_ROUND_MS,
@@ -15,7 +14,8 @@ import type { Act, Speed } from "./protocol.ts";
 /** Time to decide in an auto round. */
 export function decisionMs(speed: Speed, act: Act): number {
   if (speed === "relaxed") return act === 1 ? RELAXED_ACT1_ROUND_MS : RELAXED_ROUND_MS;
-  return act === 1 ? MP_ACT1_ROUND_MS : act === 3 ? MP_ACT3_ROUND_MS : MP_ROUND_MS;
+  // Act III's round has one action (the pump), as Act II's: the same time.
+  return act === 1 ? MP_ACT1_ROUND_MS : MP_ROUND_MS;
 }
 
 /** How long an auto result shows before the next round. */

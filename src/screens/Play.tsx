@@ -1,5 +1,5 @@
-// A phone in event mode: join a room at a table, then show only what the round needs (own sensor, pump
-// buttons or MEASURE with the dial in use, countdown). Everything else is on the TV.
+// A phone in event mode: join a room at a table, then show only what the round needs (own sensor, pump buttons,
+// countdown; Act III: the setting the plan chose and what the crystal said). Everything else is on the TV.
 // Act I (the night shift): the radio works, so the phone also shows the partner's reading and pump, and the pump can
 // change until the round ends. The storm breaks the radio up mid-line.
 import { useCallback, useEffect, useState, type ReactNode } from "react";
@@ -19,10 +19,23 @@ import { RadioLine } from "../components/RadioLine.tsx";
 import { RingDiagram } from "../components/RingDiagram.tsx";
 import { PlanBox } from "../components/PlanBox.tsx";
 import { RuleChip } from "../components/RuleChip.tsx";
+import { Rule } from "../components/Rule.tsx";
+import {
+  ClueList,
+  CompareWithPlan,
+  CrystalFan,
+  CrystalPlanCard,
+  CrystalRuleTable,
+  LockedPlan,
+  planLine,
+  rateText,
+} from "../components/CrystalPlan.tsx";
+import { DEFAULT_TUNING } from "../config.ts";
+import { pairRateFor, planRate } from "../shared/crystalPlan.ts";
 import { navigate } from "../lib/router.ts";
 import { usePlayer } from "../net/playerStore.ts";
 import { useRemainingMs } from "../net/useCountdown.ts";
-import type { Light, Table, Valve } from "../shared/chsh.ts";
+import type { Light, Table, TuningConfig, Valve } from "../shared/chsh.ts";
 import { ANTICLOCKWISE, CLOCKWISE, COOL, HOT } from "../shared/fiction.ts";
 import { decisionMs } from "../shared/pace.ts";
 import { planId } from "../shared/plans.ts";
@@ -126,29 +139,27 @@ function JoinForm({ error }: { error: string | null }) {
 
 function InRoom() {
   const p = usePlayer();
-  const { state, seat, playerId, round, flash, plan, tuning, status, localDeadline, answer, measure, followCrystal, setPlan, setTuning, leave } =
+  const { state, seat, playerId, round, flash, plan, tuning, status, localDeadline, answer, followCrystal, setPlan, setTuning, leave } =
     p;
   const left = useRemainingMs(localDeadline);
 
-  // Keyboard: A / ← = ANTICLOCKWISE, C / → = CLOCKWISE. Act III: Space / Enter = MEASURE, then Enter follows the
-  // crystal (A / C go your own way).
+  // Keyboard: A / ← = ANTICLOCKWISE, C / → = CLOCKWISE. Act III: Enter follows the crystal (A / C go your own way).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat) return;
       const k = e.key.toLowerCase();
       if (k === "a" || k === "arrowleft") answer(ANTICLOCKWISE);
       if (k === "c" || k === "arrowright") answer(CLOCKWISE);
-      if (k === " " || k === "enter") {
+      if (k === "enter") {
         const r = usePlayer.getState().round;
         if (r?.act !== 3) return;
         e.preventDefault();
-        if (r.crystal === null) measure();
-        else if (k === "enter") followCrystal();
+        followCrystal();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [answer, measure, followCrystal]);
+  }, [answer, followCrystal]);
 
   // Phone sounds (off by default in a room; see audio/sfx.ts).
   useEffect(() => {
@@ -204,30 +215,32 @@ function InRoom() {
             id={`${round.roundId}-${state.deadline}`}
             ms={decisionMs(state.speed, round.act)}
             left={state.deadline - state.serverNow}
-            paused={round.measuring}
+            paused={false}
           />
         )}
-        <SensorLight light={round.light} label={S.batch.yourLight} />
+        <SensorLight light={round.light} label={round.act === 3 ? S.event.chain.sensor : S.batch.yourLight} />
         {round.act === 1 && round.partner && partner && <PartnerRadio seat={partner} call={round.partner} />}
+        {/* The plans went into the wave locked: the last chance to talk has passed. */}
         {round.act === 2 && locked && partner && (
-          <p className="agreed">{S.event.agreed(locked[mine], partner.name, locked[theirs])}</p>
+          <LockedPlan>{S.event.agreed(locked[mine], partner.name, locked[theirs])}</LockedPlan>
         )}
-        {round.act === 3 && round.dialDeg !== null && <Dial value={round.dialDeg} small />}
-        {round.act === 3 &&
-          (round.crystal === null ? (
-            <p className="muted crystal-hint">{S.batch.measureHint}</p>
-          ) : (
-            <div className="crystal-says" role="status">
-              <strong>{S.batch.crystalSays(S.pump[round.crystal])}</strong>
-              <span className="muted small crystal-keys">{S.batch.follow}</span>
-            </div>
-          ))}
+        {round.act === 3 && pair?.lockedDials && <LockedPlan>{planLine(pair.lockedDials[mine])}</LockedPlan>}
+        {/* Act III: what the station did with the plan: sensor → setting → the crystal's direction. */}
+        {round.act === 3 && round.dialDeg !== null && round.crystal !== null && (
+          <div className="chain" role="status">
+            <span className="chain__step">
+              {S.event.chain.plan} <strong>{formatDeg(round.dialDeg)}</strong>
+            </span>
+            <Dial value={round.dialDeg} small />
+            <span className="chain__step chain__crystal">
+              {S.event.chain.crystal} <strong>{S.pump[round.crystal]}</strong>
+            </span>
+            <span className="muted small crystal-keys">{S.batch.follow}</span>
+          </div>
+        )}
         <div className="spacer" />
-        {round.act === 3 && round.crystal === null ? (
-          <button className="btn measure" disabled={round.measuring} onPointerDown={measure} onClick={measure}>
-            {S.batch.measure}
-          </button>
-        ) : (
+        {(
+
           <div className="stack">
             {round.act === 1 && <p className="muted small act1-rule">{S.phone.act1Change}</p>}
             <div className="pumps">
@@ -260,21 +273,43 @@ function InRoom() {
     );
   }
 
-  // Act III: the partner's dials, live (read-only).
-  const partnerDials = pair && partner && (
-    <p className="partner-plan" role="status">
-      <span className="kicker">
-        {S.event.partnerDials(partner.name)}
-        {partner.playerId === null && <AiBadge />}
-      </span>{" "}
-      <strong>{S.event.dialsLine(formatDeg(pair.dials[theirs].greenDeg), formatDeg(pair.dials[theirs].redDeg))}</strong>
-    </p>
+  // Act III: the pair's crystal plans (the player's own as set here; the partner's live from the room).
+  const partnerPlan = pair ? pair.dials[theirs] : null;
+  const planA = mine === "a" ? tuning : partnerPlan;
+  const planB = mine === "b" ? tuning : partnerPlan;
+  const cora = partner?.playerId === null;
+  const startLine =
+    partner && partnerPlan
+      ? cora
+        ? S.event.crystalPlan.startCora(
+            formatDeg(partnerPlan.greenDeg),
+            formatDeg(partnerPlan.redDeg),
+            rateText(pairRateFor(seat.table, tuning, partnerPlan)),
+          )
+        : sameTuning(tuning, DEFAULT_TUNING) && sameTuning(partnerPlan, DEFAULT_TUNING)
+          ? S.event.crystalPlan.startHumans(rateText(planRate(DEFAULT_TUNING, DEFAULT_TUNING)))
+          : null
+      : null;
+  const planCard = (
+    <CrystalPlanCard title={S.event.crystalPlan.head} value={tuning} onChange={setTuning} className="crystal-plan--phone" />
   );
-
-  const tuningPanel = (
-    <div className="row panel">
-      <Dial value={tuning.greenDeg} onChange={(d) => setTuning({ ...tuning, greenDeg: d })} label={<SensorLight light={COOL} small />} />
-      <Dial value={tuning.redDeg} onChange={(d) => setTuning({ ...tuning, redDeg: d })} label={<SensorLight light={HOT} small />} />
+  // From the tool reveal on: the crystals' rule and the clues so far, each in a sheet.
+  const act3Chips = (
+    <div className="row chips">
+      <SheetChip label={S.rule.head} title={S.rule.head}>
+        <Rule diagram />
+      </SheetChip>
+      <SheetChip label={S.event.crystalRule.chip} title={S.event.crystalRule.head}>
+        <p className="kicker">{S.event.crystalRule.head}</p>
+        <CrystalRuleTable />
+        <CompareWithPlan />
+      </SheetChip>
+      {state.clue > 0 && (
+        <SheetChip label={S.event.clues.chip(state.clue)} title={S.event.clues.head} fresh>
+          <p className="kicker">{S.event.clues.head}</p>
+          <ClueList clue={state.clue} pairs={pair ? [{ id: pair.id, plans: pair.lockedDials }] : []} />
+        </SheetChip>
+      )}
     </div>
   );
 
@@ -297,7 +332,8 @@ function InRoom() {
           />
         </span>
       </div>
-      {partner && (
+      {/* (The Act III lull names the partner on their crystal plan, so the line steps aside there.) */}
+      {partner && !(state.phase === "strategy" && state.act === 3 && !round) && (
         <p className="muted">
           {partnerAway ? S.phone.partnerCovered(partner.name, otherTable) : S.phone.partner(partner.name, otherTable)}
           {(partner.playerId === null || partnerAway) && <AiBadge />}
@@ -354,30 +390,27 @@ function InRoom() {
         </div>
       )}
 
-      {/* The supply pod: engineering's note, then (the first time) how the tool behaves, named for the partner. The
-          dials come in the lull that follows. */}
+      {/* The supply pod: engineering's note, and what the crystals do to a plan. The crystal plan comes in the lull. */}
       {!round && state.phase === "tool" && (
         <div className="stack reveal reveal--phone">
           <Crystals />
           <h2 className="reveal__title">{S.event.pod.title}</h2>
           <p>{S.event.pod.lines[1]}</p>
-          {partner && (
-            <div className="panel how-tool">
-              <p className="kicker">{S.event.tuning.head}</p>
-              <p>{S.event.tuning.explain(partner.name)}</p>
-            </div>
-          )}
+          <p>
+            <strong>{S.event.pod.lines[2]}</strong>
+          </p>
+          {act3Chips}
         </div>
       )}
 
       {!round && state.phase === "strategy" && (
-        <div className="stack lull">
+        <div className={`stack lull ${state.act === 3 ? "lull--act3" : ""}`}>
           <div className="lull__head">
             <h2>{S.phone.huddle}</h2>
             {left !== null && <div className="tv__clock">{Math.ceil(left / 1000)}</div>}
           </div>
-          <p>{state.act === 2 ? S.phone.huddleBody : S.phone.huddleBody3}</p>
-          <RuleChip />
+          {state.act === 2 && <p>{S.phone.huddleBody}</p>}
+          {state.act === 2 ? <RuleChip /> : act3Chips}
           {state.act === 2 ? (
             <>
               <PlanBox title={S.phone.plan} label={S.phone.plan} value={plan} onChange={setPlan} className="plan-box--phone" />
@@ -393,11 +426,14 @@ function InRoom() {
             </>
           ) : (
             <>
-              {tuningPanel}
-              <div className="partner-row">
-                {partnerDials}
-                {partner && <HowTool partner={partner.name} />}
-              </div>
+              {/* The first time (before any Act III wave): a crystal plan beside an Act II plan. */}
+              {state.stability.act3.rounds === 0 && <CompareWithPlan />}
+              {planCard}
+              {partner && partnerPlan && (
+                <PartnerCard name={partner.name} cora={cora} plan={partnerPlan} a={planA!} b={planB!} />
+              )}
+              {startLine && <p className="start-line">{startLine}</p>}
+              {planA && planB && <CrystalFan a={planA} b={planB} />}
             </>
           )}
         </div>
@@ -422,10 +458,13 @@ function InRoom() {
       {!round && state.phase === "debrief" && pair && partner && <PairNumbers pair={pair} partner={partner.name} />}
 
       {!round && state.phase === "batchDone" && state.act === 3 && (
-        <details className="panel">
-          <summary className="kicker">{S.phone.retune}</summary>
-          {tuningPanel}
-        </details>
+        <>
+          {act3Chips}
+          <details className="panel">
+            <summary className="kicker">{S.event.crystalPlan.retune}</summary>
+            {planCard}
+          </details>
+        </>
       )}
 
       <div className="spacer" />
@@ -474,20 +513,49 @@ function PairNumbers({ pair, partner }: { pair: PairInfo; partner: string }) {
   );
 }
 
-/** After the tool reveal, "How the tool works" sits behind a button (a Sheet), named for the partner. */
-function HowTool({ partner }: { partner: string }) {
+/** The partner's crystal plan in one line (live, read-only); "See both" opens both cards and the fan in a sheet. */
+function PartnerCard({ name, cora, plan, a, b }: { name: string; cora: boolean; plan: TuningConfig; a: TuningConfig; b: TuningConfig }) {
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  return (
+    <div className="partner-row">
+      <p className="partner-plan" role="status">
+        <span className="kicker">
+          {S.event.crystalPlan.partnerHead(name)}
+          {cora && <AiBadge />}
+        </span>{" "}
+        <strong>{planLine(plan)}</strong>
+        {cora && <span className="muted small"> · {S.event.crystalPlan.coraSet}</span>}
+      </p>
+      <button className="btn btn--ghost how-tool__btn" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+        {S.event.crystalPlan.seeCard}
+      </button>
+      <Sheet open={open} onClose={close} label={S.event.crystalPlan.partnerHead(name)}>
+        <div className="stack">
+          <CrystalPlanCard
+            title={S.event.crystalPlan.partnerHead(name)}
+            value={plan}
+            cora={cora}
+            note={cora ? S.event.crystalPlan.coraSet : undefined}
+          />
+          <CrystalFan a={a} b={b} />
+        </div>
+      </Sheet>
+    </div>
+  );
+}
+
+/** A small button that opens a sheet (the station rule, the crystals' rule, the clues). `fresh` marks a new clue. */
+function SheetChip({ label, title, fresh = false, children }: { label: string; title: string; fresh?: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   return (
     <>
-      <button className="btn btn--ghost how-tool__btn" aria-haspopup="dialog" onClick={() => setOpen(true)}>
-        {S.event.tuning.howButton}
+      <button className={`btn btn--ghost chip ${fresh ? "chip--fresh" : ""}`} aria-haspopup="dialog" onClick={() => setOpen(true)}>
+        {label}
       </button>
-      <Sheet open={open} onClose={close} label={S.event.tuning.head}>
-        <div className="stack">
-          <p className="kicker">{S.event.tuning.head}</p>
-          <p>{S.event.tuning.explain(partner)}</p>
-        </div>
+      <Sheet open={open} onClose={close} label={title}>
+        <div className="stack">{children}</div>
       </Sheet>
     </>
   );
@@ -516,3 +584,4 @@ function ringLabels(mine: Table, partnerName: string) {
 
 const plannedPump = (plan: { onGreen: Valve; onRed: Valve }, light: Light) => (light === COOL ? plan.onGreen : plan.onRed);
 
+const sameTuning = (p: TuningConfig, q: TuningConfig) => p.greenDeg === q.greenDeg && p.redDeg === q.redDeg;

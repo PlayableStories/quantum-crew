@@ -18,6 +18,7 @@ import { act1Order, type SensorPair } from "../src/shared/act1.ts";
 import { roundCause } from "../src/shared/fiction.ts";
 import { cellKey, type CellKey } from "../src/shared/plans.ts";
 import { decisionMs, resultMs } from "../src/shared/pace.ts";
+import { CLUE_COUNT } from "../src/shared/crystalPlan.ts";
 import {
   DIAL_POSITIONS,
   OPTIMAL_TUNING,
@@ -77,8 +78,8 @@ type Pair = { id: number; a: Player | null; b: Player | null };
 type Side = "a" | "b";
 
 /**
- * One pair's part of the live round. A null valve = not answered yet. In Act III, `theta` records the dial angle
- * each side measured at, so the second measurement can be conditioned on the first.
+ * One pair's part of the live round. A null valve = not answered yet. In Act III the room measures both crystals at
+ * round start, each at its player's planned setting for their sensor reading (`theta`).
  */
 type PairRound = {
   x: Light;
@@ -86,7 +87,7 @@ type PairRound = {
   a: Valve | null;
   b: Valve | null;
   theta: { a: number | null; b: number | null };
-  /** Act III: what each side's crystal said when they measured (a suggestion; the pump is `a` / `b`). */
+  /** Act III: what each side's crystal said (a suggestion; the pump is `a` / `b`). Each phone only ever gets its own. */
   crystal: { a: Valve | null; b: Valve | null };
   /** A seated player who was away for this round: CORA played their seat (their own rows don't count it). */
   covered: { a: boolean; b: boolean };
@@ -152,6 +153,8 @@ export function createRoom(code: string, deps: RoomDeps) {
   let act1Orders = new Map<number, SensorPair[]>();
   let ceilingRevealed = false;
   let toolUnlocked = false;
+  /** Act III's clue ladder (0–CLUE_COUNT); only rises, until Reset. */
+  let clue = 0;
 
   // Stats
   let rolling: boolean[] = [];
@@ -242,6 +245,7 @@ export function createRoom(code: string, deps: RoomDeps) {
       autoChosen,
       lullSince,
       remotes: remotes.size,
+      clue,
       step: stepSig(),
       ceilingRevealed,
       toolUnlocked,
@@ -346,8 +350,8 @@ export function createRoom(code: string, deps: RoomDeps) {
     if (phase === "round" && live) live.deadline = null;
   }
 
-  /** The room's current step: changes with every phase, round or report step (see RoomState.step). */
-  const stepSig = () => `${phase}:${act}:${batchNo}:${roundNo}:${debriefStep}`;
+  /** The room's current step: changes with every phase, round, report step or clue (see RoomState.step). */
+  const stepSig = () => `${phase}:${act}:${batchNo}:${roundNo}:${debriefStep}:${clue}`;
 
   // --- Rounds -----------------------------------------------------------------------------------
 
@@ -363,7 +367,7 @@ export function createRoom(code: string, deps: RoomDeps) {
     later(`cora-${pair.id}-${side}`, lo + deps.rng() * (hi - lo), () => coraMove(pair.id, side));
   }
 
-  /** CORA's move: Act I a random pump (her partner hears it), Act II standard procedure, Act III measure and follow. */
+  /** CORA's move: Act I a random pump (her partner hears it), Act II standard procedure, Act III her crystal. */
   function coraMove(pairId: number, side: Side) {
     const pair = pairs.find((p) => p.id === pairId);
     const pr = live?.byPair.get(pairId);
@@ -373,7 +377,7 @@ export function createRoom(code: string, deps: RoomDeps) {
       pr[side] = botValve(light);
       toPlayer(pair[side === "a" ? "b" : "a"], { type: "round:partner", roundId: live.id, pump: pr[side]! });
     } else if (act === 2) pr[side] = botValve(light);
-    else pr[side] = measureSide(pair, pr, side);
+    else pr[side] = pr.crystal[side];
     afterAnswer();
   }
 
@@ -388,19 +392,16 @@ export function createRoom(code: string, deps: RoomDeps) {
   const pairDials = (pair: Pair) => ({ a: pair.a?.tuning ?? OPTIMAL_TUNING.A, b: pair.b?.tuning ?? OPTIMAL_TUNING.B });
 
   /**
-   * Act III: one side taps MEASURE. Whoever measures first gets a fair coin; the second result is conditioned on it
-   * (equal with probability cos²(Δθ)). Either way each side's own result stays 50/50: no signalling.
+   * Act III, at round start: the station measures both crystals, each at its player's planned setting for their sensor
+   * reading. Table A's is a fair coin; Table B's equals it with probability cos²(gap). The joint odds don't depend on
+   * the order, and each side alone stays 50/50: no signalling.
    */
-  function measureSide(pair: Pair, pr: PairRound, side: Side): Valve {
-    const other: Side = side === "a" ? "b" : "a";
-    const theta = seatDial(pair, side, side === "a" ? pr.x : pr.y);
-    const partner = pr.crystal[other];
-    const partnerTheta = pr.theta[other];
-    const valve =
-      partner === null || partnerTheta === null ? measureFirst(deps.rng) : measureSecond(partner, partnerTheta, theta, deps.rng);
-    pr.crystal[side] = valve;
-    pr.theta[side] = theta;
-    return valve;
+  function measurePair(pair: Pair, pr: PairRound) {
+    const thetaA = seatDial(pair, "a", pr.x);
+    const thetaB = seatDial(pair, "b", pr.y);
+    const a = measureFirst(deps.rng);
+    pr.theta = { a: thetaA, b: thetaB };
+    pr.crystal = { a, b: measureSecond(a, thetaA, thetaB, deps.rng) };
   }
 
   function startBatch() {
@@ -475,6 +476,7 @@ export function createRoom(code: string, deps: RoomDeps) {
         crystal: { a: null, b: null },
         covered: { a: !!pair.a && !pair.a.conn, b: !!pair.b && !pair.b.conn },
       };
+      if (act === 3) measurePair(pair, pr);
       byPair.set(pair.id, pr);
     }
     live = { id, deadline: null, byPair };
@@ -501,7 +503,7 @@ export function createRoom(code: string, deps: RoomDeps) {
       toPlayer(p, {
         ...base,
         light,
-        ...(act === 3 ? { dialDeg: seatDial(pair, side, light), crystal: pr.crystal[side] } : {}),
+        ...(act === 3 ? { dialDeg: pr.theta[side]!, crystal: pr.crystal[side]! } : {}),
         ...(act === 1 ? radio : {}),
       });
     }
@@ -528,26 +530,19 @@ export function createRoom(code: string, deps: RoomDeps) {
     broadcast();
   }
 
-  /** Act I / II: a valve tap. Act III: a MEASURE tap (`valve` undefined) reads the crystal, then a valve tap sets the
-   *  pump (only after measuring; it may go against the crystal, and changes until every pump is set). */
-  function answer(player: Player, roundId: string, valve?: Valve) {
+  /** Act I / II: a valve tap. Act III: a valve tap sets the pump (the crystal was measured at round start; the pump
+   *  may go against it, and can change until every pump is set). */
+  function answer(player: Player, roundId: string, valve: Valve) {
     if (phase !== "round" || !live || live.id !== roundId) return;
     if (live.deadline !== null && deps.now() > live.deadline) return;
     const pair = pairs.find((p) => p.a === player || p.b === player);
     const pr = pair && live.byPair.get(pair.id);
     if (!pair || !pr) return;
     const side: Side = pair.a === player ? "a" : "b";
-    if (act === 1) return valve === undefined ? undefined : answerAct1(pair, pr, side, valve);
-    if (act === 3) {
-      if (valve === undefined) {
-        if (pr.crystal[side] !== null) return; // one measurement per round
-        toPlayer(player, { type: "round:measured", roundId, crystal: measureSide(pair, pr, side) });
-        return broadcast();
-      }
-      if (pr.crystal[side] === null) return; // the pump comes after MEASURE
-      pr[side] = valve;
-    } else {
-      if (pr[side] !== null || valve === undefined) return;
+    if (act === 1) return answerAct1(pair, pr, side, valve);
+    if (act === 3) pr[side] = valve;
+    else {
+      if (pr[side] !== null) return;
       pr[side] = valve;
     }
     afterAnswer();
@@ -713,8 +708,15 @@ export function createRoom(code: string, deps: RoomDeps) {
         clearTimer();
         act = 3;
         toolUnlocked = true;
+        clue = Math.max(clue, 1); // clue 1, the crystals' rule, comes with the tool
         phase = "tool";
         deadline = null;
+        return broadcast();
+      case "nextClue":
+        // One step at a time: clue 2 (each pair's weakest case) needs an Act III wave's locked plans; never in a wave.
+        if (!toolUnlocked || inBatch() || clue >= CLUE_COUNT) return notNow();
+        if (clue === 1 && actStats[3].rounds === 0) return notNow();
+        clue++;
         return broadcast();
       case "stormPasses":
         // The ending: after at least one Act III wave, outside a wave. It reads stationSaved (no new state).
@@ -752,6 +754,7 @@ export function createRoom(code: string, deps: RoomDeps) {
         wavesInAct = { 1: 0, 2: 0, 3: 0 };
         lullSince = null;
         ceilingRevealed = toolUnlocked = false;
+        clue = 0;
         rolling = [];
         actStats = emptyActs();
         pairStats = new Map();
@@ -885,9 +888,6 @@ export function createRoom(code: string, deps: RoomDeps) {
         case "player:valve":
           if (!player) return;
           return answer(player, msg.roundId, msg.valve);
-        case "player:measure":
-          if (!player || act !== 3) return;
-          return answer(player, msg.roundId);
       }
     },
 

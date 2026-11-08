@@ -47,6 +47,8 @@ export type HostCommand =
   | "auto"
   | "manual"
   | "next"
+  /** Act III: release the next clue (1 comes with the tool; 2 after an Act III wave; then 3 and 4). */
+  | "nextClue"
   /** The TV only: a new remote key, and every paired remote is dropped. */
   | "unpairRemotes"
   | "reset";
@@ -65,6 +67,7 @@ export const HOST_COMMANDS: readonly HostCommand[] = [
   "auto",
   "manual",
   "next",
+  "nextClue",
   "unpairRemotes",
   "reset",
 ];
@@ -150,7 +153,10 @@ export type RoomState = {
   lullSince: number | null;
   /** How many facilitator remotes are paired (the TV shows "Remote connected"). */
   remotes: number;
-  /** Changes with every phase, round or report step. A host command that carries an older `step` is ignored, so a
+  /** Act III's clue ladder: 0 before the tool, 1 at the tool reveal (the crystals' rule), up to 4 (the answer). It
+   *  only rises (Next clue), until Reset. */
+  clue: number;
+  /** Changes with every phase, round, report step or clue. A host command that carries an older `step` is ignored, so a
    *  double press (or the TV and a remote pressing at once) never skips two steps. */
   step: string;
   ceilingRevealed: boolean;
@@ -177,7 +183,6 @@ export type ClientMsg =
   | { type: "player:join"; room: string; name: string; table: Table }
   | { type: "player:strategy"; act: Act; classical?: ClassicalStrategy; tuning?: TuningConfig }
   | { type: "player:valve"; roundId: string; valve: Valve }
-  | { type: "player:measure"; roundId: string }
   /** The player leaves: their seat stays theirs and CORA covers it until they rejoin (same name and table). */
   | { type: "player:leave" }
   | { type: "host:command"; cmd: HostCommand; step?: string; speed?: Speed }
@@ -217,13 +222,12 @@ export type ServerMsg =
       /** Act I: the partner's reading (and pump, if set) over the radio, and this phone's own pump after a rejoin. */
       partner?: PartnerCall;
       pump?: Valve | null;
-      /** Act III, after a rejoin: the crystal this phone already measured. */
-      crystal?: Valve | null;
+      /** Act III: the setting the station measured this phone's crystal at (its plan for its sensor reading), and
+       *  what the crystal said. Measured by the room at round start; never the partner's. */
+      crystal?: Valve;
     }
   /** Act I, to one phone: its partner set (or changed) their pump. */
   | { type: "round:partner"; roundId: string; pump: Valve }
-  /** Act III, to the measuring phone only: the crystal's suggestion. The pump is still the player's to set. */
-  | { type: "round:measured"; roundId: string; crystal: Valve }
   /** To the two phones of a pair. */
   | ({ type: "round:result"; roundId: string } & RoundOutcome)
   /** To the TV: every pair's outcome. */
@@ -285,8 +289,6 @@ export function parseClientMsg(raw: string): ClientMsg | null {
     }
     case "player:valve":
       return str(o.roundId) && bit(o.valve) ? { type: "player:valve", roundId: o.roundId as string, valve: o.valve as Valve } : null;
-    case "player:measure":
-      return str(o.roundId) ? { type: "player:measure", roundId: o.roundId as string } : null;
     case "host:command": {
       if (!HOST_COMMANDS.includes(o.cmd as HostCommand)) return null;
       if (o.step !== undefined && !str(o.step)) return null;

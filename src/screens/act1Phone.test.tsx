@@ -17,7 +17,6 @@ const live = (partner: { light: 0 | 1; pump: 0 | 1 | null }, answered: 0 | 1 | n
   ms: 8000,
   dialDeg: null,
   answered,
-  measuring: false,
   partner,
   crystal: null,
 });

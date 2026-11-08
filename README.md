@@ -259,8 +259,8 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    reverse when HOT, reverse when COOL, always anticlockwise), and the partner's choice shows live on their phone.
    The lull isn't timed (the TV shows how long the room has been talking); **Start the wave** ends it, the storm wave
    hits, the radio goes dark and the plans lock.
-7. Each round of a wave (8 rounds), every phone shows only its own sensor, both locked plans as a reminder and two
-   pump buttons (either can be tapped). After setting a pump a phone says whether the partner has chosen (never
+7. Each round of a wave (8 rounds), every phone shows only its own sensor, both locked plans (stamped **Plan
+   locked**; the TV's banner says **Plans locked**) and two pump buttons (either can be tapped). After setting a pump a phone says whether the partner has chosen (never
    what). A result shows the cause, a small ring with both sensors and pumps, and a line of station telemetry. The TV shows the round timer, who has answered and each pair's cause. The station's
    stability is pooled over the last 48 wave rounds across all pairs (Act I has its own rate), and each pair also has
    its own mini-meter (three or four pairs sit two to a row).
@@ -269,35 +269,58 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    but the plan can't.
 9. Play a few waves, then **Reveal ceiling**: the engineering report shows the 4×4 plan board at exact rates (75% or
    25%), every pairing the crew played marked as tried and the rest run by engineering. No plan beats 75%.
-10. **Unlock tool**: a supply pod from engineering brings every pair linked crystals; engineering's note says they
-   carry no messages, so the storm can't jam them. Phones explain how the tool behaves, naming the partner (the
-   closer your dials, the more often your crystals agree). In the lull each player sets two dials (one for COOL, one
-   for HOT) and sees the partner's dials live; **How it works** brings the explanation back.
-11. Each Act III round, a phone shows its sensor, the dial in use and **MEASURE**. The crystal then suggests a pump,
-   highlighted; the player sets the pump and may go against it (Enter follows). Rounds last 7 s. The server decides
-   who measured first: that result is a fair coin, and the partner's result is conditioned on it. Scoring uses the
-   pump actually set, and the room records who followed. CORA in an empty seat always follows. **Show hint** puts the
-   engineering hint on the TV.
-12. After each Act III wave the TV shows every pair's locked dials case by case (each case's exact chance of
-   holding), their true rate (pairs at 80% or more are highlighted), the wave's score and who followed, plus the
-   crew's followed count and its dials' average. **Saved or not:** once a wave ends with that average at 80% or
-   more, the station counts as saved (it stays saved; the ending itself is a later phase).
-13. **The storm passes** (after at least one Act III wave): the TV clears the storm from the station, calm if the
+10. **Unlock tool**: a supply pod from engineering brings two linked crystals for every pair, one at each table;
+   engineering's note says they carry no messages, so the storm can't jam them, and *"The crystals don't replace your
+   plan. They change what a plan can say."* **Clue 1** comes with it: the TV shows **the crystals' rule** (two
+   crystals give the same direction with a chance that depends only on the gap between their settings: 0° 100%,
+   22.5° 85%, 45° 50%, 67.5° 15%, 90° 0%, from `matchProbability`) and the question *"Which cases need the same
+   direction, and which need different?"*. Phones have the rule and the clues in sheets (**Crystal rule**,
+   **Clues (n)**) from here on.
+11. **The Act III lull: a crystal plan.** Each player's card has the same shape as an Act II plan: *"When your sensor
+   reads COOL or HOT, the station measures your crystal at:"* COOL [0° ▾] and HOT [0° ▾], each picked from the 8
+   settings (0° to 157.5°). The partner's plan shows live (CORA's is read-only: she has set her own). The first time,
+   a table compares it with an Act II plan (a setting instead of a direction; the crystal, measured at your setting,
+   picks the direction). A read-only fan shows the pair's four settings and the gap in each case (folded modulo
+   180°, so 0°–90°: 0° and 157.5° are 22.5° apart). A starting line comes from the maths: two players at 0° match in
+   every case, *"just like your best Act II plan: 75%"*; with CORA, her settings and the pair's rate with your plan
+   (67.7% at 0°), and an invitation to beat it. The TV shows the situation, what players can do and the question
+   (Act III's explainer), the rule's table and the clues so far.
+12. **Act III rounds.** There is no MEASURE: at round start the room measures both crystals, each at its player's
+   planned setting for their sensor reading (Table A's is a fair coin, Table B's matches it with cos² of the gap),
+   and each phone gets only its own result. The phone shows the chain *"Your sensor: HOT → your plan: 45° → the
+   crystal says ANTICLOCKWISE"* with a small read-only dial; the player's only action is the pump (the suggestion is
+   highlighted, Enter follows it; they may go against it). Decision time is Act II's (`decisionMs`). Scoring uses
+   the pump actually set, and the room records who followed. CORA in an empty seat always follows.
+13. After each Act III wave the TV shows every pair's locked crystal plans case by case (each case's gap and exact
+   chance of holding), their true rate, **found it: 80%+** on pairs that reached 80%, a luck line when the wave and
+   the true rate disagree about 80%, the wave's score, plus the crew's followed count and its crystal plans'
+   average. **Saved or not:** once a wave ends with that average at 80% or more, the station counts as saved (it
+   stays saved).
+14. **The clue ladder** (replaces the old hint): **Next clue** on the TV or the remote releases one clue at a time,
+   never lowered except by Reset, and the room keeps it (a reconnecting TV keeps it too):
+   1. with the tool: the rule and the question;
+   2. after a wave: each pair's weakest case, with its gap and what it needs (closer for a "same" case, further
+      apart for both HOT), marked on the wave's cases;
+   3. the nudge: *"Going around your four settings, the three 'match' gaps add up to the 'differ' gap. How would you
+      spread them?"*;
+   4. the answer: spread the four settings 22.5° apart (A: COOL 0°, HOT 45°; B: COOL 22.5°, HOT 157.5°), three
+      match gaps of 22.5° (85% the same) and a differ gap of 67.5° (85% different): 85.4%.
+15. **The storm passes** (after at least one Act III wave): the TV clears the storm from the station, calm if the
    crew saved it and damaged if not, with the station log's line. The radio comes back: each phone prompts the
    player to tell their partner what they were thinking during the storm, and CORA's partners hear her own saved
    or not-saved line.
-14. **Incident report** on the TV (Back / Next; the step is held by the server, so a refreshed TV keeps its place),
+16. **Incident report** on the TV (Back / Next; the step is held by the server, so a refreshed TV keeps its place),
    solo's report in the crew's version:
    - the three numbers: Act I with the radio (100% possible, plus the crew's score), Act II's best plan (exactly
-     75%) and Act III's crystals (the crew's dials average). When the crew wasn't saved, the best dials (85.4%) lead
-     and the crew's number sits underneath;
-   - the best plan beside the crystals: the best pair's dials if one reached 80%, else the best dials;
+     75%) and Act III's crystals (the crew's crystal plans' average). When the crew wasn't saved, the best crystal
+     plans (85.4%) lead and the crew's number sits underneath;
+   - the best plan beside the crystals: the best pair's crystal plans if one reached 80%, else the best ones;
    - no-signalling: exact 50% for both tables, the crew's real numbers, and why the storm couldn't jam the
      crystals;
    - credits.
 
-   Each phone shows its own pair's three numbers: their Act I score, their locked plans' true rate and their dials'
-   exact rate.
+   Each phone shows its own pair's three numbers: their Act I score, their locked plans' true rate and their crystal
+   plans' exact rate.
 
 At the engineering report, human pairs get a prompt instead of CORA's personal line ("Did you blame each other? No
 plan beats 75%: it was never either of you."); pairs with CORA hear her line.
@@ -314,7 +337,7 @@ takes effect at once, on the running round or result too.
   timers). Picking one also plays. A speed change mid-round counts the time already spent (at least 2 s stay).
 - Once the facilitator presses Play or Pause, that choice holds for later waves until **Reset**.
 - Every host command carries the room's current step, and the server ignores one sent from a step it has already
-  left, so a double press never skips two steps (ready for a phone remote).
+  left, so a double press never skips two steps (the TV and the remote can press at once).
 
 **Leaving.** A phone's **⋯** menu (beside mute) has **Leave the game**, behind a confirmation where staying is the
 primary action. A player who leaves, or whose phone drops out, keeps their seat: CORA covers it (after a natural
@@ -324,7 +347,8 @@ delay, like everywhere else) until they rejoin with the same name and table. A r
 From the lobby, **Use the lull** or **Start the wave** still skip the night shift and go straight to Act II (for a
 short session).
 
-**Follow-up (E3b, not built yet):** a remote for the facilitator's phone.
+**Follow-ups:** bring solo's Act III in line with event mode's (a crystal plan card in place of the dials, the
+crystals' rule, the room measuring at round start with no MEASURE, a clue ladder in place of the hint).
 
 ## The physics
 This is the **CHSH game**, a Bell test. Two players who can't talk each get a random bit (the sensor: COOL = 0,
@@ -418,8 +442,9 @@ pnpm session   # a whole session in-process with a fake clock (see below)
 about a second and is the same every run. It plays a whole session: 4 pairs join and a 9th player is turned away;
 the night shift (the briefing, then Act I played by the rule over the radio, with one player changing their mind and
 every round held) and the storm; a player drops out mid-wave and rejoins their seat; the TV disconnects and resumes; one Act II wave; the engineering
-report; the tool; two Act III waves with tuned dials (A 0° / 45°, B 22.5° / 157.5°), whose pooled rate must be
-clearly above 75%; the debrief. CI runs it after `pnpm smoke`.
+report; the tool (clue 1); Act III, where the room measures the crystals (no phone ever sends `player:measure`): one
+wave at the starting crystal plans (exactly 75%, not saved), clues 2–4 released from the remote, and a wave at the
+clue 4 settings (85.4%, saved); the debrief. CI runs it after `pnpm smoke`.
 
 ### Screenshots (`pnpm shots`)
 `pnpm shots` plays the whole solo flow like a player in headless Chromium and saves a screenshot of every screen:

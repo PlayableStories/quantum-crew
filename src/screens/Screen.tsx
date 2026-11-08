@@ -39,6 +39,7 @@ import { AutoToggle, enabledSteps, keyStep, stepLabel } from "./hostSteps.tsx";
 import { useElapsedMs, useRemainingMs } from "../net/useCountdown.ts";
 import { decisionMs, resultMs } from "../shared/pace.ts";
 import { Sheet } from "../components/Sheet.tsx";
+import { ClueList, CrystalRuleTable } from "../components/CrystalPlan.tsx";
 import { fetchStationInfo, joinUrl, remoteUrl, loadChosenAddress, pickJoinOrigin, saveChosenAddress } from "../net/joinOrigin.ts";
 import { roundIdOf, type Speed, type HostCommand, type PairInfo, type RateSummary, type RoomState, type RoundOutcome, type StationInfo, type JoinAddress } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
@@ -50,11 +51,6 @@ export function Screen() {
   const [remoteOpen, setRemoteOpen] = useState(false);
   const closeRemote = useCallback(() => setRemoteOpen(false), []);
   useEffect(() => start(), [start]);
-  // Facilitator-only, so it lives on the TV: the hint. (The report's step is the room's, `debriefStep`.)
-  const [hint, setHint] = useState(false);
-  useEffect(() => {
-    if (!state?.toolUnlocked) setHint(false);
-  }, [state?.toolUnlocked]);
   useTvSounds(state, results);
   // Where phones join: asked from the server once (see net/joinOrigin.ts for the order).
   const [info, setInfo] = useState<StationInfo | null>(null);
@@ -118,7 +114,10 @@ export function Screen() {
 
       <section className="tv__main">
         {state.phase !== "debrief" && <PhaseBanner state={state} localDeadline={localDeadline} />}
-        {hint && state.act === 3 && state.phase !== "debrief" && <p className="tv__hint">{S.tuning.hint}</p>}
+        {/* Act III: the situation, what players can do now, and the question (the clue ladder replaced the hint). */}
+        {state.act === 3 && ["tool", "strategy", "round", "roundResult"].includes(state.phase) && (
+          <Explainer state={state} compact={state.phase !== "tool"} />
+        )}
         {state.phase === "briefing" ? (
           <BriefingPanel />
         ) : state.phase === "storm" ? (
@@ -130,11 +129,13 @@ export function Screen() {
         ) : state.phase === "ceiling" ? (
           <CeilingPanel state={state} />
         ) : state.phase === "tool" ? (
-          <ToolPanel />
+          <ToolPanel clue={state.clue} />
+        ) : state.phase === "strategy" && state.act === 3 ? (
+          <CrystalLull state={state} />
         ) : state.phase === "debrief" ? (
           <TvDebrief state={state} onCommand={command} />
         ) : state.phase === "resolution" ? (
-          <ResolutionPanel saved={state.stationSaved} />
+          <ResolutionPanel saved={state.stationSaved} plansRate={state.savedDialsRate ?? state.crewDialsRate} />
         ) : (
           <StationVisual rate={gauge} />
         )}
@@ -142,6 +143,7 @@ export function Screen() {
           className="panel"
           hidden={
             ["debrief", "briefing", "storm", "ceiling", "tool", "resolution"].includes(state.phase) ||
+            (state.phase === "strategy" && state.act === 3) || // the rule and the clues need the room
             (state.phase === "batchDone" && state.act !== 1) // the pairs' four cases need the room
           }
         >
@@ -182,7 +184,7 @@ export function Screen() {
         />
       </aside>
 
-      <HostControls state={state} localDeadline={localDeadline} onCommand={command} error={error} hint={hint} onHint={() => setHint((h) => !h)} />
+      <HostControls state={state} localDeadline={localDeadline} onCommand={command} error={error} />
     </main>
   );
 }
@@ -239,15 +241,21 @@ function PhaseBanner({ state, localDeadline }: { state: RoomState; localDeadline
           <p className="kicker">
             {act1 ? S.tv.act1RoundOf(state.roundNo) : S.tv.roundOf(state.batchNo, state.roundNo, state.batchSize)}
           </p>
-          {state.deadline !== null ? (
+          {/* The plans went into the wave locked (Acts II and III). */}
+          {/* The plans went into the wave locked (Acts II and III); in manual, the note shares the line. */}
+          {(!act1 || (state.deadline === null && !state.auto)) && (
+            <div className="tv__banner-row">
+              {!act1 && <p className="tv__locked">🔒 {S.event.locked.tvStamp}</p>}
+              {state.deadline === null && !state.auto && <p className="tv__manual muted small">{S.tv.auto.manualNote}</p>}
+            </div>
+          )}
+          {state.deadline !== null && (
             <Countdown
               id={`${roundIdOf(state.act, state.batchNo, state.roundNo)}-${state.phase}-${state.deadline}`}
               ms={totalMs}
               left={state.deadline - state.serverNow}
               paused={false}
             />
-          ) : (
-            !state.auto && <p className="tv__manual muted small">{S.tv.auto.manualNote}</p>
           )}
         </>
       )}
@@ -380,18 +388,81 @@ export function CeilingPanel({ state }: { state: RoomState }) {
 }
 
 /** The tool reveal: the supply pod from engineering, with its note (the crystals carry no messages). */
-export function ToolPanel() {
+export function ToolPanel({ clue = 1 }: { clue?: number }) {
   const art = atlasUrl("entanglement-reveal");
   return (
-    <div className="panel stack reveal">
-      <RevealField art={art} />
-      <Crystals />
-      <p className="kicker">{S.event.pod.kicker}</p>
-      {S.event.pod.lines.map((l) => (
-        <p key={l} className="tv__line">
-          {l}
-        </p>
-      ))}
+    <div className="tv__tool">
+      <div className="panel stack reveal">
+        <RevealField art={art} />
+        <Crystals />
+        <p className="kicker">{S.event.pod.kicker}</p>
+        {S.event.pod.lines.map((l) => (
+          <p key={l} className="tv__line">
+            {l}
+          </p>
+        ))}
+      </div>
+      {/* Clue 1 comes with the tool: the crystals' rule and the question. */}
+      <div className="panel stack tv__clues">
+        <ClueList clue={clue} pairs={[]} className="clues--tv" titlesInline />
+      </div>
+    </div>
+  );
+}
+
+/** The TV in Act III: the situation in one line, what players can do now, and the question they're working on. */
+export function Explainer({ state, compact = false, withNow = false }: { state: RoomState; compact?: boolean; withNow?: boolean }) {
+  const E = S.event.explain;
+  const step = state.phase === "roundResult" ? "round" : (state.phase as "tool" | "strategy" | "round" | "batchDone");
+  const lines = E[step];
+  if (!lines) return null;
+  if (compact)
+    return (
+      <p className="tv__explain tv__explain--compact">
+        {withNow && (
+          <>
+            <b>{E.labels.now}:</b> {lines.now}{" "}
+          </>
+        )}
+        <b>{E.labels.can}:</b> {lines.can} <b>{E.labels.question}:</b> {lines.question}
+      </p>
+    );
+  return (
+    <dl className="tv__explain">
+      <div>
+        <dt>{E.labels.now}</dt>
+        <dd>{lines.now}</dd>
+      </div>
+      <div>
+        <dt>{E.labels.can}</dt>
+        <dd>{lines.can}</dd>
+      </div>
+      <div>
+        <dt>{E.labels.question}</dt>
+        <dd>{lines.question}</dd>
+      </div>
+    </dl>
+  );
+}
+
+/** The Act III lull on the TV: the crystals' rule and every clue so far (the latest in full). Clue 2 lists each
+ *  pair's weakest case from its latest locked plans. */
+export function CrystalLull({ state }: { state: RoomState }) {
+  return (
+    <div className="tv__lull3">
+      <div className="panel stack">
+        <p className="kicker">{S.event.crystalRule.head}</p>
+        <CrystalRuleTable />
+      </div>
+      <div className="panel stack tv__clues">
+        <ClueList
+          clue={state.clue}
+          pairs={state.pairs.map((p) => ({ id: p.id, plans: p.lockedDials }))}
+          className="clues--tv"
+          ruleTable={false}
+          titlesInline
+        />
+      </div>
     </div>
   );
 }
@@ -401,7 +472,7 @@ export function ToolPanel() {
  *  followed count, its dials' average and whether that saves the station. */
 export function CrystalWave({ state }: { state: RoomState }) {
   const W = S.event.wave3;
-  const dials = (t: TuningConfig) => W.dials(formatDeg(t.greenDeg), formatDeg(t.redDeg));
+  const dials = (t: TuningConfig) => W.plan(formatDeg(t.greenDeg), formatDeg(t.redDeg));
   const crew = state.crewDialsRate;
   const followed = state.act3Followed;
   return (
@@ -410,25 +481,29 @@ export function CrystalWave({ state }: { state: RoomState }) {
         {crew !== null && <strong>{crew >= SURVIVAL_THRESHOLD ? W.saved(pct(crew)) : W.notSaved(pct(crew))}</strong>}
         {followed && followed.of > 0 && <span className="muted"> · {W.crewFollowed(followed.n, followed.of)}</span>}
       </p>
+      {/* What players can do now and the question, in one line (the full width belongs to the pairs' cases). */}
+      <Explainer state={state} compact />
       {state.pairs.map((pair) => {
         if (!pair.lockedDials) return null;
         const { a, b } = pair.lockedDials;
         const trueRate = quantumExpectedWinRate(a, b);
         const holds = trueRate >= SURVIVAL_THRESHOLD;
         const wave = pair.lastWave;
-        const f = pair.followed;
         return (
           <div key={pair.id} className={`panel stack tv__pair-cases ${holds ? "tv__pair-cases--holds" : ""}`}>
             <p className="kicker">
-              {S.tv.pair(pair.id)} · {W.pairDials(pair.a.name, dials(a), pair.b.name, dials(b))}
+              {S.tv.pair(pair.id)} · {W.pairPlans(pair.a.name, dials(a), pair.b.name, dials(b))}
             </p>
-            <CrystalCases tuning={a} crew={b} order={S.event.casesOrder} />
+            <CrystalCases tuning={a} crew={b} order={S.event.casesOrder} gaps weakest={state.clue >= 2 && !holds} />
             <p className="tv__pair-total">
               <strong>{S.readout.trueRate(pct(trueRate))}</strong>
-              {holds && <span className="tv__holds"> · {W.holds}</span>}
+              {holds && <span className="tv__found"> · ✓ {W.foundIt}</span>}
               {wave && <span className="muted"> · {W.wave(wave.wins, wave.rounds)}</span>}
-              {f && f.of > 0 && <span className="muted"> · {W.followed(f.n, f.of)}</span>}
             </p>
+            {/* The wave and the true rate disagree about 80%: luck, either way. */}
+            {wave && wave.rounds > 0 && wave.wins / wave.rounds >= SURVIVAL_THRESHOLD !== holds && (
+              <p className="tv__luck">{holds ? W.luckyBelow(pct(trueRate)) : W.luckyAbove(pct(trueRate))}</p>
+            )}
           </div>
         );
       })}
@@ -439,13 +514,14 @@ export function CrystalWave({ state }: { state: RoomState }) {
 /** The debrief on the big screen: the same four steps as solo, with the whole crew's numbers. */
 /** The storm passes: the station clears (calm when saved, damaged when not, as in solo), the station log says how
  *  it ended, and the room is told the radio is back. */
-export function ResolutionPanel({ saved }: { saved: boolean }) {
+export function ResolutionPanel({ saved, plansRate = null }: { saved: boolean; plansRate?: number | null }) {
   return (
     <div className="stack tv__resolution">
       {saved ? <StationVisual rate={1} clearing /> : <StationVisual rate={null} damaged clearing />}
       <div className="panel stack">
         <p className="kicker">{S.resolution.kicker}</p>
         <p className="tv__line">{saved ? S.resolution.log : S.resolution.logNotSaved}</p>
+        {plansRate !== null && <p className="tv__line">{S.event.resolution.plans(pct(plansRate))}</p>}
         <p className="tv__line">
           <strong>{S.event.resolution.room}</strong>
         </p>
@@ -457,7 +533,7 @@ export function ResolutionPanel({ saved }: { saved: boolean }) {
 /** The incident report on the big screen: solo's four steps in the crew's version, stepped by the room (Back /
  *  Next send reportBack / reportNext, so a reconnecting TV keeps its place). */
 export function TvDebrief({ state, onCommand }: { state: RoomState; onCommand: (cmd: HostCommand) => void }) {
-  const steps = S.debrief.steps;
+  const steps = S.event.report.steps;
   const step = Math.min(state.debriefStep, steps.length - 1);
   const content = steps[step]!;
   const report = crewReport(state);
@@ -494,7 +570,8 @@ export function TvDebrief({ state, onCommand }: { state: RoomState; onCommand: (
           {step === 1 && (
             <PlanVsCrystals
               dials={dials}
-              label={best ? R.pairDials(best.pairId, best.a, best.b) : S.debrief.compare.dials(false)}
+              label={best ? R.pairDials(best.pairId, best.a, best.b) : R.bestPlans}
+              copy={R.compare}
             />
           )}
           {step === 2 && (
@@ -655,7 +732,14 @@ function PairCard({ pair, state, result }: { pair: PairInfo; state: RoomState; r
   return (
     <div className={`panel pair ${result ? (result.win ? "pair--win" : "pair--loss") : ""}`}>
       <div className="pair__head">
-        <span className="kicker">{S.tv.pair(pair.id)}</span>
+        <span className="kicker">
+          {S.tv.pair(pair.id)}
+          {(state.phase === "round" || state.phase === "roundResult") && state.act !== 1 && (
+            <span className="pair__locked" title={S.event.locked.tvStamp} aria-label={S.event.locked.tvStamp}>
+              {" "}🔒
+            </span>
+          )}
+        </span>
         <strong>{r === null ? "—" : pct(r)}</strong>
       </div>
       <div className="pair__seats">
@@ -688,15 +772,11 @@ function HostControls({
   localDeadline,
   onCommand,
   error,
-  hint,
-  onHint,
 }: {
   state: RoomState;
   localDeadline: number | null;
   onCommand: (c: HostCommand, speed?: Speed) => void;
   error: string | null;
-  hint: boolean;
-  onHint: () => void;
 }) {
   const inBatch = state.phase === "round" || state.phase === "roundResult";
   const steps = enabledSteps(state);
@@ -732,11 +812,6 @@ function HostControls({
         </button>
       ))}
       <AutoToggle state={state} localDeadline={localDeadline} onToggle={toggle} onSpeed={(sp) => onCommand("setSpeed", sp)} />
-      {state.act === 3 && state.phase !== "debrief" && !inBatch && (
-        <button className={`btn ${hint ? "btn--selected" : ""}`} onClick={onHint}>
-          {hint ? S.tv.hideHint : S.tv.showHint}
-        </button>
-      )}
       <button className="btn btn--ghost" onClick={send("reset")}>
         {S.tv.cmd.reset}
       </button>
