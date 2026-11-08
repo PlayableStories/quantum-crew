@@ -18,6 +18,20 @@ const pumpWord = (v: 0 | 1) => (v === 0 ? "clockwise" : "anticlockwise");
 const planSays = (p: ClassicalStrategy) =>
   p.onGreen === p.onRed ? `always ${pumpWord(p.onGreen)}` : `COOL → ${pumpWord(p.onGreen)}, HOT → ${pumpWord(p.onRed)}`;
 
+/** The numbers in the remote's clue talking points, computed from the maths (src/screens/Remote.tsx). */
+export type ClueTalk = {
+  minGap: string;
+  maxGap: string;
+  line: string;
+  matchGap: string;
+  differGap: string;
+  same: string;
+  differ: string;
+  rate: string;
+  planA: string;
+  planB: string;
+};
+
 export const S = {
   title: "Quantum Crew",
   rule: {
@@ -523,26 +537,24 @@ export const S = {
       startCora: (cool: string, hot: string, pct: string) =>
         `${CREW_NAME} measures at COOL ${cool}, HOT ${hot}. With your plan as it is, your pair holds ${pct}. Can you do better?`,
       body: "Agree on your crystal plans. When the wave hits, the radio goes dark.",
+      /** The first time: one line at the top of the card (it replaced E3c's comparison table). */
+      like: "Like an Act II plan, but for each reading you choose a crystal setting, not a direction.",
       retune: "Change your crystal plan",
-    },
-    /** The first time: a crystal plan beside an Act II plan. */
-    compare: {
-      head: "A crystal plan is still a plan",
-      cols: ["", "Act II plan", "Crystal plan"],
-      rows: [
-        ["COOL", "a direction", "a setting"],
-        ["HOT", "a direction", "a setting"],
-        ["Who picks the direction", "you, by the plan", "the crystal, at your setting"],
-      ],
     },
     /** The crystals' rule: shown on the TV, and in a sheet on phones, from the tool reveal on. */
     crystalRule: {
       chip: "Crystal rule",
       head: "The crystals' rule",
-      body: "Two linked crystals give the same direction with a fixed chance that depends only on the gap between their settings.",
+      /** Three lines, in order; the gap table follows line 2. */
+      coin: "Each crystal says CLOCKWISE or ANTICLOCKWISE at random, like a coin flip, whatever its setting.",
+      closer: "Two linked crystals land the same way more often the closer their settings are:",
+      follow:
+        "Follow your crystals, and your pumps match exactly when your crystals agree. So keep settings close in the three cases that need matching pumps, and far apart when both sensors are HOT.",
       gap: "Gap",
       same: "Same direction",
-      fold: "A setting and the one 180° round are the same measurement, so a gap is never more than 90° (0° and 157.5° are 22.5° apart).",
+      /** `half` = 180°, `max` = 90°, then an example pair of settings and their folded gap (all computed). */
+      fold: (half: string, max: string, a: string, b: string, gap: string) =>
+        `A setting and the one ${half} round are the same measurement, so a gap is never more than ${max} (${a} and ${b} are ${gap} apart).`,
     },
     /** The read-only fan: the pair's four settings, and the gap in each case. */
     fan: {
@@ -551,23 +563,38 @@ export const S = {
       caseName: (x: string, y: string) => `A ${x} · B ${y}`,
       needSame: "same",
       needDiffer: "differ",
+      /** From clue 2: each case's chance beside its gap ("85% same"). */
+      chance: (pct: string, need: "same" | "differ") => `${pct} ${need === "same" ? "same" : "differ"}`,
     },
     /** The clue ladder, released by the facilitator (TV and remote); every clue so far stays visible. */
     clues: {
       chip: (n: number) => `Clues (${n})`,
       head: "Clues",
-      titles: ["The crystals' rule", "Your weakest case", "A nudge", "The answer"],
-      question: "Which cases need the same direction, and which need different?",
-      /** Clue 2, for one pair. */
-      weakest: (caseName: string, gap: string, holds: string, need: "same" | "differ") =>
+      titles: ["The crystals' rule", "A hint", "A nudge", "The answer"],
+      /** Clue 2, for one pair below 80%: its weakest case, its gap and chance, and which way to move. */
+      hint: (caseName: string, gap: string, pct: string, need: "same" | "differ") =>
         need === "same"
-          ? `${caseName}: gap ${gap}, holds ${holds}. This case needs the same direction: bring these two settings closer.`
-          : `${caseName}: gap ${gap}, holds ${holds}. Both HOT needs different directions: move these two settings further apart.`,
+          ? `Your weakest case: ${caseName}, gap ${gap}, same only ${pct} of the time. This case needs your settings close: bring them closer.`
+          : `Your weakest case: ${caseName}, gap ${gap}, differ only ${pct} of the time. Both HOT needs your settings far apart: move them further apart.`,
+      /** The TV's pair card, beside the true rate: the case as its card reads ("HOT · HOT"; the outlined card shows
+       *  its gap and chance) and which way to move. */
+      tvHint: (cardName: string, need: "same" | "differ") =>
+        need === "same" ? `weakest ${cardName}: bring closer` : `weakest ${cardName}: move further apart`,
+      /** The TV's lull list (no case cards there): the case, its gap and chance, and which way to move. */
+      listHint: (caseName: string, gap: string, pct: string, need: "same" | "differ") =>
+        need === "same"
+          ? `${caseName}, gap ${gap}, same ${pct}: bring closer.`
+          : `${caseName}, gap ${gap}, differ ${pct}: move further apart.`,
+      /** A pair already at 80%+ (`pct` = the 80% line). */
+      foundIt: (pct: string) => `Found it: ${pct}+`,
       weakestPair: (pair: number) => `Pair ${pair}`,
       noWave: "After your first wave.",
-      nudge: "Going around your four settings, the three \"match\" gaps add up to the \"differ\" gap. How would you spread them?",
-      answer: (a: string, b: string, matchGap: string, same: string, differGap: string, differ: string, rate: string) =>
-        `Spread the four settings evenly, 22.5° apart. For example ${a}; ${b} (157.5° is the same setting as −22.5°). The three match gaps are ${matchGap} (${same} the same) and the differ gap is ${differGap} (${differ} different): ${rate}.`,
+      nudge:
+        "Going around your four settings, the differ gap can never be bigger than the three match gaps added together. You want the match gaps small and the differ gap near 90°. How would you spread them?",
+      /** `fold` names a setting over 90° and the same setting below 0° (computed), or is empty. */
+      answer: (spacing: string, a: string, b: string, fold: string, matchGap: string, same: string, differGap: string, differ: string, rate: string) =>
+        `Spread the four settings evenly, ${spacing} apart. For example ${a}; ${b}${fold}. The three match gaps are ${matchGap} (${same} the same) and the differ gap is ${differGap} (${differ} different): ${rate}.`,
+      sameSetting: (a: string, b: string) => ` (${a} is the same setting as ${b})`,
       plan: (table: string, cool: string, hot: string) => `${table}: COOL ${cool}, HOT ${hot}`,
     },
     /** An Act III round on a phone: what the station did with the plan. */
@@ -575,22 +602,24 @@ export const S = {
       sensor: "Your sensor",
       plan: "your plan",
       crystal: "the crystal says",
+      /** After the direction: it was a coin flip. */
+      flip: "(this time; it could have been either)",
     },
     /** The TV in Act III: the situation in one line, what players can do now, and the question they're working on. */
     explain: {
       tool: {
         now: "Engineering has sent linked crystals: one at each table, for every pair.",
         can: "Read the crystals' rule. Next, each pair plans their settings in the lull.",
-        question: "Which cases need the same direction, and which need different?",
+        question: "Which settings keep three gaps small and one far apart?",
       },
       strategy: {
         now: "The lull: the radio still works. Plan your crystal settings together.",
         can: "Pick a setting for COOL and for HOT on your phone; your partner sees it live.",
-        question: "How far apart should each pair of settings be?",
+        question: "How close can you keep three gaps while the fourth stays far apart?",
       },
       round: {
         now: "The wave: radio down. The station measures each crystal at your planned setting.",
-        can: "Read your crystal's direction and set your pump: follow it or not.",
+        can: "Follow your crystal: that's how your plan works. Going against it is a guess.",
         question: "Does your plan hold in all four cases?",
       },
       batchDone: {
@@ -614,9 +643,6 @@ export const S = {
       /** A case on the TV after a wave: its gap, then (beside it) the chance it holds. */
       gap: (gap: string) => `gap ${gap} ·`,
       foundIt: "found it: 80%+",
-      /** Clue 2 on the wave done: the weakest case's tag (a "same" case needs a smaller gap, both HOT a wider one). */
-      needCloser: "weakest: closer",
-      needWider: "weakest: wider",
       /** The wave and the true rate disagree about 80%. */
       luckyAbove: (pct: string) => `Above 80% by luck: the plans' true rate is ${pct}.`,
       luckyBelow: (pct: string) => `Below 80% by bad luck: the plans' true rate is ${pct}.`,
@@ -788,7 +814,11 @@ export const S = {
     startRounds: "Start the rounds",
     resetConfirm: "Reset the session? Scores are cleared; players stay.",
     /** Next clue, labelled with the clue it releases (1 comes with the tool). */
-    nextClue: (n: number) => `Next clue: ${["", "the rule", "weakest case", "a nudge", "the answer"][n] ?? ""}`,
+    /** `notYet` = pairs not yet at 80% (for clue 2, the hint). */
+    nextClue: (n: number, notYet = 0) =>
+      n === 2
+        ? `Next clue: a hint (${notYet === 0 ? "every pair at 80%+" : `${notYet} ${notYet === 1 ? "pair" : "pairs"} not yet`})`
+        : `Next clue: ${["", "the rule", "", "a nudge", "the answer"][n] ?? ""}`,
     wholeCrew: "Whole crew",
     wobble: "A few rounds each makes the numbers wobble. Over many rounds every row settles at 50%, whatever the partner's sensor read.",
     marginalHead: {
@@ -867,24 +897,25 @@ export const S = {
         "Read engineering's note aloud: the crystals carry no messages, so the storm can't jam them.",
         "\"The crystals don't replace your plan. They change what a plan can say.\"",
       ],
-      /** Act III, for the latest clue released (1–4). */
-      clue: [
+      /** Act III, for the latest clue released (1–4); every number comes from the maths (`ClueTalk`). */
+      clue: (n: number, k: ClueTalk): string[] =>
         [
-          "Clue 1, the crystals' rule: read the table aloud. A gap of 0° always agrees, 90° never does.",
-          "Ask: which cases need the same direction, and which need different? (Three need the same; both HOT needs different.)",
-        ],
-        [
-          "Clue 2: each pair's weakest case is on the TV. Ask them what that case needs: a smaller gap for a \"same\" case, a wider one for both HOT.",
-        ],
-        [
-          "Clue 3: going around the four settings, the three \"same\" gaps add up to the \"differ\" gap. Ask how they'd spread them.",
-          "If all three \"same\" gaps are equal, each is a third of the \"differ\" gap.",
-        ],
-        [
-          "Clue 4, the answer: settings 22.5° apart. A: COOL 0°, HOT 45°; B: COOL 22.5°, HOT 157.5°.",
-          "Three \"same\" gaps of 22.5° (85% the same) and a \"differ\" gap of 67.5° (85% different): 85.4%.",
-        ],
-      ],
+          [
+            "Clue 1, the crystals' rule: each crystal alone is a coin flip, whatever its setting.",
+            `Read the table aloud: a gap of ${k.minGap} always lands the same way, ${k.maxGap} never does. Followed crystals make matching pumps exactly when they agree.`,
+          ],
+          [
+            `Clue 2: the pairs not yet at ${k.line} see their weakest case, with which way to move. Ask them what that case needs.`,
+          ],
+          [
+            "Clue 3: the differ gap is never bigger than the three match gaps added together.",
+            `Equal match gaps and the biggest differ gap: three times one match gap (three gaps of ${k.matchGap} make ${k.differGap}).`,
+          ],
+          [
+            `Clue 4, the answer: settings ${k.matchGap} apart. ${k.planA}; ${k.planB}.`,
+            `Three match gaps of ${k.matchGap} (${k.same} the same) and a differ gap of ${k.differGap} (${k.differ} different): ${k.rate}.`,
+          ],
+        ][n - 1] ?? [],
       resolution: ["Ask each player to tell their partner what they were thinking during the storm.", "Give it a minute."],
       debrief: [
         "The three numbers: with the radio, the best plan, the crystals.",

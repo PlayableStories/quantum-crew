@@ -1373,13 +1373,6 @@ p {
   gap: var(--gap);
 }
 
-.tv__hint {
-  margin: 0;
-  color: var(--q-3);
-  font-size: clamp(1.1rem, 1.8vw, 1.8rem);
-  font-weight: 700;
-}
-
 .marginals {
   width: 100%;
   border-collapse: collapse;
@@ -1455,7 +1448,6 @@ p {
   gap: var(--gap);
 }
 
-
 /* Act III background from the Entanglement Shader asset */
 .backdrop {
   position: fixed;
@@ -1476,7 +1468,6 @@ p {
   position: relative;
   isolation: isolate;
 }
-
 
 .crew-icon {
   display: inline-block;
@@ -4014,8 +4005,7 @@ button.board__cell:focus-visible {
   margin: 0;
 }
 
-.crystal-rule__table,
-.plan-compare__table {
+.crystal-rule__table {
   width: 100%;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
@@ -4032,32 +4022,6 @@ button.board__cell:focus-visible {
   text-align: left;
   color: var(--ink-muted);
   font-weight: 600;
-}
-
-/* The first time: a crystal plan beside an Act II plan. */
-.plan-compare {
-  display: grid;
-  gap: 4px;
-}
-
-.plan-compare .kicker {
-  margin: 0;
-}
-
-.plan-compare__table {
-  font-size: 0.8rem;
-}
-
-.plan-compare__table th,
-.plan-compare__table td {
-  padding: 3px 6px;
-  text-align: left;
-  vertical-align: top;
-  border-bottom: var(--border);
-}
-
-.plan-compare__table thead th {
-  color: var(--ink-muted);
 }
 
 /* Sheets behind small buttons: the station rule, the crystals' rule, the clues. */
@@ -4171,9 +4135,6 @@ button.board__cell:focus-visible {
     min-height: 40px;
   }
 
-  .plan-compare__table {
-    font-size: 0.72rem;
-  }
 }
 
 /* Short phones (375×667): the Act III lull keeps the card, the partner, the starting line and the fan on one screen. */
@@ -4207,15 +4168,6 @@ button.board__cell:focus-visible {
     font-size: 1rem;
   }
 
-  .lull--act3 .plan-compare .kicker {
-    font-size: 0.66rem;
-  }
-
-  .lull--act3 .plan-compare__table th,
-  .lull--act3 .plan-compare__table td {
-    padding: 1px 4px;
-  }
-
   .lull--act3 .crystal-plan {
     padding: 8px 12px;
   }
@@ -4245,8 +4197,7 @@ button.board__cell:focus-visible {
   width: 30%;
 }
 
-.sheet .crystal-rule,
-.sheet .plan-compare {
+.sheet .crystal-rule {
   min-width: 0;
 }
 
@@ -4443,10 +4394,6 @@ button.board__cell:focus-visible {
   outline-offset: 1px;
 }
 
-.case__need {
-  color: var(--q-3);
-  font-weight: 700;
-}
 
 /* 1280×720: the answer (clue 4) fits under the rule. */
 @media (max-height: 800px) {
@@ -4480,8 +4427,13 @@ button.board__cell:focus-visible {
     font-size: 1.05rem;
   }
 
-  .lull--act3 > .start-line {
+  .lull--act3 > .start-line,
+  .lull--act3 > .clue-hint {
     font-size: 0.78rem;
+  }
+
+  .lull--act3 .crystal-plan__like {
+    font-size: 0.8rem;
   }
 
   .lull--act3 .crystal-plan {
@@ -4492,15 +4444,6 @@ button.board__cell:focus-visible {
   .lull--act3 .crystal-plan__lead,
   .lull--act3 .crystal-plan__when {
     font-size: 0.85rem;
-  }
-
-  .lull--act3 .plan-compare__table {
-    font-size: 0.74rem;
-  }
-
-  .lull--act3 .plan-compare__table th,
-  .lull--act3 .plan-compare__table td {
-    padding: 1px 4px;
   }
 
   .lull--act3 .fan {
@@ -4519,9 +4462,6 @@ button.board__cell:focus-visible {
   row-gap: 0;
 }
 
-.case__need {
-  font-size: 0.9em;
-}
 
 /* Short phones again (after the all-phones block above, which would otherwise win): the tightest Act III lull. */
 @media (max-height: 700px) {
@@ -4533,8 +4473,13 @@ button.board__cell:focus-visible {
     font-size: 1rem;
   }
 
-  .lull--act3 > .start-line {
+  .lull--act3 > .start-line,
+  .lull--act3 > .clue-hint {
     font-size: 0.74rem;
+  }
+
+  .lull--act3 .crystal-plan__like {
+    font-size: 0.76rem;
   }
 
   .lull--act3 .crystal-plan__lead,
@@ -4542,11 +4487,66 @@ button.board__cell:focus-visible {
     font-size: 0.82rem;
   }
 
-  .lull--act3 .plan-compare__table {
-    font-size: 0.72rem;
-  }
-
   .lull--act3 .fan__gaps {
     font-size: 0.72rem;
+  }
+}
+
+/* E3d: the card's first line ("Like an Act II plan…"), clue 2's hint on phones and the TV, and the round's coin-flip
+   note. */
+.crystal-plan__like {
+  margin: 0;
+  font-size: var(--fs-s);
+  line-height: 1.35;
+}
+
+.clue-hint {
+  margin: 0;
+  padding: 4px 10px;
+  border-left: 3px solid var(--amber);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.clue-hint--found {
+  border-left-color: var(--win);
+  font-weight: 700;
+}
+
+.tv__pair-hint {
+  font-size: 0.9em;
+  color: var(--amber);
+  font-weight: 700;
+}
+
+.chain__flip {
+  font-weight: 400;
+}
+
+/* E3d: the tool reveal and the Act III lull take the TV's whole width. The tool: the pod beside the rule. The lull
+   from clue 2: the rule beside the clues. */
+.tv__tool {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+}
+
+.tv__tool .crystal-rule__table {
+  table-layout: auto;
+}
+
+.tv__tool .crystal-rule__table th,
+.tv__tool .crystal-rule__table td {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.tv__lull3--clues {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+/* Short phones, an Act III round: the dial's own value repeats "your plan" above it. */
+@media (max-height: 700px) {
+  .chain .dial__value {
+    display: none;
   }
 }

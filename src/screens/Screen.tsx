@@ -40,6 +40,7 @@ import { useElapsedMs, useRemainingMs } from "../net/useCountdown.ts";
 import { decisionMs, resultMs } from "../shared/pace.ts";
 import { Sheet } from "../components/Sheet.tsx";
 import { ClueList, CrystalRuleTable } from "../components/CrystalPlan.tsx";
+import { weakestCase } from "../shared/crystalPlan.ts";
 import { fetchStationInfo, joinUrl, remoteUrl, loadChosenAddress, pickJoinOrigin, saveChosenAddress } from "../net/joinOrigin.ts";
 import { roundIdOf, type Speed, type HostCommand, type PairInfo, type RateSummary, type RoomState, type RoundOutcome, type StationInfo, type JoinAddress } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
@@ -78,10 +79,11 @@ export function Screen() {
 
   const quantum = state.act === 3 && state.phase !== "debrief";
   return (
-    // After a wave the pairs' four cases take the whole width (the join panel and pair list step aside).
+    // After a wave the pairs' four cases take the whole width (the join panel and pair list step aside); so do the
+    // report, the tool reveal and the Act III lull (the crystals' rule and the clues need it; since E3d).
     <main
       className={`tv ${quantum ? "quantum" : ""} ${state.phase === "batchDone" && state.act !== 1 ? "tv--cases" : ""} ${
-        state.phase === "debrief" ? "tv--wide" : ""
+        state.phase === "debrief" || state.phase === "tool" || (state.act === 3 && state.phase === "strategy") ? "tv--wide" : ""
       }`}
     >
       {quantum && <QuantumBackdrop />}
@@ -402,9 +404,9 @@ export function ToolPanel({ clue = 1 }: { clue?: number }) {
           </p>
         ))}
       </div>
-      {/* Clue 1 comes with the tool: the crystals' rule and the question. */}
+      {/* Clue 1 comes with the tool: the crystals' rule (three lines and the table). */}
       <div className="panel stack tv__clues">
-        <ClueList clue={clue} pairs={[]} className="clues--tv" titlesInline />
+        <ClueList clue={clue} pairs={[]} className="clues--tv" titlesInline tv />
       </div>
     </div>
   );
@@ -449,20 +451,24 @@ export function Explainer({ state, compact = false, withNow = false }: { state: 
  *  pair's weakest case from its latest locked plans. */
 export function CrystalLull({ state }: { state: RoomState }) {
   return (
-    <div className="tv__lull3">
+    <div className={`tv__lull3 ${state.clue >= 2 ? "tv__lull3--clues" : ""}`}>
       <div className="panel stack">
         <p className="kicker">{S.event.crystalRule.head}</p>
         <CrystalRuleTable />
       </div>
-      <div className="panel stack tv__clues">
-        <ClueList
-          clue={state.clue}
-          pairs={state.pairs.map((p) => ({ id: p.id, plans: p.lockedDials }))}
-          className="clues--tv"
-          ruleTable={false}
-          titlesInline
-        />
-      </div>
+      {/* From clue 2: the clues so far (the rule is above), the latest in full. */}
+      {state.clue >= 2 && (
+        <div className="panel stack tv__clues">
+          <ClueList
+            clue={state.clue}
+            pairs={state.pairs.map((p) => ({ id: p.id, plans: p.lockedDials }))}
+            className="clues--tv"
+            rule={false}
+            titlesInline
+            tv
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -489,6 +495,7 @@ export function CrystalWave({ state }: { state: RoomState }) {
         const trueRate = quantumExpectedWinRate(a, b);
         const holds = trueRate >= SURVIVAL_THRESHOLD;
         const wave = pair.lastWave;
+        const hint = state.clue >= 2 && !holds ? weakestCase(a, b) : null;
         return (
           <div key={pair.id} className={`panel stack tv__pair-cases ${holds ? "tv__pair-cases--holds" : ""}`}>
             <p className="kicker">
@@ -498,6 +505,8 @@ export function CrystalWave({ state }: { state: RoomState }) {
             <p className="tv__pair-total">
               <strong>{S.readout.trueRate(pct(trueRate))}</strong>
               {holds && <span className="tv__found"> · ✓ {W.foundIt}</span>}
+              {/* Clue 2: a pair not yet at 80% gets which way to move (its weakest case is outlined). */}
+              {hint && <span className="tv__pair-hint"> · {S.event.clues.tvHint(`${S.light[hint.x]} · ${S.light[hint.y]}`, hint.need)}</span>}
               {wave && <span className="muted"> · {W.wave(wave.wins, wave.rounds)}</span>}
             </p>
             {/* The wave and the true rate disagree about 80%: luck, either way. */}

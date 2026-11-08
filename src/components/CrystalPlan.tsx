@@ -1,10 +1,22 @@
 // Act III's crystal plan (event mode), as a plan rather than a control: the card (two settings picked from a list,
 // like an Act II plan's two directions), the read-only fan of a pair's four settings with each case's gap, the
-// crystals' rule table, the comparison with an Act II plan, the "Plan locked" stamp and the clue ladder. The numbers
+// crystals' rule, the "Plan locked" stamp, the clue ladder and clue 2's hint. The numbers
 // all come from src/shared/crystalPlan.ts (built on chsh.ts).
 import type { ReactNode } from "react";
-import { matchProbability, type Table, type TuningConfig } from "../shared/chsh.ts";
-import { CLUE_SETTINGS, CRYSTAL_RULE, SETTINGS, planCases, planRate, weakestCase, type PlanCase } from "../shared/crystalPlan.ts";
+import { type Table, type TuningConfig } from "../shared/chsh.ts";
+import { SURVIVAL_THRESHOLD } from "../shared/chsh.ts";
+import {
+  CLUE_SETTINGS,
+  CRYSTAL_RULE,
+  RULE_GAPS,
+  SETTINGS,
+  clueAnswer,
+  clueHint,
+  planCases,
+  settingGap,
+  type LockedPlans,
+  type PlanCase,
+} from "../shared/crystalPlan.ts";
 import { COOL, HOT } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
 import { AiBadge } from "./AiBadge.tsx";
@@ -27,6 +39,7 @@ export function CrystalPlanCard({
   onChange,
   note,
   cora = false,
+  like = false,
   className = "",
 }: {
   title: ReactNode;
@@ -34,6 +47,8 @@ export function CrystalPlanCard({
   onChange?: (t: TuningConfig) => void;
   note?: ReactNode;
   cora?: boolean;
+  /** The player's own card in event mode: "Like an Act II plan…" at the top. */
+  like?: boolean;
   className?: string;
 }) {
   const row = (light: 0 | 1, field: "greenDeg" | "redDeg") => (
@@ -66,6 +81,7 @@ export function CrystalPlanCard({
         {title}
         {cora && <AiBadge />}
       </p>
+      {like && <p className="crystal-plan__like">{P.like}</p>}
       <p className="muted crystal-plan__lead">{P.lead}</p>
       <div className="crystal-plan__rows">
         {row(COOL, "greenDeg")}
@@ -81,7 +97,7 @@ export const planLine = (t: TuningConfig) => P.line(formatDeg(t.greenDeg), forma
 
 /** The fan: Table A's and Table B's settings on a half-circle (θ and θ + 180° are the same measurement), and the gap
  *  in each of the four cases. Read-only. */
-export function CrystalFan({ a, b }: { a: TuningConfig; b: TuningConfig }) {
+export function CrystalFan({ a, b, chances = false }: { a: TuningConfig; b: TuningConfig; chances?: boolean }) {
   const marks = [
     { key: "AC", table: "A", light: COOL, deg: a.greenDeg },
     { key: "AH", table: "A", light: HOT, deg: a.redDeg },
@@ -117,10 +133,16 @@ export function CrystalFan({ a, b }: { a: TuningConfig; b: TuningConfig }) {
       </svg>
       <ul className="fan__gaps">
         {planCases(a, b).map((c) => (
-          <li key={`${c.x}${c.y}`} className={c.pWin >= 0.8 ? "fan__gap--good" : c.pWin < 0.5 ? "fan__gap--bad" : undefined}>
+          <li key={`${c.x}${c.y}`} className={c.pWin >= SURVIVAL_THRESHOLD ? "fan__gap--good" : c.pWin < 0.5 ? "fan__gap--bad" : undefined}>
             <span>{caseName(c)}</span>{" "}
             <strong>{formatDeg(c.gap)}</strong>{" "}
-            <span className="muted">{c.need === "same" ? S.event.fan.needSame : S.event.fan.needDiffer}</span>
+            <span className="muted">
+              {chances
+                ? `· ${S.event.fan.chance(whole(c.pWin), c.need)}`
+                : c.need === "same"
+                  ? S.event.fan.needSame
+                  : S.event.fan.needDiffer}
+            </span>
           </li>
         ))}
       </ul>
@@ -130,12 +152,18 @@ export function CrystalFan({ a, b }: { a: TuningConfig; b: TuningConfig }) {
 
 export const caseName = (c: Pick<PlanCase, "x" | "y">) => S.event.fan.caseName(S.light[c.x], S.light[c.y]);
 
-/** The crystals' rule: the chance of the same direction for each gap (from matchProbability). */
-export function CrystalRuleTable({ compact = false }: { compact?: boolean }) {
+/** The crystals' rule (clue 1): each crystal alone is a coin flip; linked crystals land the same way more often the
+ *  closer their settings (the gap table, from matchProbability); followed crystals make the pumps match exactly when
+ *  they agree. `fold` = the note that a gap is never more than 90°. */
+export function CrystalRuleTable({ fold = true, className = "" }: { fold?: boolean; className?: string }) {
   const R = S.event.crystalRule;
+  const max = RULE_GAPS.at(-1)!;
+  // An example of folding: the first and last of the eight settings.
+  const [first, last] = [SETTINGS[0]!, SETTINGS.at(-1)!];
   return (
-    <div className={`crystal-rule ${compact ? "crystal-rule--compact" : ""}`}>
-      {!compact && <p>{R.body}</p>}
+    <div className={`crystal-rule ${className}`}>
+      <p>{R.coin}</p>
+      <p>{R.closer}</p>
       <table className="crystal-rule__table">
         <thead>
           <tr>
@@ -156,33 +184,12 @@ export function CrystalRuleTable({ compact = false }: { compact?: boolean }) {
           </tr>
         </tbody>
       </table>
-      {!compact && <p className="muted small">{R.fold}</p>}
-    </div>
-  );
-}
-
-/** The first time: a crystal plan beside an Act II plan (same conditions; a setting instead of a direction). */
-export function CompareWithPlan() {
-  const C = S.event.compare;
-  return (
-    <div className="plan-compare">
-      <p className="kicker">{C.head}</p>
-      <table className="plan-compare__table">
-        <thead>
-          <tr>
-            {C.cols.map((c, i) => (i === 0 ? <td key={i} /> : <th key={c} scope="col">{c}</th>))}
-          </tr>
-        </thead>
-        <tbody>
-          {C.rows.map(([head, act2, act3]) => (
-            <tr key={head}>
-              <th scope="row">{head}</th>
-              <td>{act2}</td>
-              <td>{act3}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {fold && (
+        <p className="muted small">
+          {R.fold(formatDeg(2 * max), formatDeg(max), formatDeg(first), formatDeg(last), formatDeg(settingGap(first, last)))}
+        </p>
+      )}
+      <p>{R.follow}</p>
     </div>
   );
 }
@@ -197,28 +204,46 @@ export function LockedPlan({ children }: { children: ReactNode }) {
   );
 }
 
-/** The clue 4 numbers, from the maths: the match gaps, the differ gap and the rate. */
+/** The clue 4 numbers, from the maths: the spacing, the match gaps, the differ gap and the rate. */
 export function answerText() {
-  const cases = planCases(CLUE_SETTINGS.A, CLUE_SETTINGS.B);
-  const match = cases.find((c) => c.need === "same")!;
-  const differ = cases.find((c) => c.need === "differ")!;
+  const k = clueAnswer();
   const C = S.event.clues;
   const plan = (t: Table) => C.plan(t, formatDeg(CLUE_SETTINGS[t].greenDeg), formatDeg(CLUE_SETTINGS[t].redDeg));
+  // A setting past 90° is the same as one below 0° (e.g. 157.5° and −22.5°).
+  const over = [CLUE_SETTINGS.A, CLUE_SETTINGS.B].flatMap((t) => [t.greenDeg, t.redDeg]).find((d) => d > 90);
   return C.answer(
+    formatDeg(k.spacing),
     plan("A"),
     plan("B"),
-    formatDeg(match.gap),
-    whole(matchProbability(0, match.gap)),
-    formatDeg(differ.gap),
-    whole(1 - matchProbability(0, differ.gap)),
-    `${(planRate(CLUE_SETTINGS.A, CLUE_SETTINGS.B) * 100).toFixed(1)}%`,
+    over === undefined ? "" : C.sameSetting(formatDeg(over), formatDeg(over - 180)),
+    formatDeg(k.matchGap),
+    whole(k.same),
+    formatDeg(k.differGap),
+    whole(k.differ),
+    rateText(k.rate),
   );
 }
 
-/** Clue 2 for one pair: its weakest case with its gap and what it needs (from its latest locked plans). */
-export function weakestText(plans: { a: TuningConfig; b: TuningConfig }) {
-  const w = weakestCase(plans.a, plans.b);
-  return S.event.clues.weakest(caseName(w), formatDeg(w.gap), whole(w.pWin), w.need);
+/** Clue 2 for one pair, in words: no wave yet, found it, or its weakest case and which way to move. `tv` = the TV
+ *  lull's list form; the wave done's cards use `tvHint`. */
+export function hintText(plans: LockedPlans, tv = false): string {
+  const h = clueHint(plans);
+  const C = S.event.clues;
+  if (h.kind === "none") return C.noWave;
+  if (h.kind === "found") return C.foundIt(whole(SURVIVAL_THRESHOLD));
+  const w = h.weakest;
+  return (tv ? C.listHint : C.hint)(caseName(w), formatDeg(w.gap), whole(w.pWin), w.need);
+}
+
+/** Clue 2 on a phone: one line for the player's own pair (a hint, or "Found it"). */
+export function ClueHint({ plans }: { plans: LockedPlans }) {
+  const h = clueHint(plans);
+  return (
+    <p className={`clue-hint clue-hint--${h.kind}`} role="status">
+      {h.kind === "found" && "✓ "}
+      {hintText(plans)}
+    </p>
+  );
 }
 
 /** Every clue released so far (`clue` 1–4), the latest last. Clue 2 lists `pairs` (each pair's weakest case). */
@@ -226,35 +251,43 @@ export function ClueList({
   clue,
   pairs,
   className = "",
-  ruleTable = true,
+  rule = true,
   titlesInline = false,
+  tv = false,
 }: {
   clue: number;
-  pairs: { id: number; plans: { a: TuningConfig; b: TuningConfig } | null }[];
+  pairs: { id: number; plans: LockedPlans }[];
   className?: string;
-  /** The TV's lull shows the rule's table beside the clues, so clue 1 leaves it out there. */
-  ruleTable?: boolean;
+  /** Clue 1 in full (the rule); false where the rule already shows beside the clues (the TV's lull). */
+  rule?: boolean;
+  /** The TV: clue 2 lists only the pairs not yet at 80%, in the short form. */
+  tv?: boolean;
   /** The TV: every clue's title on one line (the latest marked), then the latest clue in full. */
   titlesInline?: boolean;
 }) {
   const C = S.event.clues;
   const items: { title: string; body: ReactNode }[] = [];
   if (clue >= 1)
-    items.push({ title: C.titles[0]!, body: <>{ruleTable && <CrystalRuleTable compact />}<p>{C.question}</p></> });
-  if (clue >= 2)
+    // The TV leaves out the 180° note (it's in the phones' Crystal rule sheet).
+    items.push({ title: C.titles[0]!, body: rule ? <CrystalRuleTable fold={!tv} /> : null });
+  if (clue >= 2) {
+    // The TV lists the pairs not yet at 80% (the others found it); a phone shows its own pair.
+    const shown = tv ? pairs.filter((p) => clueHint(p.plans).kind !== "found") : pairs;
     items.push({
       title: C.titles[1]!,
       body: (
         <ul className="clues__pairs">
-          {pairs.map((p) => (
+          {shown.map((p) => (
             <li key={p.id}>
               {pairs.length > 1 && <strong>{C.weakestPair(p.id)}: </strong>}
-              {p.plans ? weakestText(p.plans) : C.noWave}
+              {hintText(p.plans, tv)}
             </li>
           ))}
+          {tv && shown.length === 0 && <li>{C.foundIt(whole(SURVIVAL_THRESHOLD))}</li>}
         </ul>
       ),
     });
+  }
   if (clue >= 3) items.push({ title: C.titles[2]!, body: <p>{C.nudge}</p> });
   if (clue >= 4) items.push({ title: C.titles[3]!, body: <p>{answerText()}</p> });
   if (titlesInline) {

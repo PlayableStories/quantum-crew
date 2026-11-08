@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRemainingMs } from "../net/useCountdown.ts";
 import { decisionMs, resultMs, secs } from "../shared/pace.ts";
-import { CLUE_COUNT } from "../shared/crystalPlan.ts";
+import { CLUE_COUNT, pairsNotYet } from "../shared/crystalPlan.ts";
 import { SPEEDS, type HostCommand, type RoomState, type Speed } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 
@@ -71,7 +71,7 @@ export function enabledSteps(state: RoomState): HostCommand[] {
 export function stepLabel(state: RoomState, cmd: HostCommand): string {
   if (cmd === "startBatch" && state.phase === "briefing") return S.tv.startRounds;
   if (cmd === "next") return state.phase === "round" ? S.tv.closeRound : S.tv.nextRound;
-  if (cmd === "nextClue") return S.tv.nextClue(state.clue + 1);
+  if (cmd === "nextClue") return S.tv.nextClue(state.clue + 1, pairsNotYet(state.pairs));
   return S.tv.cmd[cmd];
 }
 
