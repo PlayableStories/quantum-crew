@@ -33,7 +33,7 @@ describe("a phone, paced", () => {
   it("after setting the pump: whether the partner has chosen, never what", () => {
     const s = room("round", false, 2);
     seat(s);
-    put({ round: { roundId: "1-1", act: 2, light: 0, ms: null, dialDeg: null, answered: 0, measuring: false, partner: null, crystal: null } });
+    put({ round: { roundId: "1-1", act: 2, light: 0, ms: null, dialDeg: null, answered: 0, partner: null, crystal: null } });
     expect(html()).toContain(esc(S.phone.waitingFor("Bo")));
     s.pairs[0]!.answered = { a: true, b: true };
     seat(s);
@@ -49,12 +49,12 @@ describe("a phone, paced", () => {
 
   it("the countdown follows the room's deadline: none in manual, part-drained in auto", () => {
     // The round started with a countdown (ms), but the room has since switched to manual: no countdown.
-    put({ round: { roundId: "1-1", act: 2, light: 0, ms: 3500, dialDeg: null, answered: null, measuring: false, partner: null, crystal: null } });
+    put({ round: { roundId: "1-1", act: 2, light: 0, ms: 3500, dialDeg: null, answered: null, partner: null, crystal: null } });
     seat({ ...room("round", false, 2), deadline: null });
     expect(html()).not.toContain("countdown");
     // Auto at Relaxed with 9 s of 12 left: the bar starts 3 s in.
     seat({ ...room("round", false, 2), auto: true, deadline: 9000, serverNow: 0 });
-    put({ round: { roundId: "1-1", act: 2, light: 0, ms: null, dialDeg: null, answered: null, measuring: false, partner: null, crystal: null } });
+    put({ round: { roundId: "1-1", act: 2, light: 0, ms: null, dialDeg: null, answered: null, partner: null, crystal: null } });
     const markup = html();
     expect(markup).toContain("countdown");
     expect(markup).toContain("animation-duration:12000ms;animation-delay:-3000ms");

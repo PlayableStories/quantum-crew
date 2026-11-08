@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRemainingMs } from "../net/useCountdown.ts";
 import { decisionMs, resultMs, secs } from "../shared/pace.ts";
+import { CLUE_COUNT } from "../shared/crystalPlan.ts";
 import { SPEEDS, type HostCommand, type RoomState, type Speed } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 
@@ -21,15 +22,15 @@ export function nextSteps(state: RoomState): HostCommand[] {
     case "storm":
       return ["startStrategy", "startBatch"];
     case "strategy":
-      return ["startBatch"];
+      return state.act === 3 ? ["startBatch", "nextClue"] : ["startBatch"];
     case "batchDone":
       return state.act === 3
-        ? ["startStrategy", "startBatch", "stormPasses"]
+        ? ["startStrategy", "startBatch", "nextClue", "stormPasses"]
         : ["startStrategy", "startBatch", "revealCeiling", "unlockTool"];
     case "ceiling":
       return ["unlockTool"];
     case "tool":
-      return ["startStrategy", "startBatch"];
+      return ["startStrategy", "startBatch", "nextClue"];
     case "resolution":
       return ["debrief"];
     case "debrief":
@@ -60,6 +61,8 @@ export function enabledSteps(state: RoomState): HostCommand[] {
     stormPasses: state.stability.act3.rounds > 0,
     debrief: true,
     next: true,
+    // The clue ladder: one step at a time, up to the answer; clue 2 (each pair's weakest case) needs an Act III wave.
+    nextClue: state.toolUnlocked && state.clue < CLUE_COUNT && (state.clue >= 2 || state.stability.act3.rounds > 0),
   };
   return nextSteps(state).filter((cmd) => enabled[cmd]);
 }
@@ -68,6 +71,7 @@ export function enabledSteps(state: RoomState): HostCommand[] {
 export function stepLabel(state: RoomState, cmd: HostCommand): string {
   if (cmd === "startBatch" && state.phase === "briefing") return S.tv.startRounds;
   if (cmd === "next") return state.phase === "round" ? S.tv.closeRound : S.tv.nextRound;
+  if (cmd === "nextClue") return S.tv.nextClue(state.clue + 1);
   return S.tv.cmd[cmd];
 }
 

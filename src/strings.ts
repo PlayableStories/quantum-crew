@@ -500,33 +500,137 @@ export const S = {
       kicker: "Supply pod · during the lull",
       title: "The Entanglement Tool",
       lines: [
-        "A supply pod docks from engineering with linked crystals: for every pair, one in each partner's tool.",
-        "Engineering's note: the crystals don't carry messages, so the storm can't jam them. Measure one and it gives a direction, linked to its partner in a way no plan can copy.",
-        "Turn your dial, tap MEASURE, and the crystal suggests a pump. You decide whether to follow it.",
+        "A supply pod docks from engineering: two linked crystals for every pair, one at each table.",
+        "Engineering's note: the crystals carry no messages, so the storm can't jam them.",
+        "The crystals don't replace your plan. They change what a plan can say.",
       ],
     },
-    /** The TV after an Act III wave: each pair's dials case by case, who followed, and the crew's saved-or-not. */
+    /** Act III's crystal plan (event): the player plans the setting; the station measures; the crystal suggests. */
+    crystalPlan: {
+      head: "Your crystal plan",
+      /** Each row, in full (the setting list's label): the station measures; the player plans. */
+      row: (sensor: string) => `When your sensor reads ${sensor}, the station measures your crystal at:`,
+      /** On screen the card says it once, then a short row per reading. */
+      lead: "When your sensor reads COOL or HOT, the station measures your crystal at:",
+      partnerHead: (name: string) => `${name}'s crystal plan`,
+      line: (cool: string, hot: string) => `COOL ${cool} · HOT ${hot}`,
+      coraSet: `${CREW_NAME} has set her own plan.`,
+      seeCard: "See both",
+      /** Two humans, both still at the start (0°): the starting line. */
+      startHumans: (pct: string) =>
+        `Both your plans start at 0°. Measured at the same setting, the crystals always agree, so this plan matches in every case, just like your best Act II plan: ${pct}.`,
+      /** With CORA: her settings, and what the pair holds with the player's plan as it is now. */
+      startCora: (cool: string, hot: string, pct: string) =>
+        `${CREW_NAME} measures at COOL ${cool}, HOT ${hot}. With your plan as it is, your pair holds ${pct}. Can you do better?`,
+      body: "Agree on your crystal plans. When the wave hits, the radio goes dark.",
+      retune: "Change your crystal plan",
+    },
+    /** The first time: a crystal plan beside an Act II plan. */
+    compare: {
+      head: "A crystal plan is still a plan",
+      cols: ["", "Act II plan", "Crystal plan"],
+      rows: [
+        ["COOL", "a direction", "a setting"],
+        ["HOT", "a direction", "a setting"],
+        ["Who picks the direction", "you, by the plan", "the crystal, at your setting"],
+      ],
+    },
+    /** The crystals' rule: shown on the TV, and in a sheet on phones, from the tool reveal on. */
+    crystalRule: {
+      chip: "Crystal rule",
+      head: "The crystals' rule",
+      body: "Two linked crystals give the same direction with a fixed chance that depends only on the gap between their settings.",
+      gap: "Gap",
+      same: "Same direction",
+      fold: "A setting and the one 180° round are the same measurement, so a gap is never more than 90° (0° and 157.5° are 22.5° apart).",
+    },
+    /** The read-only fan: the pair's four settings, and the gap in each case. */
+    fan: {
+      label: "Your pair's four settings and the gap in each case",
+      head: "Gaps",
+      caseName: (x: string, y: string) => `A ${x} · B ${y}`,
+      needSame: "same",
+      needDiffer: "differ",
+    },
+    /** The clue ladder, released by the facilitator (TV and remote); every clue so far stays visible. */
+    clues: {
+      chip: (n: number) => `Clues (${n})`,
+      head: "Clues",
+      titles: ["The crystals' rule", "Your weakest case", "A nudge", "The answer"],
+      question: "Which cases need the same direction, and which need different?",
+      /** Clue 2, for one pair. */
+      weakest: (caseName: string, gap: string, holds: string, need: "same" | "differ") =>
+        need === "same"
+          ? `${caseName}: gap ${gap}, holds ${holds}. This case needs the same direction: bring these two settings closer.`
+          : `${caseName}: gap ${gap}, holds ${holds}. Both HOT needs different directions: move these two settings further apart.`,
+      weakestPair: (pair: number) => `Pair ${pair}`,
+      noWave: "After your first wave.",
+      nudge: "Going around your four settings, the three \"match\" gaps add up to the \"differ\" gap. How would you spread them?",
+      answer: (a: string, b: string, matchGap: string, same: string, differGap: string, differ: string, rate: string) =>
+        `Spread the four settings evenly, 22.5° apart. For example ${a}; ${b} (157.5° is the same setting as −22.5°). The three match gaps are ${matchGap} (${same} the same) and the differ gap is ${differGap} (${differ} different): ${rate}.`,
+      plan: (table: string, cool: string, hot: string) => `${table}: COOL ${cool}, HOT ${hot}`,
+    },
+    /** An Act III round on a phone: what the station did with the plan. */
+    chain: {
+      sensor: "Your sensor",
+      plan: "your plan",
+      crystal: "the crystal says",
+    },
+    /** The TV in Act III: the situation in one line, what players can do now, and the question they're working on. */
+    explain: {
+      tool: {
+        now: "Engineering has sent linked crystals: one at each table, for every pair.",
+        can: "Read the crystals' rule. Next, each pair plans their settings in the lull.",
+        question: "Which cases need the same direction, and which need different?",
+      },
+      strategy: {
+        now: "The lull: the radio still works. Plan your crystal settings together.",
+        can: "Pick a setting for COOL and for HOT on your phone; your partner sees it live.",
+        question: "How far apart should each pair of settings be?",
+      },
+      round: {
+        now: "The wave: radio down. The station measures each crystal at your planned setting.",
+        can: "Read your crystal's direction and set your pump: follow it or not.",
+        question: "Does your plan hold in all four cases?",
+      },
+      batchDone: {
+        now: "The wave has passed: each pair's crystal plans, case by case.",
+        can: "Look at your weakest case. Compare notes with a pair that found 80%.",
+        question: "Which gap is letting you down?",
+      },
+      labels: { now: "Now", can: "You can", question: "The question" },
+    },
+    /** When a wave starts, the plans are stamped (phones and TV), in Acts II and III. */
+    locked: {
+      stamp: "Plan locked",
+      tvStamp: "Plans locked",
+      act3: (cool: string, hot: string) => `COOL ${cool} · HOT ${hot}`,
+    },
+    /** The TV after an Act III wave: each pair's crystal plans case by case (gap, chance), who followed, which pairs
+     *  found 80%, and the crew's saved-or-not. */
     wave3: {
-      pairDials: (a: string, aDials: string, b: string, bDials: string) => `${a}: ${aDials} · ${b}: ${bDials}`,
-      dials: (cool: string, hot: string) => `${cool} / ${hot}`,
+      pairPlans: (a: string, aPlan: string, b: string, bPlan: string) => `${a}: ${aPlan} · ${b}: ${bPlan}`,
+      plan: (cool: string, hot: string) => `${cool} / ${hot}`,
+      /** A case on the TV after a wave: its gap, then (beside it) the chance it holds. */
+      gap: (gap: string) => `gap ${gap} ·`,
+      foundIt: "found it: 80%+",
+      /** Clue 2 on the wave done: the weakest case's tag (a "same" case needs a smaller gap, both HOT a wider one). */
+      needCloser: "weakest: closer",
+      needWider: "weakest: wider",
+      /** The wave and the true rate disagree about 80%. */
+      luckyAbove: (pct: string) => `Above 80% by luck: the plans' true rate is ${pct}.`,
+      luckyBelow: (pct: string) => `Below 80% by bad luck: the plans' true rate is ${pct}.`,
       holds: "80%+ holds",
       followed: (n: number, of: number) => `followed ${n}/${of}`,
       wave: (wins: number, rounds: number) => `wave ${wins}/${rounds}`,
       crewFollowed: (n: number, of: number) => `crystal followed ${n}/${of}`,
-      saved: (pct: string) => `Dials average ${pct}: the station holds.`,
-      notSaved: (pct: string) => `Not yet: dials average ${pct}, the station needs 80%.`,
-    },
-    /** Act III on a phone: the partner's dials (live in the lull) and how the tool behaves, named for the partner. */
-    partnerDials: (name: string) => `${name}'s dials`,
-    dialsLine: (cool: string, hot: string) => `COOL ${cool} · HOT ${hot}`,
-    tuning: {
-      head: "How the tool works",
-      explain: (name: string) =>
-        `The closer your dial points to ${name}'s, the more often your crystals give the same direction. Need your pumps to match? Point close to ${name}'s. Need them to differ? Point far away.`,
-      howButton: "How it works",
+      saved: (pct: string) => `Crystal plans average ${pct}: the station holds.`,
+      notSaved: (pct: string) => `Not yet: crystal plans average ${pct}, the station needs 80%.`,
     },
     /** The storm passes (event): the room is told the radio is back. Phones get their own prompt (checkpoint 3). */
     resolution: {
+      /** The TV's line: what the crew's crystal plans averaged (the wave that saved the station, or the latest). */
+      plans: (pct: string) => `The crew's crystal plans averaged ${pct}.`,
       room: "Comms are back. Turn to your partner and tell them what you were thinking during the storm.",
       /** On a phone with a human partner (CORA's partners hear her own line, `crew.resolution`). */
       head: "Comms are back",
@@ -542,19 +646,51 @@ export const S = {
     report: {
       three: {
         act1Yours: (pct: string) => `possible · the crew held ${pct}`,
-        act3Note: "the crew's dials, exactly",
-        act3Yours: (pct: string) => `the crew's dials, ${pct}`,
+        act3Note: "the crew's crystal plans, exactly",
+        act3Yours: (pct: string) => `the crew's crystal plans, ${pct}`,
         story:
           "Talking made every round winnable. No plan could replace talking. The crew's crystals beat every plan without carrying a single message.",
         storyNotSaved:
           "Talking made every round winnable. No plan could replace talking. The best crystal settings beat every plan without carrying a single message; the crew's didn't get there this time.",
       },
-      pairDials: (pair: number, a: string, b: string) => `Pair ${pair}'s dials (${a} & ${b})`,
+      pairDials: (pair: number, a: string, b: string) => `Pair ${pair}'s crystal plans (${a} & ${b})`,
+      bestPlans: "The best crystal plans (0° / 45°)",
+      /** The report's steps in the crew's words (solo keeps S.debrief.steps). */
+      steps: [
+        {
+          title: "No plan beats 75%",
+          body: [
+            "Under the station is the CHSH game (Clauser, Horne, Shimony and Holt, 1969). The sensors are its random input bits x, y (COOL = 0, HOT = 1), the pumps its output bits a, b (CLOCKWISE = 0, ANTICLOCKWISE = 1), and “match unless both HOT” is its rule: a ⊕ b = x ∧ y. The vent is the story for the flipped case.",
+            "The wall you hit in Act II is a Bell inequality. Two players who can't talk, with any plan agreed in advance (even a random one), win at most 75% of rounds.",
+            "Mixing plans at random doesn't help: a random mix only averages cells on the plan board, so it can never beat the best cell.",
+          ],
+        },
+        {
+          title: "Entanglement broke through",
+          body: [
+            "The two crystals were a pair of entangled qubits. Measured at settings θA and θB, your two pumps agree with probability cos²(θA − θB): the crystals' rule.",
+            "With the four settings spread evenly, 22.5° apart (A: 0° and 45°; B: 22.5° and −22.5°, shown as 157.5°), a crystal plan wins cos²(22.5°) ≈ 85.4% of rounds. No quantum strategy does better: this is the Tsirelson bound.",
+            "Real experiments have broken the 75% wall with entangled photons; that work won the 2022 Nobel Prize in Physics.",
+          ],
+        },
+        {
+          title: "But no messages",
+          body: [
+            "Your own pump ran clockwise about half the time, whether your partner's section was COOL or HOT. So you can't read their sensor from your result, and the crystals can't carry a message.",
+            "Only the correlation between your two results changed. That is what no-signalling means.",
+          ],
+        },
+        { title: "Credits", body: [] as string[] },
+      ],
+      compare: {
+        plan: "Best plan: always clockwise",
+        why: "A plan has to give up one case completely. A crystal plan spreads a small loss across all four.",
+      },
       /** On a phone: the pair's own three numbers. */
       phoneHead: (name: string) => `You and ${name}`,
       phoneAct1: "Act I · radio",
       phoneAct2: "Act II · your plans",
-      phoneAct3: "Act III · your dials",
+      phoneAct3: "Act III · your crystal plans",
       phoneAct1Note: "held, with the radio",
       phoneAct2Note: "true rate, exactly",
       phoneAct3Note: "true rate, exactly",
@@ -620,6 +756,7 @@ export const S = {
       auto: "Play",
       manual: "Pause",
       next: "Next",
+      nextClue: "Next clue",
       unpairRemotes: "Unpair remotes",
       reset: "Reset",
     },
@@ -650,8 +787,8 @@ export const S = {
     /** Start batch, during the briefing: starts Act I's rounds. */
     startRounds: "Start the rounds",
     resetConfirm: "Reset the session? Scores are cleared; players stay.",
-    showHint: "Show hint",
-    hideHint: "Hide hint",
+    /** Next clue, labelled with the clue it releases (1 comes with the tool). */
+    nextClue: (n: number) => `Next clue: ${["", "the rule", "weakest case", "a nudge", "the answer"][n] ?? ""}`,
     wholeCrew: "Whole crew",
     wobble: "A few rounds each makes the numbers wobble. Over many rounds every row settles at 50%, whatever the partner's sensor read.",
     marginalHead: {
@@ -710,8 +847,8 @@ export const S = {
         "Start the wave when the room is ready (2–3 minutes is plenty).",
       ],
       act3Strategy: [
-        "Each player sets two dials (COOL and HOT) and sees their partner's.",
-        "Stuck after a wave? Show the hint on the TV.",
+        "Each player picks a crystal plan: a setting for COOL and one for HOT. Partners see each other's live.",
+        "Stuck after a wave? Release the next clue.",
       ],
       batchDone: [
         "Point at a ✗ case: the round that plan always loses.",
@@ -726,7 +863,28 @@ export const S = {
         "No plan beats 75%: the best plan loses one in four.",
         "\"Turn to your partner. Did you blame each other? It was never either of you.\"",
       ],
-      tool: ["Read engineering's note aloud: the crystals carry no messages, so the storm can't jam them."],
+      tool: [
+        "Read engineering's note aloud: the crystals carry no messages, so the storm can't jam them.",
+        "\"The crystals don't replace your plan. They change what a plan can say.\"",
+      ],
+      /** Act III, for the latest clue released (1–4). */
+      clue: [
+        [
+          "Clue 1, the crystals' rule: read the table aloud. A gap of 0° always agrees, 90° never does.",
+          "Ask: which cases need the same direction, and which need different? (Three need the same; both HOT needs different.)",
+        ],
+        [
+          "Clue 2: each pair's weakest case is on the TV. Ask them what that case needs: a smaller gap for a \"same\" case, a wider one for both HOT.",
+        ],
+        [
+          "Clue 3: going around the four settings, the three \"same\" gaps add up to the \"differ\" gap. Ask how they'd spread them.",
+          "If all three \"same\" gaps are equal, each is a third of the \"differ\" gap.",
+        ],
+        [
+          "Clue 4, the answer: settings 22.5° apart. A: COOL 0°, HOT 45°; B: COOL 22.5°, HOT 157.5°.",
+          "Three \"same\" gaps of 22.5° (85% the same) and a \"differ\" gap of 67.5° (85% different): 85.4%.",
+        ],
+      ],
       resolution: ["Ask each player to tell their partner what they were thinking during the storm.", "Give it a minute."],
       debrief: [
         "The three numbers: with the radio, the best plan, the crystals.",
@@ -747,13 +905,11 @@ export const S = {
     waitingSeat: "You'll get a partner after this wave.",
     huddle: "The lull: last chance to talk",
     huddleBody: "Agree on your plans. When the clock runs out the wave hits, and the radio goes dark.",
-    huddleBody3: "Agree on your dials. When the clock runs out the wave hits, and the radio goes dark.",
     /** The briefing on a phone: the big screen tells the story. */
     briefing: "The night shift",
     briefingBody: "The radio works tonight: each round you'll hear your partner's reading and pump. Eyes on the big screen.",
     /** Act I: the pump can change until the round ends. */
     act1Change: "You can change it until the round ends.",
-    retune: "Retune your dials",
     plan: "Your plan",
     pumpSet: (v: string) => `Pump set: ${v}. Hold…`,
     /** The "⋯" menu: leaving, with a confirmation where staying is the primary action. */

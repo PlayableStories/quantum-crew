@@ -5,7 +5,6 @@ import {
   MP_WAVE_SIZE,
   MP_ACT1_RESULT_MS,
   MP_ACT1_ROUND_MS,
-  MP_ACT3_ROUND_MS,
   MP_RESULT_MS,
   MP_ROUND_MS,
   ROLLING_WINDOW,
@@ -14,9 +13,11 @@ import {
   RELAXED_ACT1_ROUND_MS,
   RELAXED_RESULT_MS,
   RELAXED_ROUND_MS,
+  DEFAULT_TUNING,
 } from "../src/config.ts";
 import type { ClientMsg, RoomState, Speed, ServerMsg } from "../src/shared/protocol.ts";
-import { OPTIMAL_TUNING, QUANTUM_LIMIT, quantumExpectedWinRate } from "../src/shared/chsh.ts";
+import { OPTIMAL_TUNING, QUANTUM_LIMIT, matchProbability, quantumExpectedWinRate } from "../src/shared/chsh.ts";
+import { CLUE_SETTINGS, RULE_GAPS, coraPlan, pairRateFor } from "../src/shared/crystalPlan.ts";
 import { mulberry32 } from "../src/shared/rng.ts";
 import { BOT_NAME } from "./room.ts";
 import { createStation } from "./station.ts";
@@ -236,8 +237,8 @@ describe("Act III rounds", () => {
     return { t, conns: seats.map((s) => s[0]) };
   }
 
-  /** Plays `batches` batches; `order` picks which phones tap MEASURE first in each round. Each phone then sets the
-   *  pump its crystal suggested (`follow`), or the other one. */
+  /** Plays `batches` batches; `order` picks which phones answer first in each round. Each phone sets the pump its
+   *  crystal suggested at round start (`follow`), or the other one. */
   function play(
     t: ReturnType<typeof setup>,
     conns: readonly string[],
@@ -248,11 +249,9 @@ describe("Act III rounds", () => {
     for (let b = 0; b < batches; b++) {
       t.host("startBatch");
       for (let r = 0; r < MP_WAVE_SIZE; r++) {
-        const measuring = order(r).filter((c) => conns.includes(c));
-        for (const conn of measuring) t.send(conn, { type: "player:measure", roundId: t.last(conn, "round:start")!.roundId });
-        for (const conn of measuring) {
-          const { roundId, crystal } = t.last(conn, "round:measured")!;
-          t.send(conn, { type: "player:valve", roundId, valve: (follow(conn) ? crystal : 1 - crystal) as 0 | 1 });
+        for (const conn of order(r).filter((c) => conns.includes(c))) {
+          const { roundId, crystal } = t.last(conn, "round:start")!;
+          t.send(conn, { type: "player:valve", roundId, valve: (follow(conn) ? crystal! : 1 - crystal!) as 0 | 1 });
         }
         t.advance(CORA_DELAY_MS[1] + MP_RESULT_MS + 1); // CORA's pair resolves after her natural delay
       }
@@ -260,36 +259,43 @@ describe("Act III rounds", () => {
     }
   }
 
-  it("unlocks the tool into Act III; a pump before MEASURE is ignored", () => {
+  it("unlocks the tool into Act III; the round starts with this phone's setting and crystal, and sets no pump", () => {
     const { t } = act3Room(1);
-    expect(t.roomState("tv")).toMatchObject({ phase: "tool", act: 3, toolUnlocked: true });
+    expect(t.roomState("tv")).toMatchObject({ phase: "tool", act: 3, toolUnlocked: true, clue: 1 });
     t.host("startBatch");
     const start = t.last("a1", "round:start")!;
     expect(start).toMatchObject({ act: 3, dialDeg: OPTIMAL_TUNING.A[start.light === 0 ? "greenDeg" : "redDeg"] });
-    t.send("a1", { type: "player:valve", roundId: start.roundId, valve: 0 });
+    expect([0, 1]).toContain(start.crystal);
     expect(t.roomState("tv").pairs[0]!.answered.a).toBe(false);
+    t.send("a1", { type: "player:valve", roundId: start.roundId, valve: 0 }); // one tap: the pump
+    expect(t.roomState("tv").pairs[0]!.answered.a).toBe(true);
   });
 
-  it("MEASURE sends the crystal only to the phone that measured, and sets no pump", () => {
-    const { t } = act3Room(2);
-    t.host("startBatch");
-    t.clear("b1");
-    t.send("a1", { type: "player:measure", roundId: t.last("a1", "round:start")!.roundId });
-    expect([0, 1]).toContain(t.last("a1", "round:measured")!.crystal);
-    expect(t.last("b1", "round:measured")).toBeUndefined();
-    expect(t.roomState("tv").pairs[0]!.answered.a).toBe(false);
+  it("no phone ever receives its partner's sensor or crystal during a round", () => {
+    const { t, conns } = act3Room(2);
+    for (const c of conns) t.clear(c);
+    play(t, conns, 3, () => [...conns]);
+    for (const conn of conns) {
+      for (const m of t.msgs(conn)) {
+        if (m.type === "round:start") {
+          expect(Object.keys(m).sort()).toEqual(["act", "crystal", "deadline", "dialDeg", "light", "roundId", "serverNow", "type"]);
+          expect(m).not.toHaveProperty("partner");
+        }
+        // Nothing else carries a crystal; the result (after the round) names both sensors and pumps, never crystals.
+        if (m.type !== "round:start") expect(JSON.stringify(m)).not.toMatch(/crystal"/);
+      }
+    }
   });
 
   it("the pump set is what scores, even against the crystal; followed counts only players' answered pumps", () => {
     const { t } = act3Room(6);
     t.host("startBatch");
     const id = t.last("a1", "round:start")!.roundId;
-    for (const conn of ["a1", "b1"]) t.send(conn, { type: "player:measure", roundId: id });
-    const crystalA = t.last("a1", "round:measured")!.crystal;
-    const crystalB = t.last("b1", "round:measured")!.crystal;
+    const crystalA = t.last("a1", "round:start")!.crystal!;
+    const crystalB = t.last("b1", "round:start")!.crystal!;
     t.send("a1", { type: "player:valve", roundId: id, valve: (1 - crystalA) as 0 | 1 }); // Ada goes her own way
     t.send("b1", { type: "player:valve", roundId: id, valve: crystalB });
-    t.advance(MP_ACT3_ROUND_MS); // pair 2 and Ed time out
+    t.advance(MP_ROUND_MS); // pair 2 and Ed time out
     const result = t.last("a1", "round:result")!;
     expect(result.a).toBe(1 - crystalA);
     expect(result.b).toBe(crystalB);
@@ -299,7 +305,7 @@ describe("Act III rounds", () => {
     expect(s.pairs[2]!.followed).toEqual({ n: 0, of: 0 }); // CORA isn't counted
   });
 
-  it("CORA in an empty seat measures at the start and follows her crystal", () => {
+  it("CORA in an empty seat follows her crystal", () => {
     const { t, conns } = act3Room(7);
     t.clear("a3"); // drop the Act II wave's results
     play(t, conns, 1, () => [...conns]);
@@ -312,7 +318,7 @@ describe("Act III rounds", () => {
     ["A first", () => ["a1", "a2", "a3", "b1", "b2"]],
     ["B first", () => ["b1", "b2", "a1", "a2", "a3"]],
     ["alternating", (r: number) => (r % 2 ? ["a1", "a2", "a3", "b1", "b2"] : ["b2", "b1", "a3", "a2", "a1"])],
-  ])("optimal dials beat the classical limit, whoever measures first (%s)", (_, order) => {
+  ])("optimal crystal plans beat the classical limit, whoever answers first (%s)", (_, order) => {
     const { t, conns } = act3Room(3);
     play(t, conns, 80, order);
     const { act3 } = t.roomState("tv").stability;
@@ -345,7 +351,7 @@ describe("Act III rounds", () => {
     const start = t.last("a1", "round:start")!;
     expect(start.dialDeg).toBe(start.light === 0 ? 45 : 157.5);
     t.clear("a1");
-    t.advance(MP_ACT3_ROUND_MS - 1);
+    t.advance(MP_ROUND_MS - 1);
     expect(t.last("a1", "round:result")).toBeUndefined();
     t.advance(1);
     expect(t.last("a1", "round:result")).toMatchObject({ win: false, timedOut: true });
@@ -582,7 +588,7 @@ describe("Act III dials and saved or not (E2b)", () => {
   }
   const wave = (t: ReturnType<typeof setup>) => {
     t.host("startBatch");
-    t.advance((MP_ACT3_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
+    t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
   };
 
   it("dials reach the partner live, CORA's are the optimal ones, and they lock at the wave start", () => {
@@ -633,10 +639,122 @@ describe("Act III dials and saved or not (E2b)", () => {
     toTool(t);
     t.host("startBatch");
     const id = t.last("a1", "round:start")!.roundId;
-    for (const conn of ["a1", "b1", "a2"]) t.send(conn, { type: "player:measure", roundId: id });
-    for (const conn of ["a1", "b1", "a2"]) t.send(conn, { type: "player:valve", roundId: id, valve: t.last(conn, "round:measured")!.crystal });
+    for (const conn of ["a1", "b1", "a2"]) t.send(conn, { type: "player:valve", roundId: id, valve: t.last(conn, "round:start")!.crystal! });
     t.advance(CORA_DELAY_MS[1]);
     expect(t.roomState("tv").act3Followed).toEqual({ n: 3, of: 3 });
+  });
+});
+
+describe("crystal plans and the clue ladder (E3c)", () => {
+  /** Ada (A) and Bo (B), plus Cy (A) with CORA when `withCora`, at the tool. */
+  function toTool(t: ReturnType<typeof setup>, withCora = false) {
+    t.join("a1", "Ada", "A");
+    t.join("b1", "Bo", "B");
+    if (withCora) t.join("a2", "Cy", "A");
+    t.host("startBatch");
+    t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
+    t.host("revealCeiling");
+    t.host("unlockTool");
+  }
+  const plan = (t: ReturnType<typeof setup>, conn: string, tuning: { greenDeg: number; redDeg: number }) =>
+    t.send(conn, { type: "player:strategy", act: 3, tuning });
+  /** A wave where every phone follows its crystal straight away. */
+  const followWave = (t: ReturnType<typeof setup>, conns: string[]) => {
+    t.host("startBatch");
+    for (let r = 0; r < MP_WAVE_SIZE; r++) {
+      for (const conn of conns) {
+        const { roundId, crystal } = t.last(conn, "round:start")!;
+        t.send(conn, { type: "player:valve", roundId, valve: crystal! });
+      }
+      t.advance(CORA_DELAY_MS[1] + MP_RESULT_MS + 1);
+    }
+    t.advance(MP_RESULT_MS);
+  };
+
+  it.each(RULE_GAPS.map((g) => [g]))("measured at round start, the crystals agree as often as the rule says (gap %s°)", (gap) => {
+    const t = setup(50 + gap);
+    toTool(t);
+    plan(t, "a1", { greenDeg: 0, redDeg: 0 });
+    plan(t, "b1", { greenDeg: gap, redDeg: gap });
+    let same = 0;
+    let n = 0;
+    for (let w = 0; w < 120; w++) {
+      t.host("startBatch");
+      for (let r = 0; r < MP_WAVE_SIZE; r++) {
+        const a = t.last("a1", "round:start")!;
+        const b = t.last("b1", "round:start")!;
+        expect(a.roundId).toBe(b.roundId);
+        if (a.crystal === b.crystal) same++;
+        n++;
+        t.send("a1", { type: "player:valve", roundId: a.roundId, valve: a.crystal! });
+        t.send("b1", { type: "player:valve", roundId: b.roundId, valve: b.crystal! });
+        t.advance(MP_RESULT_MS);
+      }
+      t.advance(MP_RESULT_MS);
+    }
+    expect(Math.abs(same / n - matchProbability(0, gap))).toBeLessThan(0.035);
+  });
+
+  it("two humans at the starting plan (0°) average exactly 75%; not saved", () => {
+    const t = setup(61);
+    toTool(t);
+    followWave(t, ["a1", "b1"]);
+    expect(t.roomState("tv")).toMatchObject({ crewDialsRate: 0.75, stationSaved: false });
+  });
+
+  it("a human at 0° with CORA: the pair's rate is the starting line's computed number", () => {
+    const t = setup(62);
+    toTool(t, true);
+    followWave(t, ["a1", "b1", "a2"]);
+    const pairs = t.roomState("tv").pairs;
+    const cora = pairs[1]!.lockedDials!;
+    expect(cora).toEqual({ a: DEFAULT_TUNING, b: coraPlan("B") });
+    expect(quantumExpectedWinRate(cora.a, cora.b)).toBeCloseTo(pairRateFor("A", DEFAULT_TUNING, coraPlan("B")), 12);
+    expect(t.roomState("tv").crewDialsRate).toBeCloseTo((0.75 + pairRateFor("A", DEFAULT_TUNING, coraPlan("B"))) / 2, 12);
+  });
+
+  it("the clue 4 settings average 85.4% and save the station", () => {
+    const t = setup(63);
+    toTool(t, true);
+    plan(t, "a1", CLUE_SETTINGS.A);
+    plan(t, "b1", CLUE_SETTINGS.B);
+    plan(t, "a2", CLUE_SETTINGS.A);
+    followWave(t, ["a1", "b1", "a2"]);
+    const s = t.roomState("tv");
+    expect(s.crewDialsRate).toBeCloseTo(QUANTUM_LIMIT, 12);
+    expect(s.stationSaved).toBe(true);
+  });
+
+  it("the clue ladder: 1 with the tool, 2 only after a wave, one step per press, kept on reconnect, 0 on Reset", () => {
+    const t = setup(64);
+    expect(t.roomState("tv").clue).toBe(0);
+    toTool(t);
+    expect(t.roomState("tv").clue).toBe(1);
+    t.host("nextClue");
+    expect(t.last("tv", "error")!.code).toBe("not-now"); // clue 2 needs an Act III wave
+    t.host("startBatch");
+    t.host("nextClue");
+    expect(t.roomState("tv").clue).toBe(1); // not during a wave
+    t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
+    expect(t.roomState("tv").phase).toBe("batchDone");
+    // The TV and a remote press Next clue from the same step: it rises once.
+    const { room, remoteKey, token } = t.last("tv", "host:created")!;
+    t.send("r1", { type: "remote:pair", room, key: remoteKey });
+    const step = t.roomState("tv").step;
+    t.send("tv", { type: "host:command", cmd: "nextClue", step });
+    t.send("r1", { type: "host:command", cmd: "nextClue", step });
+    expect(t.last("r1", "error")!.code).toBe("stale");
+    expect(t.roomState("tv").clue).toBe(2);
+    t.send("r1", { type: "host:command", cmd: "nextClue", step: t.roomState("r1").step });
+    t.host("nextClue");
+    expect(t.roomState("tv").clue).toBe(4);
+    t.host("nextClue");
+    expect(t.last("tv", "error")!.code).toBe("not-now"); // never past 4
+    // A reconnecting TV keeps it.
+    t.send("tv2", { type: "host:resume", room, token });
+    expect(t.roomState("tv2").clue).toBe(4);
+    t.send("tv2", { type: "host:command", cmd: "reset" });
+    expect(t.roomState("tv2").clue).toBe(0);
   });
 });
 
@@ -651,7 +769,7 @@ describe("the ending and the incident report (E3a)", () => {
   }
   const wave = (t: ReturnType<typeof setup>) => {
     t.host("startBatch");
-    t.advance((MP_ACT3_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
+    t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
   };
 
   it("the storm passes only after an Act III wave, outside a wave; then the incident report", () => {
@@ -662,7 +780,7 @@ describe("the ending and the incident report (E3a)", () => {
     t.host("startBatch");
     t.host("stormPasses");
     expect(t.roomState("tv").phase).toBe("round"); // not during a wave
-    t.advance((MP_ACT3_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
+    t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
     t.host("stormPasses");
     expect(t.roomState("tv").phase).toBe("resolution");
     t.host("debrief");

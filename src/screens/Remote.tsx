@@ -175,8 +175,17 @@ export function remoteSteps(state: RoomState): HostCommand[] {
 const remoteLabel = (state: RoomState, cmd: HostCommand) =>
   cmd === "reportNext" ? S.tv.cmd.reportNext : cmd === "reportBack" ? S.tv.cmd.reportBack : stepLabel(state, cmd);
 
-/** What to say now (from the facilitator guide's run of show). */
+/** What to say now (from the facilitator guide's run of show). In Act III outside a wave, the latest clue's points
+ *  follow the phase's. */
 export function talkingPoints(state: RoomState): readonly string[] {
+  const base = phasePoints(state);
+  const act3Talk = state.act === 3 && ["tool", "strategy", "batchDone"].includes(state.phase);
+  const clue = state.clue > 0 ? S.remote.talk.clue[state.clue - 1] : undefined;
+  // With a clue out, the phase's first point, then the clue's (the remote fits one screen).
+  return act3Talk && clue ? [...base.slice(0, 1), ...clue] : base;
+}
+
+function phasePoints(state: RoomState): readonly string[] {
   const t = S.remote.talk;
   switch (state.phase) {
     case "round":

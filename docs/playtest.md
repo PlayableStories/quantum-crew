@@ -18,7 +18,7 @@ One sheet per session. Watch, don't help (unless someone is stuck for over a min
 | Act II waves (how many?) | | | |
 | Engineering report | | | |
 | Tool and Act III huddle | | | |
-| Act III waves (how many? hint shown after wave __) | | | |
+| Act III waves (how many? clue 2 after wave __, clue 3 after __, clue 4 after __) | | | |
 | Debrief | | | |
 | **Whole session** | | | |
 
@@ -37,7 +37,12 @@ One sheet per session. Watch, don't help (unless someone is stuck for over a min
 - [ ] Reads the result on the TV before you press Next, or looks to you to move on
 - [ ] In an auto wave (Relaxed), still has time to read each result (or you pressed Pause to talk)
 - [ ] Finds the ⋯ menu when they need to leave (nobody should mistake anything for "continue" now)
-- [ ] Act III: taps MEASURE but expects to pick the pump, or doesn't know what the dial does
+- [ ] Act III: when did the room realise the crystal plan card *is* a plan (like Act II's)? Time: ____ (before or after the first wave?)
+- [ ] Act III: reads the crystals' rule table / the fan's gaps aloud, or asks what a gap is
+- [ ] Act III: which clue did the room need before finding 80%? (1 rule · 2 weakest case · 3 nudge · 4 answer) ____
+- [ ] Act III: did it feel like guessing? (ask one player after the first Act III wave: "how did you pick your settings?")
+- [ ] Act III: follows the crystal's suggestion, or goes against it (note when and why)
+- [ ] Notices "Plan locked" when the wave starts (Act II and Act III)
 - [ ] Thinks the crystal sends a message to the partner
 - [ ] Reads the debrief numbers aloud / asks about them (good sign: note what they asked)
 

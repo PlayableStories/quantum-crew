@@ -101,11 +101,11 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   and 85.4 in Act III; debrief unlocks at a ≥ 80% 1,000-round test or after 2 Act III batches; hint after 1 Act III
   batch under 80% (both lowered 2026-10-06 at the user's request). No framer-motion yet (CSS animations suffice); sounds and mute toggle are M5.
   Event: facilitator-paced (see "Pacing" below): manual rounds have no timer; auto at Relaxed uses `RELAXED_*`, at
-  Brisk the original `MP_ACT1_ROUND_MS` 8 s / `MP_ROUND_MS` 3.5 s / `MP_ACT3_ROUND_MS` 7 s. Lulls are untimed (the facilitator
+  Brisk the original `MP_ACT1_ROUND_MS` 8 s / `MP_ROUND_MS` 3.5 s (Act III too since E3c; `MP_ACT3_ROUND_MS` is gone). Lulls are untimed (the facilitator
   starts the wave); waves are `MP_WAVE_SIZE` 8 rounds; a round resolves early once every seat answered; joiners
   mid-wave are seated after it; max 4 per table; empty or away seat = CORA. The join address follows E0's order and Phase F's
-  ranking. Act III: bots measure at round start (always first); tunings snap to the 8 dial stops; the tool unlocks only
-  after the ceiling reveal; the hint and the debrief step are TV-local state (the step moves to the room in E3a);
+  ranking. Act III: the room measures every crystal at round start (since E3c); tunings snap to the 8 settings; the tool
+  unlocks only after the ceiling reveal; the debrief step (E3a) and the clue level (E3c) are the room's;
   per-seat marginals are sent only in the debrief phase (plus a pooled "whole crew" row).
 - **Deploy:** solo = static build on Vercel (PlayableStories team); event mode needs one Node process with WebSockets: a
   venue laptop is the documented default, and the README also documents Docker, Fly.io and Render (docs only; nothing
@@ -161,7 +161,7 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     big 75%, `S.ceiling.engineering` for the crew, `S.ceiling.truth`, `PlanBoard` with `labels` (`S.event.board`).
   - **Shots:** six crowd players over WebSockets make four pairs; a worst-case check (every pair lucky) after wave
     done. Still cut at 1280×720, for E2b: the tool and debrief steps 1–3.
-- **Event E2b (2026-11-01, Act III at parity):**
+- **Event E2b (2026-11-01, Act III at parity; MEASURE, the dials and the hint were replaced in E3c):**
   - **Room:** MEASURE reads the crystal (`PairRound.crystal`) and sends `round:measured { crystal }`; the pump is a
     separate `player:valve`, accepted only after MEASURE, and scoring uses it. CORA measures at round start and
     follows. `MP_ACT3_ROUND_MS` 7 s. `PairInfo.dials` (live), `lockedDials` (each Act III wave start), `followed`
@@ -257,13 +257,46 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     expired". `RemotePanel` (props-driven): the big button is `remoteSteps(state)[0]` (`keyStep` first, else the first
     enabled step; the report: Next, Back), the other steps, `AutoToggle` (menu opens downward), `S.remote.talk`
     talking points (`talkingPoints`), the room (aboard, talking clock, still choosing, each pair's cause; never a
-    sensor or pump), Reset behind a Sheet. **Show hint** stays TV-only.
+    sensor or pump), Reset behind a Sheet. (The TV-only Show hint was replaced by the clue ladder in E3c.)
   - **TV:** **Remote** in the header beside mute (green "Remote ✓" when `remotes > 0`; kept out of the host row so it
     stays one line), a Sheet with `RemotePairing` (QR + link `remoteUrl(join origin, room, key)`, the warning, the
     count, **Unpair remotes**). `hostStore.remoteKey`.
   - **Scripts:** `pnpm session` pairs a remote before the Act II wave, starts it from the remote, and presses Next on
     the remote and the TV together (advances once). `pnpm shots --event` captures the pairing dialog, then the remote
     joins and is in every later shot of all three (`-remote`).
+- **Event E3c (2026-11-07, Act III as a crystal plan; event mode only, solo unchanged):** the first playtest read the
+  dials as a control and Act III as guessing.
+  - **`src/shared/crystalPlan.ts`** (on chsh.ts, which is untouched): `settingGap` (mod 180°, 0–90°), `CRYSTAL_RULE`
+    (gaps 0–90° → `matchProbability`), `planCases` (gap, `need` same / differ), `weakestCase`, `coraPlan(table)`
+    (= `OPTIMAL_TUNING`), `planRate`, `pairRateFor`, `CLUE_SETTINGS`, `CLUE_COUNT` 4.
+  - **Room:** no MEASURE: `player:measure` and `round:measured` are gone. `measurePair` at round start
+    (`measureFirst` for A, then `measureSecond` for B at the two planned settings); `round:start` carries the phone's
+    own `dialDeg` and `crystal` only. A pump is the only action (changeable until all are set); CORA follows her
+    crystal; `followed` as before. `RoomState.clue` (0–4): `unlockTool` sets 1; host `nextClue` raises it one step
+    (2 needs an Act III wave; never in a wave; max 4); Reset → 0. `stepSig` includes the clue, so a double Next clue
+    rises once. Brisk Act III uses `MP_ROUND_MS`.
+  - **Phones (`components/CrystalPlan.tsx`):** `CrystalPlanCard` (two `<select>`s of the 8 settings under one lead
+    line; the full sentence is each list's label; read-only without `onChange`), the partner's plan in one line with
+    **See both** (a Sheet with their card and `CrystalFan`), `CompareWithPlan` in the lull before the first Act III
+    wave (then in the Crystal rule sheet), the starting line (`S.event.crystalPlan.startHumans` while both are at
+    0°; `startCora` with the pair's live rate, `rateText` = "75%" / "67.7%"), `CrystalFan` (read-only SVG + four
+    gaps), chips (`SheetChip`: Station rule, Crystal rule, Clues (n)) from the tool reveal on, `ClueList`. Rounds:
+    the chain (sensor → "your plan" + small `Dial` → "the crystal says"), `LockedPlan` stamps in Acts II and III.
+    `.lull--act3` is tighter under 700px tall; every Act III phone screen fits 375×667.
+  - **TV:** `Explainer` (now / you can / the question; compact one-paragraph form except on the tool reveal),
+    `ToolPanel` with clue 1, `CrystalLull` (the rule full width, then `ClueList titlesInline`), "Plans locked" in the
+    wave banner (with the manual note on one line) and 🔒 on pair cards; `CrystalWave` passes `CrystalCases gaps`
+    (gap · chance per case) and `weakest` (clue 2, pairs under 80%: `case--weakest`, "weakest: closer / wider"),
+    "found it: 80%+", luck lines both ways (`luckyAbove` / `luckyBelow`); the per-pair followed count moved to the
+    crew line only. The hint toggle is gone. Report: `S.event.report.steps` / `compare` / `bestPlans`
+    (`PlanVsCrystals copy`), the resolution's `S.event.resolution.plans`.
+  - **Host steps:** `nextClue` in `nextSteps` (tool, Act III lull, Act III wave done), enabled by `enabledSteps`,
+    labelled `S.tv.nextClue(n)`; the remote's `talkingPoints` add `S.remote.talk.clue[clue - 1]` in Act III.
+  - **Copy:** event keys never say "dials" / "tuning" (`tvAct3.test.tsx` checks S.event, S.tv, S.remote, S.phone);
+    solo's keys are untouched.
+  - **Scripts:** `pnpm session`: clue 1 with the tool, a wave at 0° (75%, not saved), the remote releases clues 2–4,
+    a wave at `CLUE_SETTINGS` (85.4%, saved), and no `player:measure`. `pnpm shots --event`: the starting lull, picks
+    settings from the lists, both sheets, clues 2–4 (TV, phones, remote), a quick final wave, then the ending.
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.

@@ -60,11 +60,11 @@ describe("the incident report (TV)", () => {
     expect(markup).toContain(esc(S.event.report.three.storyNotSaved));
   });
 
-  it("step 2: the best plan beside the best pair's dials, or the best dials if no pair reached 80%", () => {
+  it("step 2: the best plan beside the best pair's crystal plans, or the best plans if no pair reached 80%", () => {
     expect(renderToString(<TvDebrief state={report(1, true)} onCommand={noop} />)).toContain(
       esc(S.event.report.pairDials(1, "Ada", "Bo")),
     );
-    expect(renderToString(<TvDebrief state={report(1, false)} onCommand={noop} />)).toContain(S.debrief.compare.dials(false));
+    expect(renderToString(<TvDebrief state={report(1, false)} onCommand={noop} />)).toContain(S.event.report.bestPlans);
   });
 
   it("step 3: exact 50% for both tables, the crew's real numbers, and why the storm couldn't jam the crystals", () => {

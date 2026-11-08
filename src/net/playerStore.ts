@@ -12,7 +12,7 @@ export type Seat = { room: string; name: string; table: Table };
 
 /**
  * `answered`: the pump direction this phone set (Acts I and II; Act I can change it until the round ends) or got back
- * from MEASURE (Act III). `measuring`: MEASURE was tapped and the result hasn't arrived yet. `partner`: Act I's radio.
+ * from the room's measurement (Act III). `partner`: Act I's radio.
  */
 type LiveRound = {
   roundId: string;
@@ -22,9 +22,9 @@ type LiveRound = {
   ms: number | null;
   dialDeg: number | null;
   answered: Valve | null;
-  measuring: boolean;
   partner: PartnerCall | null;
-  /** Act III: the crystal's suggestion once MEASURE has been read (the pump is still the player's to set). */
+  /** Act III: what the crystal said, measured by the room at round start at this player's planned setting
+   *  (`dialDeg`). A suggestion: the pump is still the player's to set. */
   crystal: Valve | null;
 };
 
@@ -43,7 +43,6 @@ type PlayerStore = {
   join(seat: Seat): void;
   resume(): boolean;
   answer(valve: Valve): void;
-  measure(): void;
   followCrystal(): void;
   setPlan(plan: ClassicalStrategy): void;
   setTuning(tuning: TuningConfig): void;
@@ -101,7 +100,6 @@ export const usePlayer = create<PlayerStore>()((set, get) => ({
                 ms: msg.deadline === null ? null : Math.max(0, msg.deadline - msg.serverNow),
                 dialDeg: msg.dialDeg ?? null,
                 answered: msg.pump ?? null,
-                measuring: false,
                 partner: msg.partner ?? null,
                 crystal: msg.crystal ?? null,
               },
@@ -111,11 +109,6 @@ export const usePlayer = create<PlayerStore>()((set, get) => ({
             const { round } = get();
             if (round?.roundId === msg.roundId && round.partner)
               set({ round: { ...round, partner: { ...round.partner, pump: msg.pump } } });
-            return;
-          }
-          case "round:measured": {
-            const { round } = get();
-            if (round?.roundId === msg.roundId) set({ round: { ...round, crystal: msg.crystal, measuring: false } });
             return;
           }
           case "round:result": {
@@ -145,19 +138,10 @@ export const usePlayer = create<PlayerStore>()((set, get) => ({
 
   answer(valve) {
     const { round } = get();
-    // Act I: the last tap counts, so a different pump is sent again. Acts II and III: the first tap counts, and in
-    // Act III only once MEASURE has given the crystal's suggestion.
+    // Act I: the last tap counts, so a different pump is sent again. Acts II and III: the first tap counts.
     if (!round || round.answered === valve || (round.act !== 1 && round.answered !== null)) return;
-    if (round.act === 3 && round.crystal === null) return;
     station?.send({ type: "player:valve", roundId: round.roundId, valve });
     set({ round: { ...round, answered: valve } });
-  },
-
-  measure() {
-    const { round } = get();
-    if (!round || round.act !== 3 || round.crystal !== null || round.measuring) return;
-    station?.send({ type: "player:measure", roundId: round.roundId });
-    set({ round: { ...round, measuring: true } });
   },
 
   /** Act III: set the pump the crystal suggested. */

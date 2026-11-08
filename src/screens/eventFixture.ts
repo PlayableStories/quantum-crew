@@ -17,6 +17,7 @@ export function room(phase: RoomPhase, bot = false, act: Act = 1): RoomState {
     roundNo: 1,
     batchSize: 12,
     deadline: null,
+    clue: 0,
     serverNow: 0,
     players: [
       { id: "ada", name: "Ada", table: "A", connected: true, pairId: 1 },

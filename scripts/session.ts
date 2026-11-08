@@ -5,12 +5,14 @@
 // early with Next and double-presses Next once, which must advance once); later waves run in auto at Relaxed.
 //   four pairs join and a 9th player is turned away; the night shift (briefing, Act I by the rule over the radio, with
 //   one player changing their mind; every round held) and the storm; a player drops out mid-wave and rejoins their seat; the TV
-//   disconnects and resumes with its token; one Act II wave; the engineering report; the tool; two Act III waves with
-//   tuned dials (A 0° / 45°, B 22.5° / 157.5°): each phone measures, then sets the pump its crystal suggests; the
-//   pooled rate must be clearly above 75%, and the crew's dials average 85.4%, which saves the station; the storm
-//   passes (saved) and the incident report. Then a reset and a short not-saved session (untuned dials, 75%).
+//   disconnects and resumes with its token; one Act II wave; the engineering report; the tool (clue 1); Act III (E3c:
+//   the room measures every crystal at round start, so no phone ever sends player:measure; each sets the pump its
+//   crystal suggests): one wave with the starting crystal plans (0°: exactly 75%, not saved), then the remote releases
+//   clues 2–4 and a wave with the clue 4 settings (A 0° / 45°, B 22.5° / 157.5°) averages 85.4%, which saves the
+//   station; the storm passes (saved) and the incident report. Then a reset and a short not-saved session (75%).
 import { ACT1_ROUNDS, MP_WAVE_SIZE, MP_RESULT_MS, MP_ROUND_MS, RELAXED_RESULT_MS, STORM_STATIC_MS } from "../src/config.ts";
-import { OPTIMAL_TUNING, QUANTUM_LIMIT } from "../src/shared/chsh.ts";
+import { QUANTUM_LIMIT } from "../src/shared/chsh.ts";
+import { CLUE_SETTINGS } from "../src/shared/crystalPlan.ts";
 import type { ClientMsg, HostCommand, RoomState, ServerMsg } from "../src/shared/protocol.ts";
 import { mulberry32 } from "../src/shared/rng.ts";
 import { createStation } from "../server/station.ts";
@@ -36,7 +38,12 @@ const station = createStation({
   newId: () => `id${ids++}`,
 });
 
-const send = (conn: string, msg: ClientMsg) => station.handle(conn, msg);
+/** Every message type a client sent (E3c: player:measure must never appear). */
+const sentTypes = new Set<string>();
+const send = (conn: string, msg: ClientMsg) => {
+  sentTypes.add(msg.type);
+  station.handle(conn, msg);
+};
 const msgs = (conn: string) => inbox.get(conn) ?? [];
 const last = <T extends ServerMsg["type"]>(conn: string, type: T) =>
   msgs(conn).filter((m): m is Extract<ServerMsg, { type: T }> => m.type === type).at(-1);
@@ -69,7 +76,7 @@ const { room, token } = created;
 const state = (): RoomState => last(tv, "room:state")!.state;
 const host = (cmd: HostCommand) => send(tv, { type: "host:command", cmd });
 
-// Phones: conn → seat. Each answers every round it's dealt: Act II always clockwise, Act III measure.
+// Phones: conn → seat. Each answers every round it's dealt: Act II always clockwise, Act III its crystal.
 const seats = [
   ["Ada", "A"],
   ["Bo", "B"],
@@ -115,13 +122,8 @@ function answerAll() {
         continue;
       }
       if (m.act === 3) {
-        // Act III: MEASURE, then set the pump the crystal suggested.
-        if (!answered.has(key)) {
-          answered.add(key);
-          send(conn, { type: "player:measure", roundId: m.roundId });
-        }
-        const measured = msgs(conn).find((r) => r.type === "round:measured" && r.roundId === m.roundId);
-        if (measured?.type === "round:measured" && !sent.has(key)) setPump(conn, m.roundId, measured.crystal);
+        // Act III: the room measured the crystal at round start; set the pump it suggests.
+        if (!sent.has(key) && m.crystal !== undefined) setPump(conn, m.roundId, m.crystal);
         continue;
       }
       if (answered.has(key)) continue;
@@ -260,24 +262,33 @@ check(state().phase === "ceiling" && state().ceilingRevealed, "the engineering r
 host("unlockTool");
 check(state().phase === "tool" && state().act === 3, "the tool");
 
-// Act III: tuned dials (Table A 0° / 45°, Table B 22.5° / 157.5°), two waves.
+check(state().clue === 1, "clue 1 (the crystals' rule) came with the tool");
+
+// Act III, wave 1: the starting crystal plans (every setting 0°). Measured at the same setting the crystals always
+// agree, so every pair matches in every case: exactly 75%, not saved.
+host("startBatch");
+check(playUntil("batchDone"), "Act III wave 1 (starting plans)");
+check(state().crewDialsRate === 0.75 && !state().stationSaved, `the starting plans average ${((state().crewDialsRate ?? 0) * 100).toFixed(1)}%: not saved`);
+
+// The remote releases clues 2, 3 and 4 (each from the room's current step).
+for (let i = 0; i < 3; i++) send(remote, { type: "host:command", cmd: "nextClue", step: last(remote, "room:state")!.state.step });
+check(state().clue === 4, `the remote released clues 2–4 (clue ${state().clue})`);
+
+// Act III, wave 2: the clue 4 settings.
 for (const [conn, phone] of phones) {
-  if (phone.online) send(conn, { type: "player:strategy", act: 3, tuning: OPTIMAL_TUNING[phone.table] });
+  if (phone.online) send(conn, { type: "player:strategy", act: 3, tuning: CLUE_SETTINGS[phone.table] });
 }
-for (let wave = 1; wave <= 2; wave++) {
-  host("startBatch");
-  check(playUntil("batchDone"), `Act III wave ${wave}`);
-}
+host("startBatch");
+check(playUntil("batchDone"), "Act III wave 2 (the clue 4 settings)");
 const act3 = state().stability.act3;
-const rate = act3.rounds ? act3.wins / act3.rounds : 0;
 check(act3.rounds === 2 * 4 * MP_WAVE_SIZE, `Act III scored ${act3.rounds} pair-rounds`);
-check(rate >= 0.78, `pooled Act III rate ${(rate * 100).toFixed(1)}% is clearly above 75%`);
 check(
   paces.has("3:2:manual") && paces.has("3:3:auto"),
   `Act III: the first wave manual, the next auto (by its own timers) [${[...paces].filter((p) => p.startsWith("3:")).join(" ")}]`,
 );
 const crew = state().crewDialsRate ?? 0;
-check(Math.abs(crew - QUANTUM_LIMIT) < 1e-9 && state().stationSaved, `the crew's dials average ${(crew * 100).toFixed(1)}%: saved`);
+check(Math.abs(crew - QUANTUM_LIMIT) < 1e-9 && state().stationSaved, `the crew's crystal plans average ${(crew * 100).toFixed(1)}%: saved`);
+check(!sentTypes.has("player:measure"), "no phone sent player:measure (the room measures)");
 const followed = state().act3Followed;
 check(!!followed && followed.of === 8 * MP_WAVE_SIZE && followed.n === followed.of, "every player followed their crystal (latest wave)");
 

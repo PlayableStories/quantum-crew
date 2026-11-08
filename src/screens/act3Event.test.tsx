@@ -1,5 +1,5 @@
-// Event Act III (server-rendered, no browser): the supply pod, the lull with the partner's dials and how the tool
-// behaves (named for the partner), MEASURE → the crystal's suggestion → your pump, and a result with its cause.
+// Event Act III (server-rendered, no browser): the supply pod, a round (the crystal's suggestion → your pump; no
+// MEASURE) and a result with its cause; the TV's tool panel and wave done. The crystal plan card: crystalPlan.test.tsx.
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { RoomState, RoundOutcome } from "../shared/protocol.ts";
@@ -27,7 +27,6 @@ const live = (crystal: 0 | 1 | null) => ({
   ms: 7000,
   dialDeg: 0,
   answered: null,
-  measuring: false,
   partner: null,
   crystal,
 });
@@ -35,32 +34,21 @@ const live = (crystal: 0 | 1 | null) => ({
 beforeEach(() => put({ round: null, flash: null }));
 
 describe("Act III on a phone", () => {
-  it("the tool reveal: engineering's note, and how the tool works named for the partner", () => {
+  it("the tool reveal: engineering's note, and what the crystals do to a plan", () => {
     seat(act3("tool"));
     const markup = html();
     expect(markup).toContain(esc(S.event.pod.lines[1]!)); // engineering's note
-    expect(markup).toContain(esc(S.event.tuning.explain("Bo")));
+    expect(markup).toContain(esc(S.event.pod.lines[2]!)); // they change what a plan can say
+    expect(markup).toContain(`>${S.event.crystalRule.chip}</button>`);
   });
 
-  it("the lull: the partner's dials live, and how the tool works behind a button", () => {
-    seat(act3("strategy"));
-    const markup = html();
-    expect(markup).toContain(S.event.dialsLine("22.5°", "157.5°"));
-    expect(markup).toContain(`>${S.event.tuning.howButton}</button>`);
-    expect(markup).not.toContain(esc(S.event.tuning.explain("Bo"))); // only in the sheet, which is closed
-    seat(act3("strategy", true));
-    expect(html()).toContain(esc(S.event.partnerDials(S.crew.name)));
-  });
-
-  it("a round: MEASURE first; then the crystal's suggestion, tagged on its pump, and both pumps to choose", () => {
+  it("a round: no MEASURE (the room measured); the crystal's suggestion, tagged on its pump, and both pumps", () => {
     seat(act3("round"));
-    put({ round: live(null) });
-    let markup = html();
-    expect(markup).toContain(`>${S.batch.measure}</button>`);
-    expect(markup).not.toContain("pumpbtn");
     put({ round: live(1) });
-    markup = html();
-    expect(markup).toContain(S.batch.crystalSays(S.pump[1]));
+    const markup = html();
+    expect(markup).not.toContain(`>${S.batch.measure}</button>`);
+    expect(markup).toContain(S.event.chain.crystal);
+    expect(markup).toContain(S.pump[1]);
     expect(markup).toContain(S.batch.follow);
     expect(markup.match(/class="btn pumpbtn/g)).toHaveLength(2);
     expect(markup.match(/pumpbtn--suggested/g)).toHaveLength(1);
@@ -116,12 +104,12 @@ describe("Act III on the TV", () => {
     expect(markup.match(/tv__pair-cases--holds/g)).toHaveLength(1);
     expect(markup).toContain(S.readout.trueRate("85.4%"));
     expect(markup).toContain(S.readout.trueRate("25.0%"));
-    expect(markup).toContain(S.event.wave3.followed(20, 24));
+    expect(markup).not.toContain(S.event.wave3.followed(20, 24)); // the crew line keeps the followed count
     expect(markup).toContain(S.event.wave3.crewFollowed(44, 48));
-    expect(markup).toContain(S.event.wave3.pairDials("Ada", "0° / 45°", "Bo", "22.5° / 157.5°"));
+    expect(markup).toContain(S.event.wave3.pairPlans("Ada", "0° / 45°", "Bo", "22.5° / 157.5°"));
   });
 
-  it("saved or not: the crew's dials average, 80% or more holds", () => {
+  it("saved or not: the crew's crystal plans average, 80% or more holds", () => {
     expect(renderToString(<CrystalWave state={waveDone(0.552, false)} />)).toContain(esc(S.event.wave3.notSaved("55.2%")));
     const saved = renderToString(<CrystalWave state={waveDone(0.854, true)} />);
     expect(saved).toContain(esc(S.event.wave3.saved("85.4%")));

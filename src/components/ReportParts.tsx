@@ -24,10 +24,19 @@ import { S } from "../strings.ts";
  * `dials` are the right column's (solo: the player's if they saved the station; the TV: the best pair's), else the
  * best dials; `label` names them.
  */
-export function PlanVsCrystals({ dials, label }: { dials: { a: TuningConfig; b: TuningConfig }; label: ReactNode }) {
+export function PlanVsCrystals({
+  dials,
+  label,
+  copy = S.debrief.compare,
+}: {
+  dials: { a: TuningConfig; b: TuningConfig };
+  label: ReactNode;
+  /** Event mode passes its own wording ("crystal plan"); solo's is the default. */
+  copy?: { plan: string; why: string };
+}) {
   const plan = classicalCases(DEFAULT_CREW_PLAN, DEFAULT_CREW_PLAN);
   const crystals = quantumCases(dials.a, dials.b);
-  const C = S.debrief.compare;
+  const C = copy;
   const whole = (p: number) => `${Math.round(p * 100)}%`;
   return (
     <div className="stack">

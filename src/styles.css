@@ -3862,3 +3862,691 @@ button.board__cell:focus-visible {
   display: flex;
   justify-content: center;
 }
+
+/* Event Act III (E3c): the crystal plan card, two settings picked from a list, like an Act II plan's directions. */
+.crystal-plan {
+  display: grid;
+  gap: 8px;
+}
+
+.crystal-plan__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.crystal-plan__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.crystal-plan__lead {
+  margin: 0;
+  font-size: var(--fs-s);
+}
+
+/* COOL and HOT side by side: the same two conditions as an Act II plan. */
+.crystal-plan__rows {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.crystal-plan__when svg {
+  width: 18px;
+  height: 18px;
+}
+
+.crystal-plan__when {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-s);
+  line-height: 1.3;
+}
+
+.crystal-plan__select {
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 10px;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--panel-raised);
+  border: 1px solid var(--q-1);
+  border-radius: calc(var(--radius) - 4px);
+}
+
+.crystal-plan__select:focus-visible {
+  outline: 2px solid var(--q-3);
+  outline-offset: 2px;
+}
+
+.crystal-plan__value {
+  font-variant-numeric: tabular-nums;
+}
+
+.crystal-plan__note {
+  margin: 0;
+}
+
+/* The starting line: what the plans give right now. */
+.start-line {
+  margin: 0;
+  padding: 4px 10px;
+  border-left: 3px solid var(--q-3);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+/* The fan: the pair's four settings on a half-circle, and the gap in each case beside it. Read-only. */
+.fan {
+  display: grid;
+  grid-template-columns: minmax(96px, 0.8fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.fan__svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.fan__arc,
+.fan__base {
+  fill: none;
+  stroke: var(--q-1);
+  stroke-width: 1;
+  opacity: 0.7;
+}
+
+.fan__mark line {
+  stroke-width: 2;
+}
+
+.fan__mark--cool line,
+.fan__mark--cool circle {
+  stroke: var(--cool);
+  fill: var(--cool);
+}
+
+.fan__mark--hot line,
+.fan__mark--hot circle {
+  stroke: var(--hot);
+  fill: var(--hot);
+}
+
+.fan__mark text {
+  fill: var(--ink);
+  font-size: 7px;
+}
+
+.fan__gaps {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+}
+
+.fan__gap--good strong {
+  color: var(--green);
+}
+
+.fan__gap--bad strong {
+  color: var(--red);
+}
+
+/* The crystals' rule: gap → chance of the same direction. */
+.crystal-rule {
+  display: grid;
+  gap: 6px;
+}
+
+.crystal-rule p {
+  margin: 0;
+}
+
+.crystal-rule__table,
+.plan-compare__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.crystal-rule__table th,
+.crystal-rule__table td {
+  padding: 4px 6px;
+  text-align: center;
+  border-bottom: var(--border);
+}
+
+.crystal-rule__table th[scope="row"] {
+  text-align: left;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+
+/* The first time: a crystal plan beside an Act II plan. */
+.plan-compare {
+  display: grid;
+  gap: 4px;
+}
+
+.plan-compare .kicker {
+  margin: 0;
+}
+
+.plan-compare__table {
+  font-size: 0.8rem;
+}
+
+.plan-compare__table th,
+.plan-compare__table td {
+  padding: 3px 6px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: var(--border);
+}
+
+.plan-compare__table thead th {
+  color: var(--ink-muted);
+}
+
+/* Sheets behind small buttons: the station rule, the crystals' rule, the clues. */
+.chips {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  min-height: 34px;
+  padding: 2px 8px;
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.chip--fresh {
+  border-color: var(--q-3);
+  color: var(--q-3);
+}
+
+/* The clue ladder (phones' sheet and the TV): earlier clues stay, the latest is marked. */
+.clues {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clues__item {
+  display: grid;
+  gap: 4px;
+  padding-left: 10px;
+  border-left: 3px solid var(--border-color, rgb(255 255 255 / 0.15));
+}
+
+.clues__item p {
+  margin: 0;
+}
+
+.clues__item--latest {
+  border-left-color: var(--q-3);
+}
+
+.clues__pairs {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* "Plan locked": the stamp on the plans while a wave runs (Acts II and III). */
+.locked-plan {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 6px 10px;
+  border: 1px dashed var(--amber);
+  border-radius: calc(var(--radius) - 4px);
+  font-size: var(--fs-s);
+}
+
+.locked-plan__stamp {
+  color: var(--amber);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+
+.locked-plan__body {
+  color: var(--ink-muted);
+}
+
+/* An Act III round: sensor → your plan's setting → the crystal's direction. */
+.chain {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.chain__step {
+  font-size: var(--fs-s);
+}
+
+.chain__step::before {
+  content: "↓ ";
+  color: var(--q-1);
+}
+
+.chain__crystal strong {
+  font-size: var(--fs-l);
+  color: var(--q-3);
+  letter-spacing: 0.04em;
+}
+
+@media (max-height: 700px) {
+  .chain .dial--small svg {
+    max-width: 64px;
+  }
+
+  .crystal-plan {
+    gap: 6px;
+  }
+
+  .crystal-plan__select {
+    min-height: 40px;
+  }
+
+  .plan-compare__table {
+    font-size: 0.72rem;
+  }
+}
+
+/* Short phones (375×667): the Act III lull keeps the card, the partner, the starting line and the fan on one screen. */
+@media (max-height: 700px) {
+  .fan {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+
+  .fan__gaps {
+    font-size: 0.72rem;
+  }
+
+  .crystal-plan__lead,
+  .crystal-plan__when {
+    font-size: 0.82rem;
+  }
+
+  .lull > .start-line {
+    font-size: 0.74rem;
+  }
+}
+
+/* Short phones, the Act III lull: a one-line heading and tighter spacing, so the first lull (with the comparison)
+   fits 375×667. */
+@media (max-height: 700px) {
+  .lull--act3 {
+    gap: 7px;
+  }
+
+  .lull--act3 .lull__head h2 {
+    font-size: 1rem;
+  }
+
+  .lull--act3 .plan-compare .kicker {
+    font-size: 0.66rem;
+  }
+
+  .lull--act3 .plan-compare__table th,
+  .lull--act3 .plan-compare__table td {
+    padding: 1px 4px;
+  }
+
+  .lull--act3 .crystal-plan {
+    padding: 8px 12px;
+  }
+
+  .lull--act3 .partner-plan {
+    padding-block: 2px;
+  }
+
+  .lull--act3 .fan__svg {
+    max-height: 48px;
+  }
+}
+
+/* The crystals' rule table never widens its container (the phone's sheet is narrow). */
+.crystal-rule__table {
+  table-layout: fixed;
+  font-size: 0.85rem;
+}
+
+.crystal-rule__table th,
+.crystal-rule__table td {
+  padding: 3px 2px;
+  overflow-wrap: anywhere;
+}
+
+.crystal-rule__table th[scope="row"] {
+  width: 30%;
+}
+
+.sheet .crystal-rule,
+.sheet .plan-compare {
+  min-width: 0;
+}
+
+/* Event TV, Act III (E3c): the explainer (now · you can · the question), the rule and the clues, "Plans locked". */
+.tv__explain {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.tv__explain > div {
+  padding: 8px 12px;
+  border-left: 3px solid var(--q-1);
+  background: rgb(0 0 0 / 0.25);
+  border-radius: 0 6px 6px 0;
+}
+
+.tv__explain dt {
+  color: var(--q-3);
+  font-size: 0.75em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tv__explain dd {
+  margin: 2px 0 0;
+  font-size: 0.95em;
+  line-height: 1.3;
+}
+
+.tv__explain--compact {
+  display: block;
+  grid-column: 1 / -1;
+  font-size: 0.95em;
+}
+
+.tv__explain--compact b {
+  color: var(--q-3);
+}
+
+.tv__tool {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--gap);
+  min-height: 0;
+}
+
+/* The Act III lull: the rule full width (its table needs it), the clues below. */
+.tv__lull3 {
+  display: grid;
+  gap: var(--gap);
+  min-height: 0;
+}
+
+.tv__lull3 .crystal-rule p {
+  font-size: 1.05em;
+}
+
+.tv__lull3 .crystal-rule__table {
+  font-size: 1.15em;
+}
+
+.tv__tool .reveal {
+  min-height: 0;
+}
+
+.clues--tv {
+  font-size: 1.05em;
+}
+
+.clues--tv .clues__item:not(.clues__item--latest) > :not(.kicker) {
+  display: none; /* earlier clues: their title only; the latest in full */
+}
+
+.tv__locked {
+  display: inline-block;
+  margin: 0;
+  padding: 2px 10px;
+  border: 1px dashed var(--amber);
+  border-radius: 6px;
+  color: var(--amber);
+  font-size: 0.8em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tv__found {
+  color: var(--win);
+  font-weight: 700;
+}
+
+.case__gap {
+  color: var(--q-3);
+}
+
+/* The TV's Act III lull: the rule's table on one line per row (no wrapped angles). */
+.tv__lull3 .crystal-rule__table {
+  table-layout: auto;
+  font-size: 1em;
+}
+
+.tv__lull3 .crystal-rule__table th,
+.tv__lull3 .crystal-rule__table td {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  padding: 4px 6px;
+}
+
+.tv__lull3 .crystal-rule p {
+  font-size: 0.95em;
+}
+
+.tv__lull3 .crystal-rule .muted {
+  display: none; /* the 180° note: on the phones' sheet */
+}
+
+/* 1280×720: a tighter explainer. */
+@media (max-height: 800px) {
+  .tv__explain > div {
+    padding: 6px 10px;
+  }
+
+  .tv__explain dd {
+    font-size: 0.85em;
+  }
+}
+
+/* Event wave done: each case's gap and chance on one line. */
+.cases--gaps .case {
+  flex-flow: row wrap;
+  align-items: baseline;
+  column-gap: 8px;
+}
+
+.cases--gaps .case__sensors {
+  flex-basis: 100%;
+}
+
+/* The wave's banner: "Plans locked" and the manual note on one line. */
+.tv__banner-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+}
+
+.tv__banner-row p {
+  margin: 0;
+}
+
+/* The TV's clues: earlier ones as titles on one line, the latest in full below them. */
+.clues--tv {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.clues--tv .clues__item:not(.clues__item--latest) {
+  padding-left: 0;
+  border-left: 0;
+  opacity: 0.7;
+}
+
+.clues--tv .clues__item--latest {
+  flex-basis: 100%;
+}
+
+.clues__titles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin: 0;
+  opacity: 0.85;
+}
+
+.clues__title--latest {
+  color: var(--q-3);
+}
+
+.clues--tv .clues__item--latest {
+  padding-left: 10px;
+  border-left: 3px solid var(--q-3);
+}
+
+.tv__lull3 .crystal-rule p {
+  font-size: 0.85em;
+}
+
+/* Clue 2 on the wave done: the weakest case of each pair. */
+.case--weakest {
+  outline: 2px solid var(--q-3);
+  outline-offset: 1px;
+}
+
+.case__need {
+  color: var(--q-3);
+  font-weight: 700;
+}
+
+/* 1280×720: the answer (clue 4) fits under the rule. */
+@media (max-height: 800px) {
+  .clues--tv {
+    font-size: 0.9em;
+  }
+
+  .clues__titles {
+    flex-wrap: nowrap;
+    overflow: hidden;
+    font-size: 0.62rem;
+    gap: 10px;
+  }
+
+  .tv__lull3 {
+    gap: 10px;
+  }
+
+  .tv__cases .case {
+    padding-block: 4px;
+  }
+}
+
+/* Every phone (not only short ones): the Act III lull's compact layout, so 390×844 fits too. */
+@media (max-width: 599px) {
+  .lull--act3 {
+    gap: 8px;
+  }
+
+  .lull--act3 .lull__head h2 {
+    font-size: 1.05rem;
+  }
+
+  .lull--act3 > .start-line {
+    font-size: 0.78rem;
+  }
+
+  .lull--act3 .crystal-plan {
+    gap: 6px;
+    padding: 8px 12px;
+  }
+
+  .lull--act3 .crystal-plan__lead,
+  .lull--act3 .crystal-plan__when {
+    font-size: 0.85rem;
+  }
+
+  .lull--act3 .plan-compare__table {
+    font-size: 0.74rem;
+  }
+
+  .lull--act3 .plan-compare__table th,
+  .lull--act3 .plan-compare__table td {
+    padding: 1px 4px;
+  }
+
+  .lull--act3 .fan {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+
+  .lull--act3 .fan__gaps {
+    font-size: 0.74rem;
+  }
+}
+
+/* The TV's wave done with clue 2: tighter case cards (the weakest case adds its need). */
+.cases--gaps .case {
+  line-height: 1.15;
+  padding-block: 3px;
+  row-gap: 0;
+}
+
+.case__need {
+  font-size: 0.9em;
+}
+
+/* Short phones again (after the all-phones block above, which would otherwise win): the tightest Act III lull. */
+@media (max-height: 700px) {
+  .lull--act3 {
+    gap: 7px;
+  }
+
+  .lull--act3 .lull__head h2 {
+    font-size: 1rem;
+  }
+
+  .lull--act3 > .start-line {
+    font-size: 0.74rem;
+  }
+
+  .lull--act3 .crystal-plan__lead,
+  .lull--act3 .crystal-plan__when {
+    font-size: 0.82rem;
+  }
+
+  .lull--act3 .plan-compare__table {
+    font-size: 0.72rem;
+  }
+
+  .lull--act3 .fan__gaps {
+    font-size: 0.72rem;
+  }
+}

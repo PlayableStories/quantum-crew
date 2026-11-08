@@ -4,6 +4,7 @@
 import type { ReactNode } from "react";
 import { quantumCases, type TuningConfig } from "../shared/chsh.ts";
 import { HOT } from "../shared/fiction.ts";
+import { settingGap, weakestCase } from "../shared/crystalPlan.ts";
 import { S } from "../strings.ts";
 import { CrewName } from "./AiBadge.tsx";
 import { formatDeg } from "./Dial.tsx";
@@ -12,13 +13,16 @@ import { LightIcon } from "./SensorLight.tsx";
 const whole = (p: number) => `${Math.round(p * 100)}%`;
 
 /** `order` says whose dial comes first on each card (default "dials you · CORA"; the TV says Table A · Table B). */
-type Props = { tuning: TuningConfig; crew: TuningConfig; title?: string; order?: ReactNode };
+type Props = { tuning: TuningConfig; crew: TuningConfig; title?: string; order?: ReactNode; gaps?: boolean; weakest?: boolean };
 
-export function CrystalCases({ tuning, crew, title, order }: Props) {
+/** `gaps` (event mode's wave done) adds each case's gap between the two settings (solo leaves it out). */
+export function CrystalCases({ tuning, crew, title, order, gaps = false, weakest = false }: Props) {
   const cases = quantumCases(tuning, crew);
+  // Clue 2 (event mode): the pair's weakest case is marked, with what it needs.
+  const weak = weakest ? weakestCase(tuning, crew) : null;
   const rate = cases.reduce((sum, c) => sum + c.pWin, 0) / 4;
   return (
-    <div className="cases cases--crystal">
+    <div className={`cases cases--crystal ${gaps ? "cases--gaps" : ""}`}>
       {title && <p className="kicker">{title}</p>}
       <p className="muted small cases__order">
         {order ?? (
@@ -30,14 +34,27 @@ export function CrystalCases({ tuning, crew, title, order }: Props) {
       </p>
       <ul className="cases__grid">
         {cases.map((c) => (
-          <li key={`${c.x}${c.y}`} className={`case ${c.pWin >= 0.5 ? "case--win" : "case--loss"}`}>
+          <li
+            key={`${c.x}${c.y}`}
+            className={`case ${c.pWin >= 0.5 ? "case--win" : "case--loss"} ${weak && weak.x === c.x && weak.y === c.y ? "case--weakest" : ""}`}
+          >
             <span className="case__sensors">
               <Reading light={c.x} /> · <Reading light={c.y} />
             </span>
             <span className="case__pumps">
-              {formatDeg(c.thetaA)} · {formatDeg(c.thetaB)}
+              {/* Event mode's wave done: the gap (the settings are in the pair's header); solo: both angles. */}
+              {gaps ? (
+                <span className="case__gap">{S.event.wave3.gap(formatDeg(settingGap(c.thetaA, c.thetaB)))}</span>
+              ) : (
+                <>
+                  {formatDeg(c.thetaA)} · {formatDeg(c.thetaB)}
+                </>
+              )}
             </span>
-            <span className="case__verdict">{S.readout.holds(whole(c.pWin))}</span>
+            <span className="case__verdict">{gaps ? whole(c.pWin) : S.readout.holds(whole(c.pWin))}</span>
+            {weak && weak.x === c.x && weak.y === c.y && (
+              <span className="case__need">{weak.need === "same" ? S.event.wave3.needCloser : S.event.wave3.needWider}</span>
+            )}
           </li>
         ))}
       </ul>
