@@ -58,7 +58,8 @@ Short on time? From the lobby, **Use the lull** skips the night shift and the st
 The host row on the TV shows only what you can do now, plus **▶ Play / ⏸ Pause**, a small **▾** for the speed, and
 **Reset**. Every change takes effect at once, even in the middle of a round or a result. The keyboard works too:
 **Space** or **→** for Next (Close the round, then Next round; Start the wave in a lull; Next in the report), **P** to
-play or pause. **D** opens the debug jump (for testing only; don't use it with a real crew): **Jump to Act II
+play or pause, **F** for full screen (no browser frame; F or Esc leaves it; press it once the TV page is open, as
+the browser needs a key press). **D** opens the debug jump (for testing only; don't use it with a real crew): **Jump to Act II
 (lull)** or **Jump to Act III (tool reveal)**, outside a wave. It skips the story; what's been played is kept.
 - **Pause = manual** (the default for each act's first wave, including the night shift): no countdown. A round
   closes when every pair has chosen, or when you press **Next** (anyone who hasn't chosen counts as too slow). The

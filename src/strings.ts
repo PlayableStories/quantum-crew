@@ -811,7 +811,7 @@ export const S = {
       summary: (choose: string, result: string) => `${choose} s to choose · ${result} s result`,
       manualNote: "Manual: press Next",
     },
-    keys: "Space / → next · P play / pause",
+    keys: "Space / → next · P play / pause · F full screen",
     /** The lull: how long the room has been talking (a guide, not a countdown). */
     talking: (time: string) => `Talking for ${time}`,
     /** A round, on a pair card: who hasn't chosen yet (never what anyone chose). */

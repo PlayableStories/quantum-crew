@@ -39,6 +39,7 @@ import { AutoToggle, enabledSteps, keyStep, stepLabel } from "./hostSteps.tsx";
 import { useElapsedMs, useRemainingMs } from "../net/useCountdown.ts";
 import { decisionMs, resultMs } from "../shared/pace.ts";
 import { Sheet } from "../components/Sheet.tsx";
+import { toggleFullscreen } from "../lib/fullscreen.ts";
 import { ClueList, CrystalRuleTable } from "../components/CrystalPlan.tsx";
 import { weakestCase } from "../shared/crystalPlan.ts";
 import { fetchStationInfo, joinUrl, remoteUrl, loadChosenAddress, pickJoinOrigin, saveChosenAddress } from "../net/joinOrigin.ts";
@@ -796,14 +797,21 @@ function HostControls({
 
   // Keyboard for a facilitator at a laptop: Space or → for the natural next step, P for play / pause. Not while a
   // button, a field or the reset confirm has focus (Space would press that button too). D opens the debug jump
-  // (testing), also with a button focused (it presses nothing).
+  // (testing) and F toggles full screen, also with a button focused (they press nothing).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target as HTMLElement | null;
-      if ((e.key === "d" || e.key === "D") && !target?.closest("input, select, textarea, [contenteditable], dialog")) {
+      const typing = !!target?.closest("input, select, textarea, [contenteditable], dialog");
+      if ((e.key === "d" || e.key === "D") && !typing) {
         e.preventDefault();
         setDebugOpen((o) => !o);
+        return;
+      }
+      // F: full screen on or off (the browser's own, so no frame shows; Esc also leaves it).
+      if ((e.key === "f" || e.key === "F") && !typing) {
+        e.preventDefault();
+        toggleFullscreen();
         return;
       }
       if (target?.closest("button, input, select, textarea, [contenteditable], dialog")) return;

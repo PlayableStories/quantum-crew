@@ -447,6 +447,7 @@ pnpm session   # a whole session in-process with a fake clock (see below)
 **Debug jump (testing):** on the TV (`/screen`), **D** opens a small panel with **Jump to Act II (lull)** and **Jump
 to Act III (tool reveal)** (the room's `debugAct2` / `debugAct3` host commands; TV only, never from the remote, not
 during a wave). Act III arrives as Reveal ceiling + Unlock tool leave it (clue 1). It works in every build.
+**F** on the TV toggles full screen (the browser's own, so no frame shows; F or Esc leaves it).
 
 `pnpm session` (`scripts/session.ts`) runs the station in-process with a fake clock and a seeded RNG, so it takes
 about a second and is the same every run. It plays a whole session: 4 pairs join and a 9th player is turned away;

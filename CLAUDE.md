@@ -321,6 +321,8 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   host commands `debugAct2` (Act II lull; clears ceiling, tool and clue) and `debugAct3` (Act III tool reveal, as
   Reveal ceiling + Unlock tool: clue ≥ 1). TV only (a remote gets `not-host`), refused in a wave or the debrief,
   step-checked; never in `nextSteps` / the remote. Works in every build (the user's choice). Played stats are kept.
+  **F** on the TV toggles full screen (`src/lib/fullscreen.ts`, the Fullscreen API on the whole page; webkit
+  fallback; a refusal is ignored). `S.tv.keys` mentions it.
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.
