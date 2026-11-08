@@ -39,7 +39,10 @@ One sheet per session. Watch, don't help (unless someone is stuck for over a min
 - [ ] Finds the ⋯ menu when they need to leave (nobody should mistake anything for "continue" now)
 - [ ] Act III: when did the room realise the crystal plan card *is* a plan (like Act II's)? Time: ____ (before or after the first wave?)
 - [ ] Act III: reads the crystals' rule table / the fan's gaps aloud, or asks what a gap is
-- [ ] Act III: which clue did the room need before finding 80%? (1 rule · 2 weakest case · 3 nudge · 4 answer) ____
+- [ ] Act III: understands that each crystal alone is a coin flip (or still thinks a setting picks a direction)
+- [ ] Act III: understands that following both crystals makes the pumps match exactly when the crystals agree
+- [ ] Act III: which clue did the room need before finding 80%? (1 rule · 2 hint · 3 nudge · 4 answer) ____
+- [ ] Act III: after clue 2, did the pairs with a hint move their settings the way it said?
 - [ ] Act III: did it feel like guessing? (ask one player after the first Act III wave: "how did you pick your settings?")
 - [ ] Act III: follows the crystal's suggestion, or goes against it (note when and why)
 - [ ] Notices "Plan locked" when the wave starts (Act II and Act III)

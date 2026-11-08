@@ -18,7 +18,7 @@ type Props = { tuning: TuningConfig; crew: TuningConfig; title?: string; order?:
 /** `gaps` (event mode's wave done) adds each case's gap between the two settings (solo leaves it out). */
 export function CrystalCases({ tuning, crew, title, order, gaps = false, weakest = false }: Props) {
   const cases = quantumCases(tuning, crew);
-  // Clue 2 (event mode): the pair's weakest case is marked, with what it needs.
+  // Clue 2 (event mode): the pair's weakest case is outlined (the TV's hint beside the true rate says which way to move).
   const weak = weakest ? weakestCase(tuning, crew) : null;
   const rate = cases.reduce((sum, c) => sum + c.pWin, 0) / 4;
   return (
@@ -52,9 +52,6 @@ export function CrystalCases({ tuning, crew, title, order, gaps = false, weakest
               )}
             </span>
             <span className="case__verdict">{gaps ? whole(c.pWin) : S.readout.holds(whole(c.pWin))}</span>
-            {weak && weak.x === c.x && weak.y === c.y && (
-              <span className="case__need">{weak.need === "same" ? S.event.wave3.needCloser : S.event.wave3.needWider}</span>
-            )}
           </li>
         ))}
       </ul>

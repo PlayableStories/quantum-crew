@@ -5,6 +5,7 @@
 import {
   DIAL_POSITIONS,
   OPTIMAL_TUNING,
+  SURVIVAL_THRESHOLD,
   matchProbability,
   quantumCases,
   quantumExpectedWinRate,
@@ -71,3 +72,39 @@ export const SETTINGS = DIAL_POSITIONS;
 
 /** How many clues the ladder has; the room's `clue` runs 0 (none yet) to this. */
 export const CLUE_COUNT = 4;
+
+/** A pair's latest locked plans (Table A's, Table B's), or null before its first Act III wave. */
+export type LockedPlans = { a: TuningConfig; b: TuningConfig } | null;
+
+/** Clue 2 for one pair: nothing yet (no wave), found it (its locked plans hold 80%+), or a hint on its weakest case. */
+export type ClueHint =
+  | { kind: "none" }
+  | { kind: "found"; rate: number }
+  | { kind: "hint"; rate: number; weakest: PlanCase };
+
+export function clueHint(plans: LockedPlans): ClueHint {
+  if (!plans) return { kind: "none" };
+  const rate = planRate(plans.a, plans.b);
+  if (rate >= SURVIVAL_THRESHOLD - 1e-12) return { kind: "found", rate };
+  return { kind: "hint", rate, weakest: weakestCase(plans.a, plans.b) };
+}
+
+/** How many pairs are not yet at 80% with their latest locked plans (a pair with no wave yet counts). */
+export const pairsNotYet = (pairs: readonly { lockedDials: LockedPlans }[]) =>
+  pairs.filter((p) => clueHint(p.lockedDials).kind !== "found").length;
+
+/** Clue 4's numbers, from the maths: the spacing of the four settings, the match gap and its chance, the differ gap
+ *  and its chance, and the rate. */
+export function clueAnswer() {
+  const cases = planCases(CLUE_SETTINGS.A, CLUE_SETTINGS.B);
+  const match = cases.find((c) => c.need === "same")!;
+  const differ = cases.find((c) => c.need === "differ")!;
+  return {
+    spacing: settingGap(CLUE_SETTINGS.A.greenDeg, CLUE_SETTINGS.B.greenDeg),
+    matchGap: match.gap,
+    same: matchProbability(0, match.gap),
+    differGap: differ.gap,
+    differ: 1 - matchProbability(0, differ.gap),
+    rate: planRate(CLUE_SETTINGS.A, CLUE_SETTINGS.B),
+  };
+}

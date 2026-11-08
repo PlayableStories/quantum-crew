@@ -1,13 +1,14 @@
 // The crystal plan on a phone (server-rendered, no browser): a card of two settings picked from a list (no dial to
-// turn), the partner's card live (CORA's read-only, with her own plan), the first-time comparison with an Act II plan,
-// the starting line computed from the maths, the read-only fan with each case's folded gap, the round's chain
-// (sensor → setting → the crystal) without MEASURE, and "Plan locked" on the plans in Act II and Act III rounds.
+// turn), the partner's card live (CORA's read-only, with her own plan), the "like an Act II plan" line,
+// the starting line computed from the maths, the read-only fan with each case's folded gap (and its chance from clue
+// 2), clue 2's hint for the player's own pair, the round's chain (sensor → setting → the crystal, a coin flip) without
+// MEASURE, and "Plan locked" on the plans in Act II and Act III rounds.
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
-import { CrystalFan, CrystalPlanCard, CrystalRuleTable, ClueList, answerText, rateText } from "../components/CrystalPlan.tsx";
+import { CrystalFan, CrystalPlanCard, CrystalRuleTable, ClueList, answerText, hintText, rateText } from "../components/CrystalPlan.tsx";
 import { DEFAULT_TUNING } from "../config.ts";
-import { OPTIMAL_TUNING } from "../shared/chsh.ts";
-import { coraPlan, pairRateFor } from "../shared/crystalPlan.ts";
+import { OPTIMAL_TUNING, matchProbability } from "../shared/chsh.ts";
+import { CRYSTAL_RULE, coraPlan, pairRateFor } from "../shared/crystalPlan.ts";
 import type { RoomState } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 import { put, room, seat } from "./eventFixture.ts";
@@ -44,10 +45,11 @@ describe("the crystal plan card", () => {
     expect(markup).toContain("157.5°");
   });
 
-  it("the first lull: the comparison, my card, the partner's live, the 75% starting line and the fan", () => {
+  it("the first lull: the like line, my card, the partner's live, the 75% starting line and the fan", () => {
     seat(act3("strategy"));
     const markup = html();
-    expect(markup).toContain(S.event.compare.head);
+    expect(markup).toContain(esc(S.event.crystalPlan.like));
+    expect(markup).not.toContain("plan-compare");
     expect(markup.match(/<select/g)).toHaveLength(2);
     expect(markup).toContain(esc(S.event.crystalPlan.partnerHead("Bo")));
     expect(markup).toContain(esc(S.event.crystalPlan.startHumans("75%")));
@@ -55,13 +57,12 @@ describe("the crystal plan card", () => {
     expect(markup).toContain(`>${S.event.clues.chip(1)}</button>`);
   });
 
-  it("after the first wave the comparison moves into the Crystal rule sheet; the starting line goes once a plan moves", () => {
+  it("the starting line goes once a plan moves", () => {
     const s = act3("strategy");
     s.stability.act3 = { rounds: 8, wins: 6, timeouts: 0 };
     s.pairs[0] = { ...s.pairs[0]!, dials: { a: DEFAULT_TUNING, b: { greenDeg: 22.5, redDeg: 0 } } };
     seat(s);
     const markup = html();
-    expect(markup).not.toContain(S.event.compare.head);
     expect(markup).not.toContain(esc(S.event.crystalPlan.startHumans("75%")));
   });
 
@@ -83,23 +84,86 @@ describe("the fan, the rule and the clues", () => {
     expect(markup).not.toMatch(/<(input|select|button)/);
   });
 
-  it("the crystals' rule: 100 / 85 / 50 / 15 / 0% for gaps 0–90°", () => {
-    const markup = renderToString(<CrystalRuleTable />);
-    for (const v of ["100%", "85%", "50%", "15%", "0%"]) expect(markup).toContain(`<td>${v}</td>`);
+  it("before clue 2 the fan shows gaps and same / differ only; from clue 2, each case's chance too", () => {
+    const plans = { a: OPTIMAL_TUNING.A, b: OPTIMAL_TUNING.B };
+    const before = renderToString(<CrystalFan {...plans} />);
+    expect(before).not.toMatch(/\d%/);
+    const after = renderToString(<CrystalFan {...plans} chances />).replace(/<!-- -->/g, "");
+    expect(after).toContain(`· ${S.event.fan.chance("85%", "same")}`);
+    expect(after).toContain(`· ${S.event.fan.chance("85%", "differ")}`);
   });
 
-  it("clues stack up; clue 2 names the pair's weakest case; clue 4 gives the settings and 85.4%", () => {
+  it("the crystals' rule: the coin flip, the gap table from matchProbability (100 / 85 / 50 / 15 / 0%), then following", () => {
+    const markup = renderToString(<CrystalRuleTable />);
+    expect(CRYSTAL_RULE.map((r) => r.same)).toEqual([0, 22.5, 45, 67.5, 90].map((g) => matchProbability(0, g)));
+    for (const v of ["100%", "85%", "50%", "15%", "0%"]) expect(markup).toContain(`<td>${v}</td>`);
+    const at = (t: string) => markup.indexOf(esc(t));
+    expect(at(S.event.crystalRule.coin)).toBeGreaterThan(-1);
+    expect(at(S.event.crystalRule.coin)).toBeLessThan(at(S.event.crystalRule.closer));
+    expect(at(S.event.crystalRule.closer)).toBeLessThan(markup.indexOf("<table"));
+    expect(markup.indexOf("</table>")).toBeLessThan(at(S.event.crystalRule.follow));
+    expect(markup).toContain(esc(S.event.crystalRule.fold("180°", "90°", "0°", "157.5°", "22.5°")));
+  });
+
+  it("the rule and clue copy has no hard-coded percentages", () => {
+    const strings = (v: unknown): string[] =>
+      typeof v === "string" ? [v] : v && typeof v === "object" ? Object.values(v).flatMap(strings) : [];
+    for (const t of [...strings(S.event.crystalRule), ...strings(S.event.clues), ...strings(S.event.fan)])
+      expect(t).not.toMatch(/\d+(\.\d+)?%/);
+    expect(S.remote.talk.clue.toString()).not.toMatch(/\d+(\.\d+)?%/);
+  });
+
+  it("clues stack up; clue 1 is the rule; clue 2 the pair's hint; clue 4 gives the settings and 85.4%", () => {
     const one = renderToString(<ClueList clue={1} pairs={[{ id: 1, plans: null }]} />);
-    expect(one).toContain(S.event.clues.question);
+    expect(one).toContain(esc(S.event.crystalRule.coin));
     expect(one).not.toContain(S.event.clues.titles[1]!);
     const four = renderToString(<ClueList clue={4} pairs={[{ id: 1, plans: { a: DEFAULT_TUNING, b: DEFAULT_TUNING } }]} />);
-    expect(four).toContain(S.event.clues.question);
-    expect(four).toContain(esc(S.event.clues.weakest("A HOT · B HOT", "0°", "0%", "differ")));
+    expect(four).toContain(esc(S.event.clues.hint("A HOT · B HOT", "0°", "0%", "differ")));
     expect(four).toContain(esc(S.event.clues.nudge));
+    expect(answerText()).toContain(S.event.clues.sameSetting("157.5°", "-22.5°"));
     expect(answerText()).toContain("22.5°");
     expect(answerText()).toContain("67.5°");
     expect(answerText()).toContain("85.4%");
     expect(answerText()).toContain(`COOL ${OPTIMAL_TUNING.B.greenDeg}°, HOT ${OPTIMAL_TUNING.B.redDeg}°`);
+  });
+});
+
+describe("clue 2 on a phone: a hint for pairs not yet at 80%", () => {
+  const withPlans = (clue: number, plans: { a: typeof DEFAULT_TUNING; b: typeof DEFAULT_TUNING }) => {
+    const s = act3("strategy");
+    s.clue = clue;
+    s.stability.act3 = { rounds: 8, wins: 6, timeouts: 0 };
+    s.pairs[0] = { ...s.pairs[0]!, lockedDials: plans, dials: plans };
+    return s;
+  };
+
+  it("a pair below 80% sees its weakest case (both HOT at 0°: further apart); the starting line gives way", () => {
+    seat(withPlans(2, { a: DEFAULT_TUNING, b: DEFAULT_TUNING }));
+    const markup = html();
+    expect(markup).toContain(esc(S.event.clues.hint("A HOT · B HOT", "0°", "0%", "differ")));
+    expect(markup).not.toContain(esc(S.event.crystalPlan.startHumans("75%")));
+    expect(markup).toContain(`· ${S.event.fan.chance("100%", "same")}`);
+  });
+
+  it("a match case as the weakest: bring them closer", () => {
+    // A COOL 0°, HOT 90°; B COOL 45°, HOT 45°: the weakest is a match case.
+    const plans = { a: { greenDeg: 0, redDeg: 90 }, b: { greenDeg: 45, redDeg: 135 } };
+    const text = hintText(plans);
+    expect(text).toContain("bring them closer");
+  });
+
+  it("a pair at 80%+ sees Found it, no hint", () => {
+    seat(withPlans(2, { a: OPTIMAL_TUNING.A, b: OPTIMAL_TUNING.B }));
+    const markup = html();
+    expect(markup).toContain(S.event.clues.foundIt("80%"));
+    expect(markup).not.toContain("Your weakest case");
+  });
+
+  it("before clue 2: no hint, and the fan shows no chances", () => {
+    seat(withPlans(1, { a: DEFAULT_TUNING, b: DEFAULT_TUNING }));
+    const markup = html();
+    expect(markup).not.toContain("Your weakest case");
+    expect(markup).not.toContain(`· ${S.event.fan.chance("100%", "same")}`);
   });
 });
 
@@ -113,7 +177,7 @@ describe("rounds: the chain and Plan locked", () => {
     expect(markup).toContain(S.event.chain.sensor);
     const text = markup.replace(/<!-- -->/g, "");
     expect(text).toContain(`${S.event.chain.plan} <strong>45°</strong>`);
-    expect(text).toContain(`${S.event.chain.crystal} <strong>${S.pump[1]}</strong>`);
+    expect(text).toContain(`${S.event.chain.crystal} <strong>${S.pump[1]}</strong> <span class="muted small chain__flip">${esc(S.event.chain.flip)}</span>`);
     expect(markup).not.toContain(`>${S.batch.measure}<`);
     expect(markup).toContain(S.event.locked.stamp);
     expect(markup).toContain(S.event.locked.act3("0°", "45°"));

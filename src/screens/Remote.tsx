@@ -7,7 +7,11 @@ import { Sheet } from "../components/Sheet.tsx";
 import { useRemote } from "../net/remoteStore.ts";
 import { useElapsedMs } from "../net/useCountdown.ts";
 import { REPORT_STEPS, roundIdOf, type HostCommand, type RoomState, type RoundOutcome, type Speed } from "../shared/protocol.ts";
-import { S } from "../strings.ts";
+import { SURVIVAL_THRESHOLD } from "../shared/chsh.ts";
+import { CLUE_SETTINGS, RULE_GAPS, clueAnswer } from "../shared/crystalPlan.ts";
+import { formatDeg } from "../components/Dial.tsx";
+import { rateText } from "../components/CrystalPlan.tsx";
+import { S, type ClueTalk } from "../strings.ts";
 import { AutoToggle, enabledSteps, keyStep, stepLabel } from "./hostSteps.tsx";
 
 export function Remote() {
@@ -180,9 +184,29 @@ const remoteLabel = (state: RoomState, cmd: HostCommand) =>
 export function talkingPoints(state: RoomState): readonly string[] {
   const base = phasePoints(state);
   const act3Talk = state.act === 3 && ["tool", "strategy", "batchDone"].includes(state.phase);
-  const clue = state.clue > 0 ? S.remote.talk.clue[state.clue - 1] : undefined;
+  const clue = state.clue > 0 ? S.remote.talk.clue(state.clue, clueTalk()) : [];
   // With a clue out, the phase's first point, then the clue's (the remote fits one screen).
-  return act3Talk && clue ? [...base.slice(0, 1), ...clue] : base;
+  return act3Talk && clue.length ? [...base.slice(0, 1), ...clue] : base;
+}
+
+/** The numbers in the clue talking points, from the maths. */
+export function clueTalk(): ClueTalk {
+  const k = clueAnswer();
+  const whole = (p: number) => `${Math.round(p * 100)}%`;
+  const plan = (t: "A" | "B") =>
+    S.event.clues.plan(t, formatDeg(CLUE_SETTINGS[t].greenDeg), formatDeg(CLUE_SETTINGS[t].redDeg));
+  return {
+    minGap: formatDeg(RULE_GAPS[0]),
+    maxGap: formatDeg(RULE_GAPS.at(-1)!),
+    line: whole(SURVIVAL_THRESHOLD),
+    matchGap: formatDeg(k.matchGap),
+    differGap: formatDeg(k.differGap),
+    same: whole(k.same),
+    differ: whole(k.differ),
+    rate: rateText(k.rate),
+    planA: plan("A"),
+    planB: plan("B"),
+  };
 }
 
 function phasePoints(state: RoomState): readonly string[] {

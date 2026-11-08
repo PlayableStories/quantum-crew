@@ -297,6 +297,26 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - **Scripts:** `pnpm session`: clue 1 with the tool, a wave at 0° (75%, not saved), the remote releases clues 2–4,
     a wave at `CLUE_SETTINGS` (85.4%, saved), and no `player:measure`. `pnpm shots --event`: the starting lull, picks
     settings from the lists, both sheets, clues 2–4 (TV, phones, remote), a quick final wave, then the ending.
+- **Event E3d (2026-11-08, Act III said plainly; event mode only, solo unchanged):** a player-eye review found two
+  essentials never said (each crystal alone is a coin flip; followed crystals match exactly when they agree), and
+  clue 3 was false ("the match gaps add up to the differ gap"; true: the differ gap ≤ their sum).
+  - **Copy rule:** every number in Act III copy is computed (`clueAnswer`, `settingGap`, `RULE_GAPS`,
+    `SURVIVAL_THRESHOLD`); `crystalPlan.test.tsx` fails on a `\d%` literal in `S.event.crystalRule` / `clues` / `fan`
+    or `S.remote.talk.clue` (now a function of `ClueTalk`, built by `Remote.tsx` `clueTalk()`).
+  - **Clue 1** = `CrystalRuleTable`: `coin`, `closer` + the gap table, the computed `fold` note, `follow`. The TV shows
+    it on the tool reveal and every Act III lull (the lull's clue panel appears from clue 2); phones in the Crystal
+    rule sheet. `clues.question` and `CompareWithPlan` / `S.event.compare` are gone; the card has a `like` line.
+  - **Clue 2** = a hint (`clueHint(lockedDials)`: none / found ≥ 80% / hint with `weakestCase`). Phones: `ClueHint`
+    replaces the starting line in the lull and shows on wave done; the fan gets `chances` (gap · % same / differ).
+    TV: `CrystalWave` outlines the weakest case and adds `tvHint` ("weakest … : move further apart") on the true-rate
+    line of a pair below 80% (the old "weakest: wider" tag is gone); the lull lists only those pairs (`listHint`).
+    `S.tv.nextClue(2, pairsNotYet)` = "Next clue: a hint (N pairs not yet)".
+  - **TV fit:** the tool reveal and the Act III lull are `tv--wide` (the join panel and pair list step aside, as on
+    wave done); the tool is pod | rule, the lull from clue 2 is rule | clues. The TV leaves out the 180° note.
+  - **Rounds:** the chain adds `S.event.chain.flip`; the round explainer says following is how the plan works.
+  - **Scripts:** `pnpm session` wave 1 has one pair at the clue 4 settings (77.6% average), checks the label count
+    and each phone's hint / found it. `pnpm shots --event`: pair 1 at 67.5% (Ada 0°/45°, Bo 22.5°/22.5°), the crowd's
+    Cy and Di at the clue 4 settings; new capture `act3-lull-clue-2`.
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.

@@ -22,7 +22,7 @@ import { RuleChip } from "../components/RuleChip.tsx";
 import { Rule } from "../components/Rule.tsx";
 import {
   ClueList,
-  CompareWithPlan,
+  ClueHint,
   CrystalFan,
   CrystalPlanCard,
   CrystalRuleTable,
@@ -233,7 +233,8 @@ function InRoom() {
             </span>
             <Dial value={round.dialDeg} small />
             <span className="chain__step chain__crystal">
-              {S.event.chain.crystal} <strong>{S.pump[round.crystal]}</strong>
+              {S.event.chain.crystal} <strong>{S.pump[round.crystal]}</strong>{" "}
+              <span className="muted small chain__flip">{S.event.chain.flip}</span>
             </span>
             <span className="muted small crystal-keys">{S.batch.follow}</span>
           </div>
@@ -290,8 +291,11 @@ function InRoom() {
           ? S.event.crystalPlan.startHumans(rateText(planRate(DEFAULT_TUNING, DEFAULT_TUNING)))
           : null
       : null;
+  // From clue 2: this pair's hint, and each case's chance on the fan.
+  const chances = state.clue >= 2;
+  const hint = chances && !!pair;
   const planCard = (
-    <CrystalPlanCard title={S.event.crystalPlan.head} value={tuning} onChange={setTuning} className="crystal-plan--phone" />
+    <CrystalPlanCard title={S.event.crystalPlan.head} value={tuning} onChange={setTuning} like className="crystal-plan--phone" />
   );
   // From the tool reveal on: the crystals' rule and the clues so far, each in a sheet.
   const act3Chips = (
@@ -302,7 +306,6 @@ function InRoom() {
       <SheetChip label={S.event.crystalRule.chip} title={S.event.crystalRule.head}>
         <p className="kicker">{S.event.crystalRule.head}</p>
         <CrystalRuleTable />
-        <CompareWithPlan />
       </SheetChip>
       {state.clue > 0 && (
         <SheetChip label={S.event.clues.chip(state.clue)} title={S.event.clues.head} fresh>
@@ -426,14 +429,13 @@ function InRoom() {
             </>
           ) : (
             <>
-              {/* The first time (before any Act III wave): a crystal plan beside an Act II plan. */}
-              {state.stability.act3.rounds === 0 && <CompareWithPlan />}
               {planCard}
               {partner && partnerPlan && (
-                <PartnerCard name={partner.name} cora={cora} plan={partnerPlan} a={planA!} b={planB!} />
+                <PartnerCard name={partner.name} cora={cora} plan={partnerPlan} a={planA!} b={planB!} chances={chances} />
               )}
-              {startLine && <p className="start-line">{startLine}</p>}
-              {planA && planB && <CrystalFan a={planA} b={planB} />}
+              {/* Clue 2 replaces the starting line with this pair's hint (or "Found it"). */}
+              {hint ? <ClueHint plans={pair!.lockedDials} /> : startLine && <p className="start-line">{startLine}</p>}
+              {planA && planB && <CrystalFan a={planA} b={planB} chances={chances} />}
             </>
           )}
         </div>
@@ -460,6 +462,7 @@ function InRoom() {
       {!round && state.phase === "batchDone" && state.act === 3 && (
         <>
           {act3Chips}
+          {hint && <ClueHint plans={pair!.lockedDials} />}
           <details className="panel">
             <summary className="kicker">{S.event.crystalPlan.retune}</summary>
             {planCard}
@@ -514,7 +517,21 @@ function PairNumbers({ pair, partner }: { pair: PairInfo; partner: string }) {
 }
 
 /** The partner's crystal plan in one line (live, read-only); "See both" opens both cards and the fan in a sheet. */
-function PartnerCard({ name, cora, plan, a, b }: { name: string; cora: boolean; plan: TuningConfig; a: TuningConfig; b: TuningConfig }) {
+function PartnerCard({
+  name,
+  cora,
+  plan,
+  a,
+  b,
+  chances,
+}: {
+  name: string;
+  cora: boolean;
+  plan: TuningConfig;
+  a: TuningConfig;
+  b: TuningConfig;
+  chances: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   return (
@@ -538,7 +555,7 @@ function PartnerCard({ name, cora, plan, a, b }: { name: string; cora: boolean; 
             cora={cora}
             note={cora ? S.event.crystalPlan.coraSet : undefined}
           />
-          <CrystalFan a={a} b={b} />
+          <CrystalFan a={a} b={b} chances={chances} />
         </div>
       </Sheet>
     </div>

@@ -19,6 +19,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import { build, preview } from "vite";
 import { WebSocket } from "ws";
 import { ACT1_ROUNDS, BATCH_SIZE, LEAD_MS, RESULT_AUTO_MS, ROUND_MS } from "../src/config.ts";
+import { OPTIMAL_TUNING } from "../src/shared/chsh.ts";
 import { S } from "../src/strings.ts";
 
 // The page.evaluate callbacks run in the browser. This script is type-checked on the Node side (no DOM lib), so name
@@ -663,15 +664,16 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
   // Act III: the huddle (dials on the phones), then one wave.
   await host(S.tv.cmd.startStrategy);
   await banner("strategy").waitFor();
-  // The first Act III lull at the starting plans (0°), then pair 1 picks the best settings from the lists (Ada 0° /
-  // 45°, Bo 22.5° / 157.5°), so wave done shows a pair that holds; the crowd stays at 0°, so the crew's average stays
-  // under 80%. Bo sees Ada's plan live. Since E3c the plan is a card of two lists; older phones turned dials.
+  // The first Act III lull at the starting plans (0°), then pair 1 picks a plan that isn't there yet (Ada 0° / 45°, Bo
+  // 22.5° / 22.5°: 67.5%, both HOT the weakest), so after clue 2 the phones show a hint (since E3d). The crowd's
+  // Cy and Di play the clue 4 settings (85.4%, found it) and the rest stay at 0°: the crew's average stays under 80%.
+  // Bo sees Ada's plan live. Since E3c the plan is a card of two lists; older phones turned dials.
   await shot("act3-huddle-start", all(), true);
   const setting = (v: View, sensor: "COOL" | "HOT") => v.page.getByLabel(S.event.crystalPlan?.row(sensor) ?? sensor);
   if (await setting(a, "HOT").count()) {
     await setting(a, "HOT").selectOption("45");
     await setting(b, "COOL").selectOption("22.5");
-    await setting(b, "HOT").selectOption("157.5");
+    await setting(b, "HOT").selectOption("22.5");
   } else {
     const turn = async (v: View, dial: 0 | 1, name: string, times: number) => {
       for (let i = 0; i < times; i++) await v.page.getByRole("button", { name }).nth(dial).click();
@@ -699,8 +701,12 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
 
   // The clue ladder (since E3c), released from the remote: clue 2 (each pair's weakest case) on the wave done, then
   // clues 3 and 4 in the lull, on the TV, a phone's Clues sheet and the remote.
+  // Clue 2's label counts the pairs not yet at 80% (since E3d), so it's matched by its start.
   const clueBtn = (n: number) =>
-    (remote ?? tv).page.getByRole("button", { name: (S.tv as Record<string, unknown>).nextClue ? S.tv.nextClue(n) : "-", exact: true });
+    (remote ?? tv).page.getByRole(
+      "button",
+      n === 2 ? { name: /^Next clue: (a hint|weakest case)/ } : { name: (S.tv as Record<string, unknown>).nextClue ? S.tv.nextClue(n) : "-", exact: true },
+    );
   const clueOn = (n: number) =>
     n === 2 ? tv.page.locator(".case--weakest").first() : tv.page.locator(".clues__title--latest").filter({ hasText: S.event.clues?.titles[n - 1] ?? "-" });
   if (await clueBtn(2).count()) {
@@ -708,6 +714,8 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     if (await ready("clue 2", clueOn(2).waitFor({ timeout: 5000 }))) await shot("clue-2", all(), true);
     await host(S.tv.cmd.startStrategy);
     await banner("strategy").waitFor();
+    // The lull after clue 2: the pairs not yet at 80% on the TV, the hint on the phones, the fan's chances.
+    await shot("act3-lull-clue-2", all(), true);
     for (const n of [3, 4]) {
       if (!(await ready(`clue ${n} button`, clueBtn(n).click({ timeout: 5000 })))) break;
       if (!(await ready(`clue ${n}`, clueOn(n).waitFor({ timeout: 5000 })))) break;
@@ -897,9 +905,21 @@ function joinCrowd(url: string, room: string) {
   ] as const;
   return seats.map(([name, table]) => {
     const ws = new WebSocket(url);
+    let planned = false;
     ws.on("open", () => ws.send(JSON.stringify({ type: "player:join", room, name, table })));
     ws.on("message", (data) => {
-      const msg = JSON.parse(String(data)) as { type: string; roundId?: string; act?: number; crystal?: number };
+      const msg = JSON.parse(String(data)) as {
+        type: string;
+        roundId?: string;
+        act?: number;
+        crystal?: number;
+        state?: { act: number; phase: string };
+      };
+      // Since E3d: Cy and Di (one pair) play the clue 4 settings in Act III, so the TV shows a pair that found it.
+      if (msg.type === "room:state" && (name === "Cy" || name === "Di") && msg.state?.act === 3 && msg.state.phase === "strategy" && !planned) {
+        planned = true;
+        ws.send(JSON.stringify({ type: "player:strategy", act: 3, tuning: OPTIMAL_TUNING[table] }));
+      }
       if (msg.type !== "round:start") return;
       // Act III (since E3c): the room measured the crystal at round start; follow it. Acts I and II: clockwise.
       ws.send(JSON.stringify({ type: "player:valve", roundId: msg.roundId, valve: msg.act === 3 ? (msg.crystal ?? 0) : 0 }));
