@@ -32,7 +32,8 @@ Setting up the server: see [Run event mode at a venue](../README.md#run-event-mo
 
 ## Run of show
 
-The host controls only work at the right moments; the others are greyed out.
+The host controls only work at the right moments; the others are greyed out. Playing straight after a talk on
+quantum? See [Pairing the game with a talk on quantum](#pairing-the-game-with-a-talk-on-quantum).
 
 | Time | What happens | You press |
 | --- | --- | --- |
@@ -107,6 +108,30 @@ the clues so far in their **Clues** sheet.
    partner applies their own. Wave 2 saves the station.
 
 A double press (or the TV and the remote at once) releases it once. The remote's **Say** box shows the latest clue's talking points in Act III.
+
+## Pairing the game with a talk on quantum
+If the game follows a talk that introduces entanglement as spinning coins with random but perfectly correlated
+outcomes, names the Bell tests (Aspect, Clauser, Zeilinger) and says entangled photons let distant stations "talk",
+the game agrees on the coins and on Bell's inequality, and deliberately shows that entanglement carries no messages.
+The players' screens already carry true, general versions of these points; the lines below tie them to the talk.
+The remote's **Say** box has the short versions.
+
+- **The tool reveal:** *"These crystals are the entangled coins from the talk."* (The pod's note on the TV and the
+  phones says: each lands at random, but a linked pair measured at the same setting always lands the same way.)
+- **The start of Act III (the first lull):** *"Your starting plan uses perfectly correlated coins, like the talk's
+  example, and it scores exactly 75%, no better than an ordinary plan. So where does the advantage come from?"* (The
+  TV asks the same in the first lull.) The answer is in the gaps: settings a little apart in three cases, far apart
+  in the fourth.
+- **The incident report, first step:** *"The inequality you couldn't beat in Act II is the one Clauser tested."* (The
+  step names Clauser, Aspect and Zeilinger and their 2022 Nobel Prize.)
+- **If the talk said entangled particles let stations "talk":** bridge it at the no-signalling step ("But no
+  messages"). Entanglement gives both ends the same randomness, like a shared key; that is how quantum key
+  distribution works, and the message itself still has to be sent the ordinary way. Each player's own pump was
+  clockwise about half the time whatever their partner's sensor said, so nothing reached them through the crystals.
+
+**For technical attendees:** the crystal settings behave like polarisation angles for photons (as in Aspect's
+experiments), where 90° apart means opposite outcomes. On a Bloch sphere, opposite states are 180° apart, so the
+game's angles are half the Bloch-sphere angles. It doesn't affect play.
 
 ## Troubleshooting
 

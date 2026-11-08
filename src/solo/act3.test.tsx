@@ -91,6 +91,16 @@ describe("debrief", () => {
     expect(side(html())).toContain("bars");
   });
 
+  it("who tested it (step 1) and no messages but a shared key (step 3), as in event mode", () => {
+    toDebrief();
+    const esc = (t: string) => t.replace(/'/g, "&#x27;");
+    expect(html()).toContain(esc(S.debrief.steps[0]!.body[2]!));
+    expect(S.debrief.steps[0]!.body[2]).toMatch(/^John Clauser, the C in CHSH/);
+    s().setDebriefStep(2);
+    expect(html()).toContain(esc(S.debrief.steps[2]!.body[2]!));
+    expect(S.debrief.steps[2]!.body[2]).toMatch(/quantum key distribution/);
+  });
+
   it("the final step and /credits: short credits, the asset list behind a button", () => {
     toDebrief();
     s().setDebriefStep(S.debrief.steps.length - 1);

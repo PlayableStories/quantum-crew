@@ -398,8 +398,9 @@ function InRoom() {
           <Crystals />
           <h2 className="reveal__title">{S.event.pod.title}</h2>
           <p>{S.event.pod.lines[1]}</p>
+          <p>{S.event.pod.lines[2]}</p>
           <p>
-            <strong>{S.event.pod.lines[2]}</strong>
+            <strong>{S.event.pod.lines[3]}</strong>
           </p>
           {act3Chips}
         </div>

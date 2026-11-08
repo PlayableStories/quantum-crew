@@ -349,8 +349,9 @@ takes effect at once, on the running round or result too.
 
 **Leaving.** A phone's **⋯** menu (beside mute) has **Leave the game**, behind a confirmation where staying is the
 primary action. A player who leaves, or whose phone drops out, keeps their seat: CORA covers it (after a natural
-delay, like everywhere else) until they rejoin with the same name and table. A refreshed TV resumes the same station. Running a session for real: [`docs/facilitator.md`](docs/facilitator.md); watching a playtest:
-[`docs/playtest.md`](docs/playtest.md).
+delay, like everywhere else) until they rejoin with the same name and table. A refreshed TV resumes the same station. Running a session for real: [`docs/facilitator.md`](docs/facilitator.md) (after a talk on quantum, see
+[Pairing the game with a talk on quantum](docs/facilitator.md#pairing-the-game-with-a-talk-on-quantum)); watching a
+playtest: [`docs/playtest.md`](docs/playtest.md).
 
 From the lobby, **Use the lull** or **Start the wave** still skip the night shift and go straight to Act II (for a
 short session).
