@@ -18,7 +18,7 @@ One sheet per session. Watch, don't help (unless someone is stuck for over a min
 | Act II waves (how many?) | | | |
 | Engineering report | | | |
 | Tool and Act III huddle | | | |
-| Act III waves (how many? clue 2 after wave __, clue 3 after __, clue 4 after __) | | | |
+| Act III waves (how many? the answer after wave __) | | | |
 | Debrief | | | |
 | **Whole session** | | | |
 
@@ -41,8 +41,9 @@ One sheet per session. Watch, don't help (unless someone is stuck for over a min
 - [ ] Act III: reads the crystals' rule table / the fan's gaps aloud, or asks what a gap is
 - [ ] Act III: understands that each crystal alone is a coin flip (or still thinks a setting picks a direction)
 - [ ] Act III: understands that following both crystals makes the pumps match exactly when the crystals agree
-- [ ] Act III: which clue did the room need before finding 80%? (1 rule · 2 hint · 3 nudge · 4 answer) ____
-- [ ] Act III: after clue 2, did the pairs with a hint move their settings the way it said?
+- [ ] Act III: which clue did the room need before finding 80%? (1 live hint + nudge · 2 answer) ____
+- [ ] Act III: in the first lull, did pairs move their settings the way the live hint said (and watch it change)?
+- [ ] Act III: after the answer, did players tap **Use these settings** (both partners)?
 - [ ] Act III: did it feel like guessing? (ask one player after the first Act III wave: "how did you pick your settings?")
 - [ ] Act III: follows the crystal's suggestion, or goes against it (note when and why)
 - [ ] Notices "Plan locked" when the wave starts (Act II and Act III)

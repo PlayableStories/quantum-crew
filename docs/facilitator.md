@@ -44,10 +44,10 @@ The host controls only work at the right moments; the others are greyed out.
 | 0:13 | **Act II's first wave, manual.** 8 rounds. The radio is down: phones show their own sensor, both locked plans and two pump buttons. No talking between tables. Each round waits until every pair has chosen (the TV shows who is still choosing; **Next** closes the round if someone is stuck). The result stays up: read the cause aloud, then **Next**. About 3–4 minutes. Press **▶ Play** any time to let the rest run by itself. | **Next** (or Space / →) |
 | 0:17 | **Wave passed.** The TV shows every pair's plans case by case and their true rate. Point at a ✗ case: that's the round the plan always loses. A "by luck" line means the wave beat 80% but the plan can't. Run one more lull and wave so they feel the ceiling; later waves play by themselves (Relaxed: 12 s to decide, 8 s per result). | **Use the lull**, then **Start the wave** |
 | 0:18 | **Engineering report.** The plan board: every pairing of plans, exactly 75% or 25%. The crew's pairings are marked as tried; engineering ran the rest. No plan beats 75% ("the best plan loses one in four"). Read the prompt aloud: "Turn to your partner. Did you blame each other? It was never either of you." | **Reveal ceiling** |
-| 0:19 | **The tool.** A supply pod brings two linked crystals for every pair, one at each table; engineering's note says they carry no messages, so the storm can't jam them. Read it aloud, then: *"The crystals don't replace your plan. They change what a plan can say."* **Clue 1** comes with it: the TV shows the crystals' rule in three lines: each crystal alone is a coin flip whatever its setting; linked crystals land the same way more often the closer their settings (the table: 0° 100%, 22.5° 85%, 45° 50%, 67.5° 15%, 90° 0%); followed crystals make the pumps match exactly when they agree, so keep three gaps close and both HOT far apart. | **Unlock tool** |
-| 0:20 | **Act III lull: the crystal plan.** Each phone has a plan card shaped like an Act II plan: a setting for COOL and one for HOT, picked from a list. The station measures the crystal at that setting; the player is the planner. The partner's plan shows live, with a fan of the pair's four settings and the gap in each case. The card's first line says it's like an Act II plan, with a crystal setting for each reading instead of a direction, and a starting line says where they are: two players at 0° match in every case, 75%, just like their best Act II plan (with CORA: 67.7%, and an invitation to beat it). The TV shows the rule, the clues so far and the question (*"How close can you keep three gaps while the fourth stays far apart?"*). | **Use the lull** |
+| 0:19 | **The tool.** A supply pod brings two linked crystals for every pair, one at each table; engineering's note says they carry no messages, so the storm can't jam them. Read it aloud, then: *"The crystals don't replace your plan. They change what a plan can say."* Then read the crystals' rule aloud (it's not a clue; it stays up for the rest of Act III). The TV shows it in three lines: each crystal alone is a coin flip whatever its setting; linked crystals land the same way more often the closer their settings (the table: 0° 100%, 22.5° 85%, 45° 50%, 67.5° 15%, 90° 0%); followed crystals make the pumps match exactly when they agree, so keep three gaps close and both HOT far apart. | **Unlock tool** |
+| 0:20 | **Act III lull: the crystal plan.** Each phone has a plan card shaped like an Act II plan: a setting for COOL and one for HOT, picked from a list. The station measures the crystal at that setting; the player is the planner. The partner's plan shows live, with a fan of the pair's four settings and the gap in each case. The card's first line says it's like an Act II plan, with a crystal setting for each reading instead of a direction. **Clue 1 opens with this lull:** each phone shows the pair's live rate and hint (at 0°: 75%, both HOT needs the settings further apart; with CORA 67.7%), and it follows every setting change. The TV lists every pair's hint and the nudge, beside the rule, and the question (*"How close can you keep three gaps while the fourth stays far apart?"*). | **Use the lull** |
 | 0:21 | **Act III waves.** No MEASURE: the station measures each crystal at the player's planned setting when the round starts. Each phone shows *"Your sensor → your plan → the crystal says …"*; the player sets the pump, following it or not (Enter follows). Plans are stamped **Plan locked** (as in Act II). The first wave is manual, later ones play by themselves. | **Start the wave**; **Next** in the manual wave |
-| 0:23 | **Act III wave passed.** The TV shows every pair's crystal plans case by case: each case's gap and its chance of holding, the true rate, **found it: 80%+** on pairs that got there, and a luck line where the wave and the true rate disagree. The top line says whether the crew's crystal plans average 80% (the station holds) and how often the crew followed the crystal. Release the next clue when they're stuck (see below), then play another lull and wave. | **Next clue**; **Use the lull**, then **Start the wave** |
+| 0:23 | **Act III wave passed.** The TV shows every pair's crystal plans case by case: each case's gap and its chance of holding, the true rate, **found it: 80%+** on pairs that got there, and a luck line where the wave and the true rate disagree. The top line says whether the crew's crystal plans average 80% (the station holds) and how often the crew followed the crystal. Pairs below 80% get their weakest case outlined with which way to move. Release **the answer** (Next clue) if pairs are still below 80%, or give a close room another lull first. | **Next clue**; **Use the lull**, then **Start the wave** |
 | 0:28 | **The storm passes.** The station clears: calm if the crew saved it, damaged if not. Phones tell each player to tell their partner what they were thinking during the storm; give the room a minute to talk. | **The storm passes** |
 | 0:30 | **Incident report.** Step through with Back / Next on the TV: the three numbers (with the radio, the best plan, the crystals), the best plan beside the crystals, why the crystals can't send a message (every pump ≈ 50%), then credits. Each phone shows its own pair's three numbers. | **Incident report**, then **Next** |
 | 0:35 | Done. For a new group, **Reset** clears the scores and keeps the players (and goes back to the lobby, before the night shift); for a new crowd, open a fresh `/screen`. | **Reset** (asks to confirm) |
@@ -89,27 +89,24 @@ Your phone can run the session instead of the laptop, so you can walk between th
   code; paired phones show "This remote link has expired". After a server restart, scan again.
 
 ### The clue ladder (Act III)
-**Next clue** (on the TV's host row and the remote, labelled with the clue it releases) gives one clue at a time. A
-clue never goes away until **Reset**, and the room keeps it, so a refreshed TV still shows it. Every clue so far stays
-on the TV (the latest in full) and in each phone's **Clues** sheet. A double press (or the TV and the remote at once)
-releases one clue.
+Two clues. The crystals' rule isn't one: it's on the TV from the tool reveal on, and in each phone's **Crystal rule**
+sheet. A clue never goes away until **Reset**, and the room keeps it, so a refreshed TV still shows it. Phones keep
+the clues so far in their **Clues** sheet.
 
-1. **The crystals' rule** (automatic, with the tool). Say: *"Each crystal alone is a coin flip, whatever its
-   setting. A gap of 0° always lands the same way, 90° never does. Followed crystals make matching pumps exactly when
-   they agree."* The TV keeps the rule up in every Act III lull.
-2. **A hint** (only after an Act III wave). The button says how many pairs aren't at 80% yet (*"Next clue: a hint
-   (2 pairs not yet)"*). Those pairs see their weakest case on their phones and their TV card: its gap, its chance
-   and which way to move (closer for a match case, further apart for both HOT). Pairs at 80%+ see **Found it**.
-   Say: *"What does that case need?"*
-3. **A nudge.** *"Going around your four settings, the differ gap can never be bigger than the three match gaps
-   added together. You want the match gaps small and the differ gap near 90°. How would you spread them?"* (If the
-   three match gaps are equal and the differ gap is as big as it can be, it's three times one match gap: three gaps
-   of 22.5° make 67.5°.)
-4. **The answer.** Spread the four settings evenly, 22.5° apart: A: COOL 0°, HOT 45°; B: COOL 22.5°, HOT 157.5° (the
-   same setting as −22.5°). The three match gaps are 22.5° (85% the same) and the differ gap is 67.5° (85%
-   different): 85.4%, which saves the station.
+1. **The hint and the nudge** (automatic, when the first Act III lull opens). Each pair's hint comes from its
+   plans as they are right now and follows every change: its weakest case, the gap, the chance and which way to
+   move (closer for a match case, further apart for both HOT; with CORA, only the player's own setting moves). Pairs
+   at 80%+ see **Found it**. Point the room at the TV's list and the nudge: *"The differ gap can never be bigger than
+   the three match gaps added together. You want the match gaps small and the differ gap near 90°."* Then let them
+   play wave 1: their own attempt.
+2. **The answer** (Next clue, on the TV or the remote, only after an Act III wave; never automatic). The button says
+   who still needs it (*"Next clue: the answer (2 pairs not yet at 80%)"*). If the room is close, you can hold it for
+   another lull. The answer: spread the four settings evenly, 22.5° apart: A: COOL 0°, HOT 45°; B: COOL 22.5°, HOT
+   157.5° (the same setting as −22.5°). Three match gaps of 22.5° (85% the same) and a differ gap of 67.5° (85%
+   different): 85.4%. Each phone shows its own row and, if the pair is below 80%, **Use these settings**; each
+   partner applies their own. Wave 2 saves the station.
 
-The remote's **Say** box shows the latest clue's talking points in Act III.
+A double press (or the TV and the remote at once) releases it once. The remote's **Say** box shows the latest clue's talking points in Act III.
 
 ## Troubleshooting
 

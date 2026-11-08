@@ -688,6 +688,8 @@ export function createRoom(code: string, deps: RoomDeps) {
         if (act === 1) act = 2;
         clearTimer();
         phase = "strategy";
+        // Clue 1 (each pair's live hint and the nudge) opens with the first Act III lull.
+        if (act === 3 && clue === 0) clue = 1;
         // DECISION (pacing): the lull isn't timed; the facilitator starts the wave. The TV shows how long it's been.
         deadline = null;
         lullSince = deps.now();
@@ -695,6 +697,8 @@ export function createRoom(code: string, deps: RoomDeps) {
       case "startBatch":
         if (inBatch() || phase === "debrief" || players.length === 0) return notNow();
         if (phase === "ceiling" && !toolUnlocked) return notNow();
+        // A wave started straight from the tool reveal (no lull): clue 1 comes with it, so the answer can follow.
+        if (act === 3 && clue === 0) clue = 1;
         return phase === "briefing" ? startAct1() : startBatch();
       case "revealCeiling":
         if (inBatch() || act !== 2) return notNow();
@@ -708,7 +712,6 @@ export function createRoom(code: string, deps: RoomDeps) {
         clearTimer();
         act = 3;
         toolUnlocked = true;
-        clue = Math.max(clue, 1); // clue 1, the crystals' rule, comes with the tool
         phase = "tool";
         deadline = null;
         return broadcast();
@@ -726,18 +729,17 @@ export function createRoom(code: string, deps: RoomDeps) {
       case "debugAct3":
         if (inBatch() || phase === "debrief") return notNow();
         clearTimer();
-        // What Reveal ceiling then Unlock tool leave behind: the tool reveal with clue 1.
+        // What Reveal ceiling then Unlock tool leave behind: the tool reveal, no clue yet (clue 1 opens with the lull).
         act = 3;
         ceilingRevealed = toolUnlocked = true;
-        clue = Math.max(clue, 1);
+        clue = 0;
         phase = "tool";
         deadline = null;
         return broadcast();
       case "nextClue":
-        // One step at a time: clue 2 (each pair's weakest case) needs an Act III wave's locked plans; never in a wave.
-        if (!toolUnlocked || inBatch() || clue >= CLUE_COUNT) return notNow();
-        if (clue === 1 && actStats[3].rounds === 0) return notNow();
-        clue++;
+        // Clue 2, the answer: after clue 1 and at least one Act III wave; never in a wave; never past 2.
+        if (!toolUnlocked || inBatch() || clue !== 1 || clue >= CLUE_COUNT || actStats[3].rounds === 0) return notNow();
+        clue = 2;
         return broadcast();
       case "stormPasses":
         // The ending: after at least one Act III wave, outside a wave. It reads stationSaved (no new state).

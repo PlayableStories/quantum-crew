@@ -4550,3 +4550,50 @@ button.board__cell:focus-visible {
     display: none;
   }
 }
+
+/* E3e: clue 2 on a phone (the player's own row of the answer, and "Use these settings"); the TV's answer line on wave
+   done; found pairs in the TV's hint list; the nudge under the hints. */
+.answer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  margin: 0;
+  padding: 6px 10px;
+  border-left: 3px solid var(--q-3);
+  font-size: 0.85rem;
+}
+
+.answer-row__use {
+  min-height: 40px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.tv__answer-out {
+  margin: 0;
+  color: var(--q-3);
+  font-weight: 700;
+}
+
+.clues__pair--found {
+  color: var(--win);
+}
+
+.clues__nudge {
+  margin: 6px 0 0;
+  opacity: 0.9;
+}
+
+.clues__answer {
+  display: grid;
+  gap: 8px;
+}
+
+@media (max-height: 700px) {
+  .lull--act3 > .answer-row {
+    padding: 4px 8px;
+    font-size: 0.78rem;
+  }
+}

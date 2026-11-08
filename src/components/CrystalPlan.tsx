@@ -10,14 +10,17 @@ import {
   CRYSTAL_RULE,
   RULE_GAPS,
   SETTINGS,
+  answerPlanFor,
   clueAnswer,
   clueHint,
+  moverFor,
   planCases,
   settingGap,
   type LockedPlans,
   type PlanCase,
 } from "../shared/crystalPlan.ts";
 import { COOL, HOT } from "../shared/fiction.ts";
+import type { PairInfo } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 import { AiBadge } from "./AiBadge.tsx";
 import { formatDeg } from "./Dial.tsx";
@@ -224,72 +227,128 @@ export function answerText() {
   );
 }
 
-/** Clue 2 for one pair, in words: no wave yet, found it, or its weakest case and which way to move. `tv` = the TV
- *  lull's list form; the wave done's cards use `tvHint`. */
-export function hintText(plans: LockedPlans, tv = false): string {
-  const h = clueHint(plans);
-  const C = S.event.clues;
-  if (h.kind === "none") return C.noWave;
-  if (h.kind === "found") return C.foundIt(whole(SURVIVAL_THRESHOLD));
-  const w = h.weakest;
-  return (tv ? C.listHint : C.hint)(caseName(w), formatDeg(w.gap), whole(w.pWin), w.need);
+/** The human in a pair with CORA (her plan is fixed, so the hint names only their setting); null for two players. */
+export type HumanWithCora = { table: Table; name: string } | null;
+
+/** A room pair's human beside CORA, if one seat is hers. */
+export function humanWithCora(pair: Pick<PairInfo, "a" | "b">): HumanWithCora {
+  if (pair.a.playerId === null && pair.b.playerId !== null) return { table: "B", name: pair.b.name };
+  if (pair.b.playerId === null && pair.a.playerId !== null) return { table: "A", name: pair.a.name };
+  return null;
 }
 
-/** Clue 2 on a phone: one line for the player's own pair (a hint, or "Found it"). */
-export function ClueHint({ plans }: { plans: LockedPlans }) {
+/** Clue 1 for one pair, in words: found it, or its weakest case and which way to move. `tv` = the TV lull's list form
+ *  (the wave done's cards use `tvHint`). */
+export function hintText(plans: LockedPlans, tv = false, human: HumanWithCora = null): string {
   const h = clueHint(plans);
+  const C = S.event.clues;
+  if (h.kind === "none") return "";
+  if (h.kind === "found") return C.foundIt(whole(SURVIVAL_THRESHOLD));
+  const w = h.weakest;
+  const args = [caseName(w), formatDeg(w.gap), whole(w.pWin), w.need] as const;
+  if (human) {
+    const mine = S.light[moverFor(w, human.table)];
+    return tv ? C.coraListHint(human.name, ...args, mine) : C.coraHint(...args, mine);
+  }
+  return (tv ? C.listHint : C.hint)(...args);
+}
+
+/** Clue 1 on a phone: the pair's live rate, then its hint (or "Found it"). Follows the plans as they change. */
+export function ClueHint({ plans, human = null }: { plans: LockedPlans; human?: HumanWithCora }) {
+  const h = clueHint(plans);
+  if (h.kind === "none") return null;
   return (
     <p className={`clue-hint clue-hint--${h.kind}`} role="status">
-      {h.kind === "found" && "✓ "}
-      {hintText(plans)}
+      {S.event.clues.liveRate(rateText(h.rate))} {h.kind === "found" && "✓ "}
+      {hintText(plans, false, human)}
     </p>
   );
 }
 
-/** Every clue released so far (`clue` 1–4), the latest last. Clue 2 lists `pairs` (each pair's weakest case). */
+/** Clue 2 on a phone: the player's own row of the answer, and (while the pair is under 80%) a button that fills it in
+ *  on their crystal plan card. */
+export function AnswerRow({ table, plans, onUse }: { table: Table; plans: LockedPlans; onUse?: (t: TuningConfig) => void }) {
+  const row = answerPlanFor(table);
+  const done = clueHint(plans).kind === "found";
+  return (
+    <div className="answer-row" role="status">
+      <strong>{S.event.clues.yourRow(formatDeg(row.greenDeg), formatDeg(row.redDeg))}</strong>
+      {onUse && !done && (
+        <button type="button" className="btn btn--primary answer-row__use" onClick={() => onUse(row)}>
+          {S.event.clues.useThese}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Clue 2 on the TV's wave done, in one line: both rows and the rate. */
+export function answerOutText() {
+  const C = S.event.clues;
+  const plan = (t: Table) => C.plan(t, formatDeg(CLUE_SETTINGS[t].greenDeg), formatDeg(CLUE_SETTINGS[t].redDeg));
+  return C.answerOut(plan("A"), plan("B"), rateText(clueAnswer().rate));
+}
+
+/** Every clue released so far (`clue` 1–2), the latest last. Clue 1 = the hint (live) and the nudge: on the TV every
+ *  pair's, on a phone its own pair's. Clue 2 = the answer and its fan; on a phone, the player's own row too. */
 export function ClueList({
   clue,
   pairs,
   className = "",
-  rule = true,
   titlesInline = false,
   tv = false,
+  table,
+  onUse,
 }: {
   clue: number;
-  pairs: { id: number; plans: LockedPlans }[];
+  pairs: { id: number; plans: LockedPlans; human?: HumanWithCora }[];
   className?: string;
-  /** Clue 1 in full (the rule); false where the rule already shows beside the clues (the TV's lull). */
-  rule?: boolean;
-  /** The TV: clue 2 lists only the pairs not yet at 80%, in the short form. */
-  tv?: boolean;
   /** The TV: every clue's title on one line (the latest marked), then the latest clue in full. */
   titlesInline?: boolean;
+  tv?: boolean;
+  /** A phone: the player's table (their row of the answer) and the button's action. */
+  table?: Table;
+  onUse?: (t: TuningConfig) => void;
 }) {
   const C = S.event.clues;
   const items: { title: string; body: ReactNode }[] = [];
   if (clue >= 1)
-    // The TV leaves out the 180° note (it's in the phones' Crystal rule sheet).
-    items.push({ title: C.titles[0]!, body: rule ? <CrystalRuleTable fold={!tv} /> : null });
-  if (clue >= 2) {
-    // The TV lists the pairs not yet at 80% (the others found it); a phone shows its own pair.
-    const shown = tv ? pairs.filter((p) => clueHint(p.plans).kind !== "found") : pairs;
+    items.push({
+      title: C.titles[0]!,
+      body: (
+        <>
+          {tv ? (
+            <ul className="clues__pairs">
+              {pairs.map((p) => {
+                const h = clueHint(p.plans);
+                if (h.kind === "none") return null;
+                return (
+                  <li key={p.id} className={h.kind === "found" ? "clues__pair--found" : undefined}>
+                    <strong>{C.pairRate(p.id, rateText(h.rate))}: </strong>
+                    {h.kind === "found" && "✓ "}
+                    {hintText(p.plans, true, p.human ?? null)}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            pairs.map((p) => <ClueHint key={p.id} plans={p.plans} human={p.human ?? null} />)
+          )}
+          <p className="clues__nudge">{C.nudge}</p>
+        </>
+      ),
+    });
+  if (clue >= 2)
     items.push({
       title: C.titles[1]!,
       body: (
-        <ul className="clues__pairs">
-          {shown.map((p) => (
-            <li key={p.id}>
-              {pairs.length > 1 && <strong>{C.weakestPair(p.id)}: </strong>}
-              {hintText(p.plans, tv)}
-            </li>
-          ))}
-          {tv && shown.length === 0 && <li>{C.foundIt(whole(SURVIVAL_THRESHOLD))}</li>}
-        </ul>
+        <div className="clues__answer">
+          <p>{answerText()}</p>
+          {!tv && table && <AnswerRow table={table} plans={pairs[0]?.plans ?? null} onUse={onUse} />}
+          <CrystalFan a={CLUE_SETTINGS.A} b={CLUE_SETTINGS.B} chances />
+        </div>
       ),
     });
-  }
-  if (clue >= 3) items.push({ title: C.titles[2]!, body: <p>{C.nudge}</p> });
-  if (clue >= 4) items.push({ title: C.titles[3]!, body: <p>{answerText()}</p> });
   if (titlesInline) {
     const latest = items.at(-1);
     return (

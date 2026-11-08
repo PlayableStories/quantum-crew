@@ -5,15 +5,16 @@
 // early with Next and double-presses Next once, which must advance once); later waves run in auto at Relaxed.
 //   four pairs join and a 9th player is turned away; the night shift (briefing, Act I by the rule over the radio, with
 //   one player changing their mind; every round held) and the storm; a player drops out mid-wave and rejoins their seat; the TV
-//   disconnects and resumes with its token; one Act II wave; the engineering report; the tool (clue 1); Act III (E3c:
-//   the room measures every crystal at round start, so no phone ever sends player:measure; each sets the pump its
-//   crystal suggests): one wave with one pair at the clue 4 settings and three at the starting plans (0°: exactly 75%;
-//   not saved), then the remote releases clue 2 (Next clue counts 3 pairs not yet; each phone sees its pair's hint or
-//   "found it"; E3d), then clues 3–4, and a wave with the clue 4 settings (A 0° / 45°, B 22.5° / 157.5°) averages 85.4%, which saves the
+//   disconnects and resumes with its token; one Act II wave; the engineering report; the tool (the rule, no clue);
+//   Act III (the room measures every crystal at round start, so no phone ever sends player:measure; each sets the
+//   pump its crystal suggests; E3e's rhythm): the first lull opens with clue 1 (each pair's live hint: both HOT at 0°;
+//   Ada's pair moves to the answer and gets "found it" before any wave; the answer is refused before a wave), wave 1
+//   (77.6%, not saved), the remote releases the answer (Next clue: 3 pairs not yet; a double press moves once), every
+//   player uses their own row, and wave 2 averages 85.4%, which saves the
 //   station; the storm passes (saved) and the incident report. Then a reset and a short not-saved session (75%).
 import { ACT1_ROUNDS, MP_WAVE_SIZE, MP_RESULT_MS, MP_ROUND_MS, RELAXED_RESULT_MS, STORM_STATIC_MS } from "../src/config.ts";
 import { QUANTUM_LIMIT } from "../src/shared/chsh.ts";
-import { CLUE_SETTINGS, clueHint, pairsNotYet } from "../src/shared/crystalPlan.ts";
+import { answerPlanFor, clueHint, pairsNotYet } from "../src/shared/crystalPlan.ts";
 import { S } from "../src/strings.ts";
 import type { ClientMsg, HostCommand, RoomState, ServerMsg } from "../src/shared/protocol.ts";
 import { mulberry32 } from "../src/shared/rng.ts";
@@ -264,51 +265,61 @@ check(state().phase === "ceiling" && state().ceilingRevealed, "the engineering r
 host("unlockTool");
 check(state().phase === "tool" && state().act === 3, "the tool");
 
-check(state().clue === 1, "clue 1 (the crystals' rule) came with the tool");
+check(state().clue === 0, "the tool reveal shows the crystals' rule; no clue yet");
 
-// Act III, wave 1: Ada's pair plays the clue 4 settings (85.4%); the other three pairs keep the starting plans (every
-// setting 0°). Measured at the same setting the crystals always agree, so those pairs match in every case: exactly
-// 75%. The average is under 80%: not saved.
+// The first Act III lull opens with clue 1: each pair's live hint (from its plans as they are now) and the nudge.
+host("startStrategy");
+check(state().phase === "strategy" && state().clue === 1, "clue 1 opened with the first Act III lull");
+const bothHot = (h: ReturnType<typeof clueHint>, gap: number) =>
+  h.kind === "hint" && h.weakest.x === 1 && h.weakest.y === 1 && h.weakest.need === "differ" && h.weakest.gap === gap;
+check(
+  state().pairs.every((p) => bothHot(clueHint(p.dials), 0)),
+  "at the start (every setting 0°) each pair's hint is both HOT, gap 0°: move further apart",
+);
+// Ada's pair moves to the answer's settings during the lull: "found it" live, before any wave.
 const adaPair = state().pairs.find((p) => p.a.name === "Ada")!;
 for (const [conn, phone] of phones) {
   if (phone.online && (phone.name === adaPair.a.name || phone.name === adaPair.b.name))
-    send(conn, { type: "player:strategy", act: 3, tuning: CLUE_SETTINGS[phone.table] });
+    send(conn, { type: "player:strategy", act: 3, tuning: answerPlanFor(phone.table) });
 }
+for (const [conn, phone] of phones) {
+  if (!phone.online) continue;
+  const seen = last(conn, "room:state")!.state;
+  const pair = seen.pairs.find((p) => p.a.name === phone.name || p.b.name === phone.name)!;
+  const ada = pair.id === adaPair.id;
+  const h = clueHint(pair.dials);
+  check(ada ? h.kind === "found" : bothHot(h, 0), `${phone.name} (pair ${pair.id}) sees ${ada ? "found it" : "the both-HOT hint"}, live`);
+}
+check(pairsNotYet(state().pairs) === 3, `three pairs not yet at 80% (${pairsNotYet(state().pairs)})`);
+send(remote, { type: "host:command", cmd: "nextClue", step: last(remote, "room:state")!.state.step });
+check(state().clue === 1 && last(remote, "error")?.code === "not-now", "the answer isn't released before an Act III wave");
+
+// Act III, wave 1: each pair's own attempt (Ada's pair at 85.4%, three at 75%): under 80%, not saved.
 host("startBatch");
-check(playUntil("batchDone"), "Act III wave 1 (one pair at the clue 4 settings, three at the starting plans)");
+check(playUntil("batchDone"), "Act III wave 1 (each pair's own attempt)");
 const wave1 = (QUANTUM_LIMIT + 3 * 0.75) / 4;
 check(
   Math.abs((state().crewDialsRate ?? 0) - wave1) < 1e-9 && !state().stationSaved,
   `the crew's plans average ${((state().crewDialsRate ?? 0) * 100).toFixed(1)}%: not saved`,
 );
 
-// Clue 2: the Next clue label counts the pairs not yet at 80%; each phone sees its own pair's hint or "found it".
-check(pairsNotYet(state().pairs) === 3, `three pairs not yet at 80% (${pairsNotYet(state().pairs)})`);
-check(S.tv.nextClue(2, pairsNotYet(state().pairs)) === "Next clue: a hint (3 pairs not yet)", "Next clue: a hint (3 pairs not yet)");
-send(remote, { type: "host:command", cmd: "nextClue", step: last(remote, "room:state")!.state.step });
-check(state().clue === 2, "the remote released clue 2");
-for (const [conn, phone] of phones) {
-  if (!phone.online) continue;
-  const seen = last(conn, "room:state")!.state;
-  const pair = seen.pairs.find((p) => p.a.name === phone.name || p.b.name === phone.name)!;
-  const h = clueHint(pair.lockedDials);
-  const ada = pair.id === adaPair.id;
-  check(
-    seen.clue === 2 && (ada ? h.kind === "found" : h.kind === "hint" && h.weakest.x === 1 && h.weakest.y === 1 && h.weakest.need === "differ"),
-    `${phone.name} (pair ${pair.id}) sees ${ada ? "found it" : "the hint: both HOT, move further apart"}`,
-  );
-}
+// Clue 2, the answer, from the remote; the label says who still needs it. A double press moves once.
+const label = S.tv.nextClue(pairsNotYet(state().pairs), "80%");
+check(label === "Next clue: the answer (3 pairs not yet at 80%)", label);
+const step = last(remote, "room:state")!.state.step;
+send(remote, { type: "host:command", cmd: "nextClue", step });
+send(tv, { type: "host:command", cmd: "nextClue", step });
+check(state().clue === 2 && last(tv, "error")?.code === "stale", "the remote released the answer (a double press moved once)");
 
-// The remote releases clues 3 and 4 (each from the room's current step).
-for (let i = 0; i < 2; i++) send(remote, { type: "host:command", cmd: "nextClue", step: last(remote, "room:state")!.state.step });
-check(state().clue === 4, `the remote released clues 3–4 (clue ${state().clue})`);
-
-// Act III, wave 2: the clue 4 settings.
+// Every player uses the answer: their own row.
 for (const [conn, phone] of phones) {
-  if (phone.online) send(conn, { type: "player:strategy", act: 3, tuning: CLUE_SETTINGS[phone.table] });
+  if (phone.online) send(conn, { type: "player:strategy", act: 3, tuning: answerPlanFor(phone.table) });
 }
+check(pairsNotYet(state().pairs) === 0, "with both rows applied, every pair is at 80%+ (live)");
+
+// Act III, wave 2: everyone follows the answer.
 host("startBatch");
-check(playUntil("batchDone"), "Act III wave 2 (the clue 4 settings)");
+check(playUntil("batchDone"), "Act III wave 2 (the answer)");
 const act3 = state().stability.act3;
 check(act3.rounds === 2 * 4 * MP_WAVE_SIZE, `Act III scored ${act3.rounds} pair-rounds`);
 check(

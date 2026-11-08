@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRemainingMs } from "../net/useCountdown.ts";
 import { decisionMs, resultMs, secs } from "../shared/pace.ts";
 import { CLUE_COUNT, pairsNotYet } from "../shared/crystalPlan.ts";
+import { SURVIVAL_THRESHOLD } from "../shared/chsh.ts";
 import { SPEEDS, type HostCommand, type RoomState, type Speed } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 
@@ -23,6 +24,7 @@ export function nextSteps(state: RoomState): HostCommand[] {
       return ["startStrategy", "startBatch"];
     case "strategy":
       return state.act === 3 ? ["startBatch", "nextClue"] : ["startBatch"];
+    // The tool reveal: no clue to release (clue 1 opens with the lull).
     case "batchDone":
       return state.act === 3
         ? ["startStrategy", "startBatch", "nextClue", "stormPasses"]
@@ -30,7 +32,7 @@ export function nextSteps(state: RoomState): HostCommand[] {
     case "ceiling":
       return ["unlockTool"];
     case "tool":
-      return ["startStrategy", "startBatch", "nextClue"];
+      return ["startStrategy", "startBatch"];
     case "resolution":
       return ["debrief"];
     case "debrief":
@@ -61,8 +63,8 @@ export function enabledSteps(state: RoomState): HostCommand[] {
     stormPasses: state.stability.act3.rounds > 0,
     debrief: true,
     next: true,
-    // The clue ladder: one step at a time, up to the answer; clue 2 (each pair's weakest case) needs an Act III wave.
-    nextClue: state.toolUnlocked && state.clue < CLUE_COUNT && (state.clue >= 2 || state.stability.act3.rounds > 0),
+    // Clue 2, the answer: after clue 1 and at least one Act III wave (the facilitator decides when).
+    nextClue: state.toolUnlocked && state.clue === 1 && state.clue < CLUE_COUNT && state.stability.act3.rounds > 0,
   };
   return nextSteps(state).filter((cmd) => enabled[cmd]);
 }
@@ -71,7 +73,7 @@ export function enabledSteps(state: RoomState): HostCommand[] {
 export function stepLabel(state: RoomState, cmd: HostCommand): string {
   if (cmd === "startBatch" && state.phase === "briefing") return S.tv.startRounds;
   if (cmd === "next") return state.phase === "round" ? S.tv.closeRound : S.tv.nextRound;
-  if (cmd === "nextClue") return S.tv.nextClue(state.clue + 1, pairsNotYet(state.pairs));
+  if (cmd === "nextClue") return S.tv.nextClue(pairsNotYet(state.pairs), `${Math.round(SURVIVAL_THRESHOLD * 100)}%`);
   return S.tv.cmd[cmd];
 }
 

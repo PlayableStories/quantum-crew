@@ -15,6 +15,7 @@ import { room } from "./eventFixture.ts";
 import { enabledSteps, stepLabel } from "./hostSteps.tsx";
 import { clueTalk, remoteSteps, talkingPoints } from "./Remote.tsx";
 import { CrystalWave, Screen } from "./Screen.tsx";
+import { answerOutText, answerText } from "../components/CrystalPlan.tsx";
 
 Object.assign(globalThis, { location: { origin: "http://localhost:8787", hostname: "localhost" } });
 const esc = (text: string) => text.replace(/'/g, "&#x27;").replace(/"/g, "&quot;");
@@ -53,12 +54,35 @@ describe("the TV in Act III", () => {
     expect(markup).toContain(esc(S.event.explain.tool.question));
   });
 
-  it("clue 2 on the TV lull: only the pairs not yet at 80%, in the short form", () => {
-    const s = act3("strategy", 2, 1);
-    s.pairs.push({ ...s.pairs[0]!, id: 2, lockedDials: { a: OPTIMAL_TUNING.A, b: OPTIMAL_TUNING.B } });
+  it("the tool reveal: the rule only, no clue panel; no Next clue", () => {
+    const markup = tv(act3("tool", 0));
+    expect(markup).not.toContain("clues__titles");
+    expect(markup).not.toContain(esc(S.event.clues.nudge));
+    expect(enabledSteps(act3("tool", 0))).not.toContain("nextClue");
+  });
+
+  it("clue 1 in the lull: every pair's live hint (or found it) with its live rate, and the nudge", () => {
+    const s = act3("strategy", 1);
+    s.pairs.push({ ...s.pairs[0]!, id: 2, dials: { a: OPTIMAL_TUNING.A, b: OPTIMAL_TUNING.B } });
     const markup = tv(s);
+    expect(markup).toContain(esc(S.event.clues.pairRate(1, "75%")));
     expect(markup).toContain(esc(S.event.clues.listHint("A HOT · B HOT", "0°", "0%", "differ")));
-    expect(markup).not.toContain(`${S.event.clues.weakestPair(2)}: `);
+    expect(markup).toContain(esc(S.event.clues.pairRate(2, "85.4%")));
+    expect(markup).toContain(S.event.clues.foundIt("80%"));
+    expect(markup).toContain(esc(S.event.clues.nudge));
+  });
+
+  it("with CORA the TV's hint names the player and their own setting", () => {
+    const s = act3("strategy", 1);
+    s.pairs[0] = { ...s.pairs[0]!, b: { playerId: null, name: "CORA" }, dials: { a: DEFAULT_TUNING, b: OPTIMAL_TUNING.B } };
+    const markup = tv(s);
+    expect(markup).toMatch(/Ada, (bring|move) your (COOL|HOT) setting/);
+  });
+
+  it("clue 2 in the lull: the answer and its fan", () => {
+    const markup = tv(act3("strategy", 2, 1));
+    expect(markup).toContain(esc(answerText()));
+    expect(markup).toContain('class="fan"');
   });
 
   it("a wave: the explainer and Plans locked; Act II waves are stamped too", () => {
@@ -89,20 +113,24 @@ describe("the TV in Act III", () => {
   });
 });
 
-describe("clue 2 after a wave", () => {
-  it("marks each pair's weakest case with what it needs (both HOT at 0°: wider)", () => {
-    const s = act3("batchDone", 2, 1);
+describe("after a wave: clue 1's hint, then the answer", () => {
+  it("clue 1: each pair below 80% gets its weakest case outlined and which way to move", () => {
+    const s = act3("batchDone", 1, 1);
     s.pairs[0] = { ...s.pairs[0]!, lastWave: { rounds: 8, wins: 6, timeouts: 0 } };
     const markup = renderToString(<CrystalWave state={s} />);
     expect(markup.match(/case--weakest/g)).toHaveLength(1);
     expect(markup).toContain(esc(S.event.clues.tvHint("HOT · HOT", "differ")));
-    const clue1 = renderToString(<CrystalWave state={{ ...s, clue: 1 }} />);
-    expect(clue1).not.toContain("case--weakest");
-    expect(clue1).not.toContain("tv__pair-hint");
+  });
+
+  it("clue 2: the answer in one line, no per-pair hint", () => {
+    const markup = renderToString(<CrystalWave state={act3("batchDone", 2, 1)} />);
+    expect(markup).toContain(esc(answerOutText()));
+    expect(markup).not.toContain("tv__pair-hint");
+    expect(markup).not.toContain("case--weakest");
   });
 
   it("a pair at 80%+ gets found it and no hint", () => {
-    const s = act3("batchDone", 2, 1);
+    const s = act3("batchDone", 1, 1);
     s.pairs[0] = { ...s.pairs[0]!, lockedDials: { a: OPTIMAL_TUNING.A, b: OPTIMAL_TUNING.B } };
     const markup = renderToString(<CrystalWave state={s} />);
     expect(markup).toContain(S.event.wave3.foundIt);
@@ -124,29 +152,32 @@ describe("clue 3 holds", () => {
   });
 });
 
-describe("Next clue (TV and remote, shared steps)", () => {
-  it("offered with the tool only once an Act III wave has run; labelled with the clue it releases; none after 4", () => {
-    expect(enabledSteps(act3("tool"))).not.toContain("nextClue");
+describe("Next clue: the answer (TV and remote, shared steps)", () => {
+  it("only after clue 1 and an Act III wave; never in a wave or past 2; labelled with the pairs not yet at 80%", () => {
+    expect(enabledSteps(act3("strategy", 1, 0))).not.toContain("nextClue"); // no wave yet
     const after = act3("batchDone", 1, 1);
     expect(enabledSteps(after)).toContain("nextClue");
-    expect(stepLabel(after, "nextClue")).toBe(S.tv.nextClue(2, 1));
-    expect(S.tv.nextClue(2, 2)).toBe("Next clue: a hint (2 pairs not yet)");
+    expect(stepLabel(after, "nextClue")).toBe(S.tv.nextClue(1, "80%"));
+    expect(S.tv.nextClue(2, "80%")).toBe("Next clue: the answer (2 pairs not yet at 80%)");
     const mixed = act3("batchDone", 1, 1);
-    mixed.pairs.push({ ...mixed.pairs[0]!, id: 2, lockedDials: { a: OPTIMAL_TUNING.A, b: OPTIMAL_TUNING.B } });
+    mixed.pairs.push({ ...mixed.pairs[0]!, id: 2, dials: { a: OPTIMAL_TUNING.A, b: OPTIMAL_TUNING.B } });
     mixed.pairs.push({ ...mixed.pairs[0]!, id: 3 });
-    expect(stepLabel(mixed, "nextClue")).toBe(S.tv.nextClue(2, 2));
-    expect(enabledSteps(act3("strategy", 3, 1))).toContain("nextClue");
-    expect(enabledSteps(act3("strategy", 4, 1))).not.toContain("nextClue");
-    expect(enabledSteps(act3("round", 2, 1))).not.toContain("nextClue");
-    expect(tv(after)).toContain(`>${S.tv.nextClue(2, 1)}</button>`);
-    expect(remoteSteps(act3("strategy", 2, 1))).toEqual(["startBatch", "nextClue"]);
+    expect(stepLabel(mixed, "nextClue")).toBe(S.tv.nextClue(2, "80%"));
+    expect(enabledSteps(act3("strategy", 1, 1))).toContain("nextClue");
+    expect(enabledSteps(act3("strategy", 2, 1))).not.toContain("nextClue");
+    expect(enabledSteps(act3("round", 1, 1))).not.toContain("nextClue");
+    expect(tv(after)).toContain(`>${S.tv.nextClue(1, "80%")}</button>`);
+    expect(remoteSteps(act3("strategy", 1, 1))).toEqual(["startBatch", "nextClue"]);
   });
 
-  it("the remote's talking points: the phase's first, then the latest clue's, in Act III", () => {
-    const points = talkingPoints(act3("strategy", 3, 1));
-    expect(points).toEqual([S.remote.talk.act3Strategy[0], ...S.remote.talk.clue(3, clueTalk())]);
-    expect(points.join(" ")).toContain("three gaps of 22.5° make 67.5°");
-    expect(talkingPoints(act3("round", 3, 1))).toEqual(S.remote.talk.round);
+  it("the remote's talking points: the rule at the tool; clue 1 in the lull and after a wave; the answer at clue 2", () => {
+    const k = clueTalk();
+    expect(talkingPoints(act3("tool", 0))).toEqual([S.remote.talk.tool[0], ...S.remote.talk.rule(k)]);
+    expect(talkingPoints(act3("strategy", 1, 0))).toEqual([S.remote.talk.act3Strategy[0], ...S.remote.talk.clue(1, k)]);
+    expect(talkingPoints(act3("batchDone", 1, 1))).toEqual([S.remote.talk.act3BatchDone[0], ...S.remote.talk.clue(1, k, true)]);
+    expect(talkingPoints(act3("strategy", 2, 1)).join(" ")).toContain("85.4%");
+    expect(talkingPoints(act3("round", 2, 1))).toEqual(S.remote.talk.round);
+    expect(S.remote.talk.clue(3, k)).toEqual([]); // the old clue 3 and 4 points are gone
   });
 });
 

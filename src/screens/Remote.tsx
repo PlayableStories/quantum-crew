@@ -179,14 +179,29 @@ export function remoteSteps(state: RoomState): HostCommand[] {
 const remoteLabel = (state: RoomState, cmd: HostCommand) =>
   cmd === "reportNext" ? S.tv.cmd.reportNext : cmd === "reportBack" ? S.tv.cmd.reportBack : stepLabel(state, cmd);
 
-/** What to say now (from the facilitator guide's run of show). In Act III outside a wave, the latest clue's points
- *  follow the phase's. */
+/** What to say now (from the facilitator guide's run of show). The tool reveal: the crystals' rule, read aloud. In
+ *  Act III with clue 1: the hints and the nudge in a lull, releasing the answer after a wave; with clue 2: the answer.
+ *  The phase's first point comes first (the remote fits one screen). */
 export function talkingPoints(state: RoomState): readonly string[] {
   const base = phasePoints(state);
-  const act3Talk = state.act === 3 && ["tool", "strategy", "batchDone"].includes(state.phase);
-  const clue = state.clue > 0 ? S.remote.talk.clue(state.clue, clueTalk()) : [];
-  // With a clue out, the phase's first point, then the clue's (the remote fits one screen).
-  return act3Talk && clue.length ? [...base.slice(0, 1), ...clue] : base;
+  if (state.phase === "tool") return [base[0]!, ...S.remote.talk.rule(clueTalk())];
+  const act3Talk = state.act === 3 && (state.phase === "strategy" || state.phase === "batchDone");
+  const clue = act3Talk && state.clue > 0 ? S.remote.talk.clue(state.clue, clueTalk(), state.phase === "batchDone") : [];
+  return clue.length ? [...base.slice(0, 1), ...clue] : base;
+}
+
+function phasePoints(state: RoomState): readonly string[] {
+  const t = S.remote.talk;
+  switch (state.phase) {
+    case "round":
+      return state.act === 1 ? t.act1Round : t.round;
+    case "strategy":
+      return state.act === 3 ? t.act3Strategy : t.strategy;
+    case "batchDone":
+      return state.act === 3 ? t.act3BatchDone : t.batchDone;
+    default:
+      return t[state.phase];
+  }
 }
 
 /** The numbers in the clue talking points, from the maths. */
@@ -207,20 +222,6 @@ export function clueTalk(): ClueTalk {
     planA: plan("A"),
     planB: plan("B"),
   };
-}
-
-function phasePoints(state: RoomState): readonly string[] {
-  const t = S.remote.talk;
-  switch (state.phase) {
-    case "round":
-      return state.act === 1 ? t.act1Round : t.round;
-    case "strategy":
-      return state.act === 3 ? t.act3Strategy : t.strategy;
-    case "batchDone":
-      return state.act === 3 ? t.act3BatchDone : t.batchDone;
-    default:
-      return t[state.phase];
-  }
 }
 
 /** The room: who's aboard in the lobby, the lull's talking clock, who is still choosing in a round (never what anyone
