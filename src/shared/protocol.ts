@@ -51,6 +51,9 @@ export type HostCommand =
   | "nextClue"
   /** The TV only: a new remote key, and every paired remote is dropped. */
   | "unpairRemotes"
+  /** The TV only, for testing (key D): jump to Act II's lull, or to Act III's tool reveal. */
+  | "debugAct2"
+  | "debugAct3"
   | "reset";
 
 export const HOST_COMMANDS: readonly HostCommand[] = [
@@ -69,6 +72,8 @@ export const HOST_COMMANDS: readonly HostCommand[] = [
   "next",
   "nextClue",
   "unpairRemotes",
+  "debugAct2",
+  "debugAct3",
   "reset",
 ];
 

@@ -1103,3 +1103,51 @@ describe("the facilitator's remote (E3b)", () => {
     }
   });
 });
+
+describe("the debug jump (TV key D)", () => {
+  it("jumps to Act III's tool reveal (as Reveal ceiling + Unlock tool leave it), then plays an Act III wave", () => {
+    const t = setup(71, null);
+    t.join("a1", "Ada", "A");
+    t.join("b1", "Bo", "B");
+    t.host("debugAct3");
+    const s = t.roomState("tv");
+    expect([s.phase, s.act, s.ceilingRevealed, s.toolUnlocked, s.clue]).toEqual(["tool", 3, true, true, 1]);
+    t.host("startStrategy");
+    expect(t.roomState("tv").phase).toBe("strategy");
+    t.host("startBatch");
+    expect(t.roomState("tv").phase).toBe("round");
+    expect(t.last("a1", "round:start")!.act).toBe(3);
+  });
+
+  it("jumps to Act II's lull, also back from Act III (the tool and the clue go)", () => {
+    const t = setup(72, null);
+    t.join("a1", "Ada", "A");
+    t.host("debugAct2");
+    expect([t.roomState("tv").phase, t.roomState("tv").act]).toEqual(["strategy", 2]);
+    t.host("debugAct3");
+    t.host("debugAct2");
+    const s = t.roomState("tv");
+    expect([s.phase, s.act, s.ceilingRevealed, s.toolUnlocked, s.clue]).toEqual(["strategy", 2, false, false, 0]);
+    t.host("startBatch");
+    expect(t.last("a1", "round:start")!.act).toBe(2);
+  });
+
+  it("not in a wave, not from a remote, and a stale step is ignored", () => {
+    const t = setup(73, null);
+    t.join("a1", "Ada", "A");
+    t.join("b1", "Bo", "B");
+    const { remoteKey } = t.last("tv", "host:created")!;
+    t.send("r1", { type: "remote:pair", room: t.room, key: remoteKey });
+    t.send("r1", { type: "host:command", cmd: "debugAct3" });
+    expect(t.last("r1", "error")!.code).toBe("not-host");
+    expect(t.roomState("tv").phase).toBe("lobby");
+    const step = t.roomState("tv").step;
+    t.host("startStrategy");
+    t.send("tv", { type: "host:command", cmd: "debugAct3", step });
+    expect(t.last("tv", "error")!.code).toBe("stale");
+    t.host("startBatch");
+    t.host("debugAct3");
+    expect(t.last("tv", "error")!.code).toBe("not-now");
+    expect(t.roomState("tv").phase).toBe("round");
+  });
+});

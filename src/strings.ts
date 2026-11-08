@@ -784,7 +784,16 @@ export const S = {
       next: "Next",
       nextClue: "Next clue",
       unpairRemotes: "Unpair remotes",
+      debugAct2: "Jump to Act II (lull)",
+      debugAct3: "Jump to Act III (tool reveal)",
       reset: "Reset",
+    },
+    /** The debug jump (key D on the TV), for testing: skips the story. */
+    debug: {
+      title: "Debug: jump to an act",
+      note: "For testing. Skips the story; what's been played so far is kept.",
+      inWave: "Close the round first (Next).",
+      key: "D",
     },
     /** Next, in a round and on a result. */
     closeRound: "Close the round",
@@ -802,7 +811,7 @@ export const S = {
       summary: (choose: string, result: string) => `${choose} s to choose · ${result} s result`,
       manualNote: "Manual: press Next",
     },
-    keys: "Space / → next · P play / pause",
+    keys: "Space / → next · P play / pause · F full screen",
     /** The lull: how long the room has been talking (a guide, not a countdown). */
     talking: (time: string) => `Talking for ${time}`,
     /** A round, on a pair card: who hasn't chosen yet (never what anyone chose). */

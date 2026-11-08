@@ -712,6 +712,27 @@ export function createRoom(code: string, deps: RoomDeps) {
         phase = "tool";
         deadline = null;
         return broadcast();
+      // Testing (the TV's D key): jump straight to an act, outside a wave. Played stats are kept.
+      case "debugAct2":
+        if (inBatch() || phase === "debrief") return notNow();
+        clearTimer();
+        act = 2;
+        phase = "strategy";
+        deadline = null;
+        lullSince = deps.now();
+        ceilingRevealed = toolUnlocked = false;
+        clue = 0;
+        return broadcast();
+      case "debugAct3":
+        if (inBatch() || phase === "debrief") return notNow();
+        clearTimer();
+        // What Reveal ceiling then Unlock tool leave behind: the tool reveal with clue 1.
+        act = 3;
+        ceilingRevealed = toolUnlocked = true;
+        clue = Math.max(clue, 1);
+        phase = "tool";
+        deadline = null;
+        return broadcast();
       case "nextClue":
         // One step at a time: clue 2 (each pair's weakest case) needs an Act III wave's locked plans; never in a wave.
         if (!toolUnlocked || inBatch() || clue >= CLUE_COUNT) return notNow();
@@ -873,6 +894,8 @@ export function createRoom(code: string, deps: RoomDeps) {
             deps.send(conn, { type: "host:created", room: code, token, remoteKey });
             return broadcast();
           }
+          if ((msg.cmd === "debugAct2" || msg.cmd === "debugAct3") && conn !== hostConn)
+            return error(conn, "not-host", "Only the TV can jump acts.");
           if (conn !== hostConn && !remotes.has(conn)) return error(conn, "not-host", "Only the TV or its remote can run the session.");
           return command(conn, msg.cmd, msg.step, msg.speed);
         case "player:leave":

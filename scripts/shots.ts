@@ -660,6 +660,13 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
   await host(S.tv.cmd.unlockTool);
   await banner("tool").waitFor();
   await shot("tool", all(), true);
+  // The debug jump (key D on the TV, for testing): open it, capture it, close it without jumping.
+  if ((S.tv as Record<string, unknown>).debug) {
+    await tv.page.locator("body").click({ position: { x: 5, y: 5 } }).catch(() => {});
+    await tv.page.keyboard.press("d");
+    if (await ready("debug jump", tv.page.locator("dialog[open]").waitFor({ timeout: 5000 }))) await shot("debug-jump", [[tv, "", null]]);
+    await tv.page.keyboard.press("Escape");
+  }
 
   // Act III: the huddle (dials on the phones), then one wave.
   await host(S.tv.cmd.startStrategy);
