@@ -784,7 +784,16 @@ export const S = {
       next: "Next",
       nextClue: "Next clue",
       unpairRemotes: "Unpair remotes",
+      debugAct2: "Jump to Act II (lull)",
+      debugAct3: "Jump to Act III (tool reveal)",
       reset: "Reset",
+    },
+    /** The debug jump (key D on the TV), for testing: skips the story. */
+    debug: {
+      title: "Debug: jump to an act",
+      note: "For testing. Skips the story; what's been played so far is kept.",
+      inWave: "Close the round first (Next).",
+      key: "D",
     },
     /** Next, in a round and on a result. */
     closeRound: "Close the round",

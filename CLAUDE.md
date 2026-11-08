@@ -317,6 +317,10 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - **Scripts:** `pnpm session` wave 1 has one pair at the clue 4 settings (77.6% average), checks the label count
     and each phone's hint / found it. `pnpm shots --event`: pair 1 at 67.5% (Ada 0°/45°, Bo 22.5°/22.5°), the crowd's
     Cy and Di at the clue 4 settings; new capture `act3-lull-clue-2`.
+- **Debug jump (2026-11-08, user request; testing):** **D** on the TV opens `DebugJump` (a Sheet in `HostControls`):
+  host commands `debugAct2` (Act II lull; clears ceiling, tool and clue) and `debugAct3` (Act III tool reveal, as
+  Reveal ceiling + Unlock tool: clue ≥ 1). TV only (a remote gets `not-host`), refused in a wave or the debrief,
+  step-checked; never in `nextSteps` / the remote. Works in every build (the user's choice). Played stats are kept.
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.

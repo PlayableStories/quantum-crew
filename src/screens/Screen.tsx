@@ -791,13 +791,21 @@ function HostControls({
   const steps = enabledSteps(state);
   const send = (cmd: HostCommand) => () => (cmd !== "reset" || confirm(S.tv.resetConfirm)) && onCommand(cmd);
   const toggle = () => onCommand(state.auto ? "manual" : "auto");
+  const [debugOpen, setDebugOpen] = useState(false);
+  const closeDebug = useCallback(() => setDebugOpen(false), []);
 
   // Keyboard for a facilitator at a laptop: Space or → for the natural next step, P for play / pause. Not while a
-  // button, a field or the reset confirm has focus (Space would press that button too).
+  // button, a field or the reset confirm has focus (Space would press that button too). D opens the debug jump
+  // (testing), also with a button focused (it presses nothing).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target as HTMLElement | null;
+      if ((e.key === "d" || e.key === "D") && !target?.closest("input, select, textarea, [contenteditable], dialog")) {
+        e.preventDefault();
+        setDebugOpen((o) => !o);
+        return;
+      }
       if (target?.closest("button, input, select, textarea, [contenteditable], dialog")) return;
       if (e.key === "p" || e.key === "P") {
         e.preventDefault();
@@ -827,6 +835,34 @@ function HostControls({
       {/* The shortcuts, when Space has a step to take (not in the lobby, where nothing waits on it). */}
       {keyStep(state) && <span className="muted small tv__keys">{S.tv.keys}</span>}
       {error && <span className="tv__error">{error}</span>}
+      <Sheet open={debugOpen} onClose={closeDebug} label={S.tv.debug.title}>
+        <DebugJump
+          state={state}
+          onJump={(cmd) => {
+            onCommand(cmd);
+            closeDebug();
+          }}
+        />
+      </Sheet>
     </footer>
+  );
+}
+
+/** The debug jump (key D on the TV, for testing): straight to Act II's lull or Act III's tool reveal, outside a wave.
+ *  TV only; the room refuses it from a remote. */
+export function DebugJump({ state, onJump }: { state: RoomState; onJump: (cmd: "debugAct2" | "debugAct3") => void }) {
+  const inBatch = state.phase === "round" || state.phase === "roundResult";
+  const blocked = inBatch || state.phase === "debrief";
+  return (
+    <div className="stack debug-jump">
+      <h2>{S.tv.debug.title}</h2>
+      <p className="muted small">{S.tv.debug.note}</p>
+      {inBatch && <p className="small">{S.tv.debug.inWave}</p>}
+      {(["debugAct2", "debugAct3"] as const).map((cmd) => (
+        <button key={cmd} type="button" className="btn" disabled={blocked} onClick={() => onJump(cmd)}>
+          {S.tv.cmd[cmd]}
+        </button>
+      ))}
+    </div>
   );
 }
