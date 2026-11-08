@@ -4,9 +4,11 @@ import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
 import { StationVisual } from "../components/StationVisual.tsx";
 import { pct } from "../components/StabilityMeter.tsx";
-import { ACT3_ROUND_MS, BATCH_SIZE } from "../config.ts";
+import { ROUND_MS, BATCH_SIZE } from "../config.ts";
 import { OPTIMAL_TUNING, quantumExpectedWinRate } from "../shared/chsh.ts";
 import { COOL, HOT } from "../shared/fiction.ts";
+import { planLine } from "../components/CrystalPlan.tsx";
+import { answerPlanFor } from "../shared/crystalPlan.ts";
 import { S } from "../strings.ts";
 import { Solo } from "./Solo.tsx";
 import { soloStore, stationRate, stationSaved } from "./soloStore.ts";
@@ -22,7 +24,7 @@ function playBatch() {
   s().beginBatch();
   for (let i = 0; i < BATCH_SIZE; i++) {
     s().advance(now);
-    now += ACT3_ROUND_MS + 1;
+    now += ROUND_MS + 1;
     s().timeout(now);
   }
   s().advance(now);
@@ -111,7 +113,7 @@ describe("the incident report", () => {
     expect(markup).toContain(`>${pct(stationRate(s()))}<`);
     expect(markup).toContain(S.report.story);
     s().setDebriefStep(1);
-    expect(html()).toContain(`>${S.debrief.compare.dials(true)}<b`);
+    expect(html()).toContain(`>${S.debrief.compare.dials(true, "")}<b`);
   });
 
   it("not saved: the best dials lead, yours underneath, and no claim that your crystals beat the plans", () => {
@@ -124,8 +126,8 @@ describe("the incident report", () => {
     expect(markup).not.toContain(S.report.story);
     s().setDebriefStep(1);
     const step2 = html();
-    expect(step2).toContain(S.debrief.compare.dials(false));
-    expect(step2).not.toContain(`>${S.debrief.compare.dials(true)}<b`); // the comparison column's heading
+    expect(step2).toContain(S.debrief.compare.dials(false, planLine(answerPlanFor("A"))));
+    expect(step2).not.toContain(`>${S.debrief.compare.dials(true, "")}<b`); // the comparison column's heading
   });
 });
 

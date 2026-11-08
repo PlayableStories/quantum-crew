@@ -4,6 +4,8 @@
 // this returns nothing; the station's telemetry reports rounds.
 import { SURVIVAL_THRESHOLD, winRate, type RoundResult } from "../shared/chsh.ts";
 import { COOL, HOT, roundCause } from "../shared/fiction.ts";
+import { formatDeg } from "../components/Dial.tsx";
+import { coraPlan } from "../shared/crystalPlan.ts";
 import { S } from "../strings.ts";
 import { PLAN_IDS, cellKey, planId, planOf, type PlanId } from "./plans.ts";
 import { stationSaved, type Phase, type SoloData } from "./soloStore.ts";
@@ -46,7 +48,7 @@ export function crewLines(s: CrewView): string[] {
     case "toolReveal":
       return [C.tool];
     case "act3Plan":
-      return [C.tuning];
+      return [C.tuning(formatDeg(coraPlan("B").greenDeg), formatDeg(coraPlan("B").redDeg))];
     default:
       return []; // intro and debrief: no radio
   }

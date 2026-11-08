@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { FourCases } from "../components/FourCases.tsx";
 import { PlanBoard } from "../components/PlanBoard.tsx";
 import { StabilityMeter } from "../components/StabilityMeter.tsx";
-import { BATCH_SIZE, ACT3_ROUND_MS } from "../config.ts";
+import { BATCH_SIZE, ROUND_MS } from "../config.ts";
 import { classicalCases } from "../shared/chsh.ts";
 import { CLOCKWISE } from "../shared/fiction.ts";
 import { S } from "../strings.ts";
@@ -29,7 +29,7 @@ function finishBatch(act: () => void = () => {}) {
   for (let i = 0; i < BATCH_SIZE; i++) {
     s().advance(now);
     act();
-    now += ACT3_ROUND_MS + 1;
+    now += ROUND_MS + 1;
     s().timeout(now);
   }
   s().advance(now);

@@ -7,6 +7,8 @@ import { NoSignalling, PlanVsCrystals, ThreeNumbers } from "../components/Report
 import { pct } from "../components/StabilityMeter.tsx";
 import { navigate } from "../lib/router.ts";
 import { OPTIMAL_TUNING, exactOpenRates, openRatesByPartnerLight, winRate } from "../shared/chsh.ts";
+import { planLine } from "../components/CrystalPlan.tsx";
+import { answerPlanFor } from "../shared/crystalPlan.ts";
 import { S } from "../strings.ts";
 import { reportTuning, stationRate, stationSaved, useSolo } from "./soloStore.ts";
 
@@ -87,7 +89,7 @@ function SoloPlanVsCrystals() {
   return (
     <PlanVsCrystals
       dials={{ a: yours ? reportTuning(s) : OPTIMAL_TUNING.A, b: OPTIMAL_TUNING.B }}
-      label={S.debrief.compare.dials(yours)}
+      label={S.debrief.compare.dials(yours, planLine(answerPlanFor("A")))}
     />
   );
 }

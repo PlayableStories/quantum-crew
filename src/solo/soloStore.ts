@@ -3,9 +3,11 @@
 // round by round), so the rule wins every round. Then the storm knocks the radio out.
 // Act II: the player locks in the whole joint plan (their own and CORA's) and plays it; each pair played goes on the
 // plan board at its exact rate. No pair beats 75%, and engineering fills in the untried pairs.
-// Act III: both share the Entanglement Tool. CORA's dials sit at the optimal Table B setting. Each round the player
-// taps MEASURE, the crystal suggests a pump, and the player sets the pump themselves (CORA always follows her
-// crystal). The debrief opens once a batch is played with dials whose exact rate is ≥ 80% (or after two batches).
+// Act III: both share the Entanglement Tool. The player plans a crystal setting for COOL and for HOT; CORA's plan is
+// fixed (coraPlan("B")). When a round starts the station measures both crystals at their planned settings (as the
+// event server does); the player sees only their own crystal and sets the pump (CORA always follows hers). After a
+// wave that didn't pass, the player may ask engineering for the answer. The debrief opens once a wave is played with
+// a crystal plan whose exact rate is ≥ 80% (or after two waves).
 // Solo never samples: every rate shown is either the real rounds played or exact (chsh.ts).
 // What CORA says is chosen in crew.ts from this state; the store only records what she's reacting to.
 // Actions take `now` (ms) so tests can drive the clock; the Batch screen calls them from timers.
@@ -15,13 +17,12 @@ import {
   ACT1_ROUND_MS,
   ACT1_ROUNDS,
   ACT2_BATCHES,
-  ACT3_ROUND_MS,
   BATCH_SIZE,
   DEBRIEF_AFTER_BATCHES,
   DEFAULT_CREW_PLAN,
   DEFAULT_PLAN,
   DEFAULT_TUNING,
-  HINT_AFTER_FAILED_BATCHES,
+  ANSWER_AFTER_FAILED_BATCHES,
   ROUND_MS,
 } from "../config.ts";
 import {
@@ -42,6 +43,7 @@ import {
   type TuningConfig,
   type Valve,
 } from "../shared/chsh.ts";
+import { answerPlanFor, coraPlan, planRate } from "../shared/crystalPlan.ts";
 import { ANTICLOCKWISE, CLOCKWISE } from "../shared/fiction.ts";
 import { mulberry32, randomSeed, type Rng } from "../shared/rng.ts";
 import { act1Order, type SensorPair } from "./act1.ts";
@@ -109,13 +111,14 @@ export type SoloData = {
   act3: RoundResult[];
   act2Batches: number;
   act3Batches: number;
-  /** Act III batches played with dials whose exact rate is below 80% (they unlock the hint). */
+  /** Act III waves played with a crystal plan whose exact rate is below 80% (they unlock the answer). */
   act3FailedBatches: number;
   /** An Act III batch has been played with dials whose exact rate is ≥ 80% (it unlocks the debrief). */
   act3Passed: boolean;
   /** The dials of the first wave that passed the gate (they saved the station), else null. */
   savedTuning: TuningConfig | null;
-  hintShown: boolean;
+  /** The player has asked engineering for the answer. */
+  answerShown: boolean;
 };
 
 export type SoloActions = {
@@ -133,7 +136,6 @@ export type SoloActions = {
   /** The player sets their pump direction (Act III: only after MEASURE). */
   answer(valve: Valve, now: number): void;
   /** Act III: the player taps MEASURE; both crystals are read and the player's suggests a pump. */
-  measure(now: number): void;
   /** Act III: the player sets the pump their crystal suggested. */
   followCrystal(now: number): void;
   timeout(now: number): void;
@@ -141,7 +143,11 @@ export type SoloActions = {
   reportCeiling(): void;
   revealTool(): void;
   openTool(): void;
-  showHint(): void;
+  /** Act III, after a wave that didn't pass: engineering's answer, and filling in the player's own row. */
+  showAnswer(): void;
+  useAnswer(): void;
+  /** The player's whole crystal plan (both settings), from the plan card's lists. */
+  setTuning(t: TuningConfig): void;
   /** After the gate (or the last Act III wave): the storm passes (the resolution). */
   startDebrief(): void;
   /** From the resolution: the incident report (the debrief). */
@@ -174,7 +180,7 @@ const initialData = (): SoloData => ({
   act3FailedBatches: 0,
   act3Passed: false,
   savedTuning: null,
-  hintShown: false,
+  answerShown: false,
 });
 
 /** Which act a phase belongs to (the intro and the storm count as Act I, the ceiling reveal as Act II). */
@@ -186,14 +192,14 @@ export const actOf = (phase: Phase): Act =>
       : 3;
 
 /** The decision time for a round in this act. */
-export const roundMs = (act: Act) => (act === 1 ? ACT1_ROUND_MS : act === 2 ? ROUND_MS : ACT3_ROUND_MS);
+export const roundMs = (act: Act) => (act === 1 ? ACT1_ROUND_MS : ROUND_MS);
 
 /** Rounds in a batch: Act I's short night-shift run, else BATCH_SIZE. */
 export const batchSize = (act: Act) => (act === 1 ? ACT1_ROUNDS : BATCH_SIZE);
 
 
 /** The exact rate of the player's dials against CORA's, if both follow their crystals. */
-export const dialsRate = (s: Pick<SoloData, "tuning">) => quantumExpectedWinRate(s.tuning, OPTIMAL_TUNING.B);
+export const dialsRate = (s: Pick<SoloData, "tuning">) => planRate(s.tuning, coraPlan("B"));
 
 export function createSoloStore(seed: number = randomSeed()) {
   const rng: Rng = mulberry32(seed);
@@ -268,6 +274,10 @@ export function createSoloStore(seed: number = randomSeed()) {
       setDial: (light, deg) =>
         set((s) => ({ tuning: light === 0 ? { ...s.tuning, greenDeg: deg } : { ...s.tuning, redDeg: deg } })),
 
+      setTuning: (tuning) => {
+        if (get().phase === "act3Plan") set({ tuning });
+      },
+
       beginBatch: () => {
         const { phase } = get();
         if (phase === "act2Plan") set({ phase: "act2Batch", batch: [], round: null });
@@ -284,8 +294,15 @@ export function createSoloStore(seed: number = randomSeed()) {
         const [x, y] = act === 1 ? s.act1Order[s.batch.length]! : (({ x, y }) => [x, y] as const)(drawInputs(rng));
         const deadline = now + roundMs(act);
         // Act I: CORA's pump is set (and called over the radio) as the round starts.
-        const crewPump = act === 1 ? s.act1Crew[s.batch.length]! : null;
-        set({ round: { n: s.batch.length + 1, x, y, deadline, crystal: null, crewPump, result: null } });
+        if (act !== 3) {
+          const crewPump = act === 1 ? s.act1Crew[s.batch.length]! : null;
+          return set({ round: { n: s.batch.length + 1, x, y, deadline, crystal: null, crewPump, result: null } });
+        }
+        // Act III: the station measures both crystals at their planned settings as the round starts (the player's
+        // first; CORA's conditioned on it), as the event server does. The player sees only their own; CORA follows hers.
+        const crystal = measureFirst(rng);
+        const crewPump = measureSecond(crystal, dialFor(s.tuning, x), dialFor(coraPlan("B"), y), rng);
+        set({ round: { n: s.batch.length + 1, x, y, deadline, crystal, crewPump, result: null } });
       },
 
       answer: (valve, now) => {
@@ -299,15 +316,6 @@ export function createSoloStore(seed: number = randomSeed()) {
           // Scoring uses the pump the player set; CORA's comes from her crystal.
           resolve(scoreRound(round.x, round.y, valve, round.crewPump), valve === round.crystal);
         }
-      },
-
-      measure: (now) => {
-        const { phase, round, tuning } = get();
-        if (phase !== "act3Batch" || !round || round.result || round.crystal !== null || now > round.deadline) return;
-        // DECISION: in solo the player always measures first; CORA's result is conditioned on it.
-        const crystal = measureFirst(rng);
-        const crewPump = measureSecond(crystal, dialFor(tuning, round.x), dialFor(OPTIMAL_TUNING.B, round.y), rng);
-        set({ round: { ...round, crystal, crewPump } });
       },
 
       followCrystal: (now) => {
@@ -351,8 +359,11 @@ export function createSoloStore(seed: number = randomSeed()) {
       openTool: () => {
         if (get().phase === "toolReveal") set({ phase: "act3Plan" });
       },
-      showHint: () => {
-        if (hintAvailable(get())) set({ hintShown: true });
+      showAnswer: () => {
+        if (get().phase === "act3Plan" && answerAvailable(get())) set({ answerShown: true });
+      },
+      useAnswer: () => {
+        if (get().phase === "act3Plan" && answerAvailable(get())) set({ tuning: answerPlanFor("A"), answerShown: true });
       },
       startDebrief: () => {
         if (get().phase === "act3Readout" && debriefAvailable(get())) set({ phase: "resolution" });
@@ -383,7 +394,8 @@ export function luckGap(batchRate: number, trueRate: number): "above" | "below" 
   return batchPassed ? "above" : "below";
 }
 
-export const hintAvailable = (s: SoloData) => s.act3FailedBatches >= HINT_AFTER_FAILED_BATCHES;
+/** Engineering's answer is offered after an Act III wave whose crystal plan didn't pass the gate. */
+export const answerAvailable = (s: Pick<SoloData, "act3FailedBatches">) => s.act3FailedBatches >= ANSWER_AFTER_FAILED_BATCHES;
 
 /**
  * Was the station saved? Yes when an Act III wave was played with dials at an exact ≥ 80% (the gate passed). If the

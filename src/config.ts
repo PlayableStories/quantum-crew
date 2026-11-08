@@ -9,8 +9,6 @@ export const ROUND_MS = 5000;
 export const ACT1_ROUNDS = 6;
 /** Solo Act I: time to hear CORA's reading, apply the rule and set the pump. */
 export const ACT1_ROUND_MS = 8000;
-/** Solo Act III: time to tap MEASURE, read the crystal's suggestion and set the pump. */
-export const ACT3_ROUND_MS = 7000;
 /** Rounds per batch, followed by a stability readout. */
 export const BATCH_SIZE = 12;
 /** Solo: a round's result stays until the player taps Next round, or this long, so a batch can't stall. */
@@ -30,8 +28,8 @@ export const DEFAULT_TUNING: TuningConfig = { greenDeg: 0, redDeg: 0 };
 
 /** Solo: Act II batches before the engineering report (the player may keep going). */
 export const ACT2_BATCHES = 1;
-/** Solo: Act III batches played with dials under an exact 80% before the hint unlocks. */
-export const HINT_AFTER_FAILED_BATCHES = 1;
+/** Solo: Act III waves played with a crystal plan under an exact 80% before engineering offers the answer. */
+export const ANSWER_AFTER_FAILED_BATCHES = 1;
 /** Solo: Act III batches after which the debrief unlocks even if the dials never reached an exact 80%. */
 export const DEBRIEF_AFTER_BATCHES = 2;
 

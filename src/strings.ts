@@ -179,10 +179,10 @@ export const S = {
     act2: "Act II · best plan",
     act2Note: "exactly, at best",
     act3: "Act III · crystals",
-    act3Note: "your dials, exactly",
-    /** Not saved: the Act III card leads with the best dials, the player's below. */
-    act3Best: "best dials",
-    act3Yours: (pct: string) => `your dials, ${pct}`,
+    act3Note: "your crystal plan, exactly",
+    /** Not saved: the Act III card leads with the best crystal plan, the player's below. */
+    act3Best: "best crystal plan",
+    act3Yours: (pct: string) => `your crystal plan, ${pct}`,
     /** Saved: the player's crystals beat every plan. */
     story:
       "Talking made every round winnable. No plan could replace talking. The crystals beat every plan without carrying a single message.",
@@ -255,15 +255,13 @@ export const S = {
       ownWay: "You went your own way a lot. I just did what my crystal said.",
       followedAll: "You followed your crystal every round. So did I.",
       act3Good: "Those crystals… that's the steadiest I've seen this ring.",
-      act3Bad: "Twelve rounds is a coin toss. Look at what the crystals do in each case before you touch the dials.",
+      act3Bad: "Twelve rounds is a coin toss. Look at what the crystals do in each case before you change your settings.",
     },
     ceiling: "So it was never us. Every pair fails the same way.",
     tool: "A crystal that tells me which way to turn. Fine. That's my new procedure.",
-    tuning:
-      "Mine sit where my crystal settles: 22.5° cool, 157.5° hot. Nobody knows yet if that's right.",
-    dialsHead: (name: string) => `${name}'s dials (locked)`,
-    dialsLine: (cool: string, hot: string) => `: COOL ${cool} · HOT ${hot}, locked`,
-    seeDials: "See dials",
+    /** Act III, the crystal plan screen: her fixed settings (computed). */
+    tuning: (cool: string, hot: string) =>
+      `Mine are set: COOL ${cool}, HOT ${hot}. I'll follow my crystal every round. Pick yours.`,
   },
 
   batch: {
@@ -273,10 +271,11 @@ export const S = {
     incoming: "Sensors warming up…",
     yourLight: "Your sensor",
     planTag: "Plan",
-    measure: "Measure",
-    measureHint: "Tap MEASURE to read your crystal.",
-    crystalSays: (pump: string) => `Crystal says: ${pump}`,
     crystalTag: "Crystal",
+    /** The old MEASURE button's label: no screen shows it any more (tests check it stays gone). */
+    measure: "Measure",
+    /** Solo Act III round: what to do. */
+    followLine: "Follow your crystal: that's how your plan works. Going against it is a guess.",
     follow: "Enter follows the crystal · A / C to choose",
     stable: "Stable",
     leak: "Leak",
@@ -310,17 +309,17 @@ export const S = {
     casesHead: "Equally likely",
     casesOrder: "Each card: you · ",
     caseTotal: (wins: number, pct: string) => `${wins} of 4 cases: ${pct}`,
-    /** When the batch and the true rate disagree about passing 80% (act 2: the plan; act 3: the dial settings). */
+    /** When the batch and the true rate disagree about passing 80% (act 2: the plan; act 3: the crystal plan). */
     luck: (gap: "above" | "below", act: 2 | 3, pct: string) =>
       `${gap === "above" ? "Above" : "Below"} 80% this time, but ${act === 2 ? "this plan's" : "these settings'"} true rate is ${pct}. Twelve rounds is mostly luck.`,
-    /** Act III: the dial settings' exact rate, case by case. */
+    /** Act III: the crystal plan's exact rate, case by case. */
     crystalCases: "If we both follow the crystals",
-    crystalCasesHead: "Equally likely · dials you · ",
+    crystalCasesHead: "Equally likely · settings: you · ",
     holds: (pct: string) => `holds ${pct}`,
     trueRate: (pct: string) => `True rate: ${pct}`,
     followed: (n: number, total: number) => `You followed the crystal in ${n} of ${total} rounds.`,
     again2: "Back to the huddle",
-    again3: "Retune before the next wave",
+    again3: "Change your crystal plan",
     report: "Call engineering",
     /** Solo: the gate passed (or the last wave is done): on to the ending. */
     debrief: "The storm passes",
@@ -361,26 +360,38 @@ export const S = {
     kicker: "Supply pod · during the lull",
     title: "The Entanglement Tool",
     lines: [
-      `A supply pod docks from engineering with two linked crystals: one for your tool, one for ${CREW_NAME}'s at Table B.`,
-      "Engineering's note: the crystals don't carry messages, so the storm can't jam them. Measure one and it gives a direction, linked to its partner in a way no plan can copy.",
-      "Turn your dial, tap MEASURE, and the crystal suggests a pump. You decide whether to follow it.",
+      `A supply pod docks from engineering with two linked crystals: one at your table, one at ${CREW_NAME}'s at Table B.`,
+      "Engineering's note: the crystals carry no messages, so the storm can't jam them.",
+      "Think of them as entangled coins: each lands at random, but a linked pair measured at the same setting always lands the same way.",
+      "The crystals don't replace your plan. They change what a plan can say.",
     ],
     go: "Pick up the tool",
   },
 
 
+  /** Solo Act III: the crystal plan screen (event mode's card, fan, rule and clues, with CORA as the fixed partner). */
   tuning: {
-    kicker: "Tool tuning",
-    title: "Tune your dials",
-    yours: "Your dials",
-    hintButton: "Ask engineering for a hint",
-    hint: "Try making your two dials 45° apart, and your partner's offset by half that.",
-    explainHead: "How the tool works",
-    explain:
-      "The closer your dial points to CORA's, the more often your crystals give the same direction. Need your pumps to match? Point close to hers. Need them to differ? Point far away.",
-    start: (n: number) => `Ride out wave ${n}`,
+    kicker: "Crystal plan",
+    title: "Plan your crystal settings",
+    /** The primary action, echoing Act II's lock-in; the wave number is its subtitle. */
+    start: "Lock in your crystal plan",
+    startSub: (n: number) => `Then ride out wave ${n}`,
+    /** The starting line: CORA's settings, and what the two of you hold with the player's plan as it is now. */
+    startCora: (cool: string, hot: string, pct: string) =>
+      `${CREW_NAME} measures at COOL ${cool}, HOT ${hot}. With your plan as it is, you two hold ${pct}. Can you do better?`,
+    /** Clue 1's nudge, for you and CORA. */
+    nudge:
+      `Going around the four settings, your two and ${CREW_NAME}'s two, the differ gap can never be bigger than the three match gaps added together. You want the match gaps small and the differ gap near 90°. How would you spread them?`,
+    /** The crystals' rule, line 3, with CORA by name. */
+    followRule:
+      `Follow your crystal (${CREW_NAME} always follows hers), and your pumps match exactly when your crystals agree. So keep your setting close to hers in the three cases that need matching pumps, and far from hers when both sensors are HOT.`,
+    /** After a wave that didn't pass: engineering's answer, on request. */
+    answerButton: "Ask engineering for the answer",
+    answerHead: "Engineering's answer",
+    coraHead: `${CREW_NAME}'s crystal plan`,
   },
 
+  /** The Dial component's own controls (no screen turns a dial since S3; kept for the component). */
   dial: { prev: "Turn dial left", next: "Turn dial right" },
 
   debrief: {
@@ -403,11 +414,11 @@ export const S = {
       {
         title: "Entanglement broke through",
         body: [
-          "The two crystals were a pair of entangled qubits. Measured at dial angles θA and θB, your two pumps agree with probability cos²(θA − θB).",
-          "With dials 45° apart and your partner's offset by half that (A: 0° and 45°; B: 22.5° and −22.5°, shown as 157.5°), a crew wins cos²(22.5°) ≈ 85.4% of rounds. No quantum strategy does better: this is the Tsirelson bound.",
+          "The two crystals were a pair of entangled qubits. Measured at settings θA and θB, your two pumps agree with probability cos²(θA − θB): the crystals' rule.",
+          "With the four settings spread evenly, 22.5° apart (A: 0° and 45°; B: 22.5° and −22.5°, shown as 157.5°), a crystal plan wins cos²(22.5°) ≈ 85.4% of rounds. No quantum strategy does better: this is the Tsirelson bound.",
           "Real experiments have broken the 75% wall with entangled photons; that work won the 2022 Nobel Prize in Physics.",
         ],
-        stat: (pct: string) => `Your dials' true rate: ${pct}`,
+        stat: (pct: string) => `Your crystal plan's true rate: ${pct}`,
       },
       {
         title: "But no messages",
@@ -425,7 +436,8 @@ export const S = {
     /** Solo, quantum-limit step: the best plan beside the crystals, four cases each. */
     compare: {
       plan: "Best plan: always clockwise",
-      dials: (yours: boolean) => (yours ? "Your dials" : "The best dials (0° / 45°)"),
+      /** `best` = the best crystal plan's settings at your table (computed), e.g. "0° / 45°". */
+      dials: (yours: boolean, best: string) => (yours ? "Your crystal plan" : `The best crystal plan (${best})`),
       why: "A plan has to give up one case completely. The crystals spread a small loss across all four.",
     },
     panel: {

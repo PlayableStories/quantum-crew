@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BATCH_SIZE, ACT3_ROUND_MS } from "../config.ts";
+import { BATCH_SIZE, ROUND_MS } from "../config.ts";
 import { ANTICLOCKWISE, CLOCKWISE } from "../shared/fiction.ts";
 import { ALL_CELLS, cellKey, expectedBoard, planOf } from "./plans.ts";
 import { createSoloStore, playerTried } from "./soloStore.ts";
@@ -13,7 +13,7 @@ function playBatch(store: Store, act: (s: Store) => void) {
   for (let i = 0; i < BATCH_SIZE; i++) {
     store.getState().advance(now);
     act(store);
-    now += ACT3_ROUND_MS + 1;
+    now += ROUND_MS + 1;
     store.getState().timeout(now);
   }
   store.getState().advance(now);

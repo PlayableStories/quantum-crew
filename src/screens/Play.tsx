@@ -8,7 +8,6 @@ import { Countdown } from "../components/Countdown.tsx";
 import { playSfx } from "../audio/sfx.ts";
 import { CrewIcon } from "../components/CrewIcon.tsx";
 import { Crystals } from "../components/EntanglementSurface.tsx";
-import { Dial, formatDeg } from "../components/Dial.tsx";
 import { Sheet } from "../components/Sheet.tsx";
 import { PhoneMenu } from "../components/PhoneMenu.tsx";
 import { MuteToggle } from "../components/MuteToggle.tsx";
@@ -24,6 +23,7 @@ import {
   AnswerRow,
   ClueList,
   ClueHint,
+  CrystalChain,
   type HumanWithCora,
   CrystalFan,
   CrystalPlanCard,
@@ -226,17 +226,7 @@ function InRoom() {
         {round.act === 3 && pair?.lockedDials && <LockedPlan>{planLine(pair.lockedDials[mine])}</LockedPlan>}
         {/* Act III: what the station did with the plan: sensor → setting → the crystal's direction. */}
         {round.act === 3 && round.dialDeg !== null && round.crystal !== null && (
-          <div className="chain" role="status">
-            <span className="chain__step">
-              {S.event.chain.plan} <strong>{formatDeg(round.dialDeg)}</strong>
-            </span>
-            <Dial value={round.dialDeg} small />
-            <span className="chain__step chain__crystal">
-              {S.event.chain.crystal} <strong>{S.pump[round.crystal]}</strong>{" "}
-              <span className="muted small chain__flip">{S.event.chain.flip}</span>
-            </span>
-            <span className="muted small crystal-keys">{S.batch.follow}</span>
-          </div>
+          <CrystalChain dialDeg={round.dialDeg} crystal={round.crystal} />
         )}
         <div className="spacer" />
         {(

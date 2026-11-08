@@ -1,13 +1,14 @@
 // A batch of rounds. Timers live here; the store decides everything else.
 // Buttons fire on pointer-down for speed; a second event in the same round is ignored by the store.
 // Each result stays until the player taps Next round (or after RESULT_AUTO_MS, so a batch can't stall).
-// Act III: MEASURE reads the crystal, which suggests a pump; the player then sets the pump themselves.
-// Keyboard: A / ← = ANTICLOCKWISE, C / → = CLOCKWISE (Act III: once the crystal has spoken). Act III: Space / Enter =
-// MEASURE, then Enter follows the crystal. On a result, Space / Enter = Next round.
+// Act III: the station has measured the crystal at the planned setting when the round starts; the round shows the
+// chain (sensor → your plan's setting → the crystal's direction) and the player sets the pump.
+// Keyboard: A / ← = ANTICLOCKWISE, C / → = CLOCKWISE. Act III: Enter follows the crystal. On a result, Space / Enter =
+// Next round.
 import { useEffect } from "react";
 import { playSfx } from "../audio/sfx.ts";
 import { Countdown } from "../components/Countdown.tsx";
-import { Dial } from "../components/Dial.tsx";
+import { CrystalChain } from "../components/CrystalPlan.tsx";
 import { PumpIcon } from "../components/PumpIcon.tsx";
 import { RingDiagram } from "../components/RingDiagram.tsx";
 import { ScreenLayout } from "../components/ScreenLayout.tsx";
@@ -23,7 +24,7 @@ import { actOf, displayedStability, nextWave, roundMs, useSolo } from "./soloSto
 
 export function Batch() {
   const s = useSolo((st) => st);
-  const { round, phase, plan, crewPlan, tuning, advance, timeout, answer, measure, followCrystal } = s;
+  const { round, phase, plan, crewPlan, tuning, advance, timeout, answer, followCrystal } = s;
   const act = actOf(phase);
   const batchNo = nextWave(s); // storm waves count on across Acts II and III
 
@@ -50,17 +51,14 @@ export function Batch() {
         advance(Date.now());
       } else if (k === "a" || k === "arrowleft") answer(ANTICLOCKWISE, Date.now());
       else if (k === "c" || k === "arrowright") answer(CLOCKWISE, Date.now());
-      else if (act === 3 && next && round?.crystal == null) {
-        e.preventDefault();
-        measure(Date.now());
-      } else if (act === 3 && k === "enter") {
+      else if (act === 3 && k === "enter") {
         e.preventDefault();
         followCrystal(Date.now());
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [act, round, answer, measure, followCrystal, advance]);
+  }, [act, round, answer, followCrystal, advance]);
 
   const live = round && !round.result;
   // The tag on a pump button: the plan's direction (Act II) or the crystal's suggestion (Act III).
@@ -113,14 +111,7 @@ export function Batch() {
             <small>{S.batch.nextSub}</small>
           </button>
         ) : (
-          live &&
-          (act !== 3 || round.crystal !== null ? (
-            pumps
-          ) : (
-            <button className="btn measure" onPointerDown={() => measure(Date.now())} onClick={() => measure(Date.now())}>
-              {S.batch.measure}
-            </button>
-          ))
+          live && pumps
         )
       }
     >
@@ -142,20 +133,15 @@ export function Batch() {
       {live && (
         <>
           {act === 1 && <p className="muted small act1-rule">{S.act1.ruleLine}</p>}
-          {/* Act III: the sensor and the dial it selects, side by side. */}
-          <div className={act === 3 ? "round-reading" : "stack"}>
+          {/* Act III: your sensor beside what the station did with your plan (the setting for this reading → the
+              crystal's direction). */}
+          <div className={act === 3 ? "round-reading round-reading--chain" : "stack"}>
             <SensorLight light={round.x} label={S.batch.yourLight} />
-            {act === 3 && <Dial value={dialFor(tuning, round.x)} small />}
+            {act === 3 && round.crystal !== null && (
+              <CrystalChain dialDeg={dialFor(tuning, round.x)} crystal={round.crystal} />
+            )}
           </div>
-          {act === 3 &&
-            (round.crystal === null ? (
-              <p className="muted crystal-hint">{S.batch.measureHint}</p>
-            ) : (
-              <div className="crystal-says" role="status">
-                <strong>{S.batch.crystalSays(S.pump[round.crystal])}</strong>
-                <span className="muted small crystal-keys">{S.batch.follow}</span>
-              </div>
-            ))}
+          {act === 3 && <p className="muted small follow-line">{S.batch.followLine}</p>}
         </>
       )}
 

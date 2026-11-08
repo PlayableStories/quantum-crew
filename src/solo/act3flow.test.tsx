@@ -2,9 +2,10 @@
 // no-signalling); the debrief gate is the dials' exact rate, not the batch's score.
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
-import { ACT3_ROUND_MS, BATCH_SIZE, ROUND_MS } from "../config.ts";
+import { ROUND_MS, BATCH_SIZE } from "../config.ts";
 import {
   DIAL_POSITIONS,
+  dialFor,
   OPTIMAL_TUNING,
   exactOpenRates,
   matchProbability,
@@ -12,13 +13,14 @@ import {
   quantumExpectedWinRate,
   type Valve,
 } from "../shared/chsh.ts";
+import { coraPlan, settingGap } from "../shared/crystalPlan.ts";
 import { S } from "../strings.ts";
 import { Solo } from "./Solo.tsx";
-import { createSoloStore, debriefAvailable, dialsRate, followedCount, hintAvailable, soloStore } from "./soloStore.ts";
+import { createSoloStore, debriefAvailable, dialsRate, followedCount, answerAvailable, soloStore } from "./soloStore.ts";
 import { toHuddle } from "./testkit.ts";
 
 type Store = ReturnType<typeof createSoloStore>;
-const esc = (text: string) => text.replace(/'/g, "&#x27;");
+const esc = (text: string) => text.replace(/'/g, "&#x27;").replace(/"/g, "&quot;");
 
 /** Plays one batch; `act` runs once per live round. */
 function playBatch(store: Store, act: (s: Store) => void = () => {}) {
@@ -27,7 +29,7 @@ function playBatch(store: Store, act: (s: Store) => void = () => {}) {
   for (let i = 0; i < BATCH_SIZE; i++) {
     store.getState().advance(now);
     act(store);
-    now += ACT3_ROUND_MS + 1;
+    now += ROUND_MS + 1;
     store.getState().timeout(now);
   }
   store.getState().advance(now);
@@ -65,17 +67,14 @@ describe("exact helpers", () => {
 });
 
 describe("the crystal is a suggestion", () => {
-  it("MEASURE reads both crystals; the player's pump is scored, CORA follows hers, following is recorded", () => {
+  it("the station measures both crystals at round start; the player's pump is scored, CORA follows hers, following is recorded", () => {
     const store = createSoloStore(31);
     const s = () => store.getState();
     toTuning(store);
     s().beginBatch();
     s().advance(0);
-    expect(s().round!.deadline).toBe(ACT3_ROUND_MS); // 7 s in Act III
-    s().answer(0, 0); // no pump before MEASURE
-    expect(s().round!.result).toBeNull();
-    s().measure(0);
-    const { crystal, crewPump } = s().round!;
+    expect(s().round!.deadline).toBe(ROUND_MS); // solo's normal decision time, as in Act II
+    const { crystal, crewPump } = s().round!; // measured as the round starts
     expect(crystal).not.toBeNull();
     expect(crewPump).not.toBeNull();
     const against = (1 - crystal!) as Valve;
@@ -83,11 +82,35 @@ describe("the crystal is a suggestion", () => {
     expect(s().round!.result).toMatchObject({ a: against, b: crewPump });
     expect(s().batchFollowed).toEqual([false]);
     s().advance(1);
-    s().measure(1);
     s().followCrystal(1);
     expect(s().round!.result!.a).toBe(s().round!.crystal);
     expect(s().batchFollowed).toEqual([false, true]);
     expect(followedCount(s())).toBe(1);
+  });
+
+  it("measured at round start: over many seeded rounds the crystals land the same way as often as the rule says", () => {
+    const seen = new Map<number, { same: number; n: number }>();
+    for (const deg of DIAL_POSITIONS) {
+      const store = createSoloStore(400 + deg);
+      const st = () => store.getState();
+      toTuning(store);
+      st().setTuning({ greenDeg: deg, redDeg: deg });
+      for (let wave = 0; wave < 25; wave++) {
+        st().beginBatch();
+        for (let r = 0; r < BATCH_SIZE; r++) {
+          st().advance(0);
+          const { x, y, crystal, crewPump } = st().round!;
+          const gap = settingGap(dialFor(st().tuning, x), dialFor(coraPlan("B"), y));
+          const c = seen.get(gap) ?? { same: 0, n: 0 };
+          seen.set(gap, { same: c.same + (crystal === crewPump ? 1 : 0), n: c.n + 1 });
+          st().followCrystal(0);
+        }
+        st().advance(0); // the readout
+        st().nextBatch();
+      }
+    }
+    for (const [gap, { same, n }] of seen) expect(Math.abs(same / n - matchProbability(0, gap))).toBeLessThan(0.05);
+    expect(seen.size).toBeGreaterThanOrEqual(4);
   });
 
   it("Act II keeps its 5 s rounds", () => {
@@ -115,7 +138,7 @@ describe("the debrief gate", () => {
     expect(dialsRate(near)).toBeCloseTo(0.802, 3);
     expect(near.batch.every((r) => !r.win)).toBe(true);
     expect(debriefAvailable(near)).toBe(true);
-    expect(hintAvailable(near)).toBe(false);
+    expect(answerAvailable(near)).toBe(false);
     expect(debriefAvailable(gate(OPTIMAL_TUNING.A.greenDeg, OPTIMAL_TUNING.A.redDeg))).toBe(true);
   });
 
@@ -123,10 +146,10 @@ describe("the debrief gate", () => {
     const store = createSoloStore(34);
     const s = () => store.getState();
     toTuning(store);
-    playBatch(store, (st) => (st.getState().measure(0), st.getState().followCrystal(0)));
+    playBatch(store, (st) => st.getState().followCrystal(0));
     expect(dialsRate(s())).toBeCloseTo(0.677, 3);
     expect(debriefAvailable(s())).toBe(false);
-    expect(hintAvailable(s())).toBe(true);
+    expect(answerAvailable(s())).toBe(true);
     s().nextBatch();
     playBatch(store);
     expect(debriefAvailable(s())).toBe(true);
@@ -139,33 +162,24 @@ describe("Act III screens", () => {
   soloStore.getInitialState = soloStore.getState;
   beforeEach(() => s().reset());
 
-  it("first tuning explains the tool; later visits keep it behind a button", () => {
-    toTuning(soloStore);
-    expect(html()).toContain(esc(S.tuning.explain));
-    playBatch(soloStore);
-    s().nextBatch();
-    const later = html();
-    expect(later).not.toContain(esc(S.tuning.explain));
-    expect(later).toContain(`>${S.tuning.explainHead}</button>`);
-  });
-
-  it("the round: MEASURE first, then 'Crystal says' with the suggested pump tagged", () => {
+  it("the round: no MEASURE; the chain from your setting to the crystal's direction, the suggestion tagged, the follow line", () => {
     toTuning(soloStore);
     s().beginBatch();
     s().advance(0);
-    expect(html()).toMatch(/class="btn measure"/);
-    expect(html()).not.toContain("pumpbtn");
-    s().measure(0);
     const markup = html();
-    expect(markup).toContain(S.batch.crystalSays(S.pump[s().round!.crystal!]));
+    expect(markup).not.toMatch(/class="btn measure"/);
+    expect(markup).not.toContain(`>${S.batch.measure}<`);
     expect(markup).toContain("pumpbtn--suggested");
     expect(markup).toContain(`>${S.batch.crystalTag}</span>`);
+    const text = markup.replace(/<!-- -->/g, "");
+    expect(text).toContain(`${S.event.chain.crystal} <strong>${S.pump[s().round!.crystal!]}</strong>`);
+    expect(text).toContain(esc(S.event.chain.flip));
+    expect(markup).toContain(esc(S.batch.followLine));
   });
 
   it("the readout: followed N of 12, the crystal cases, and the luck line when an unlucky batch had good dials", () => {
     toTuning(soloStore);
-    s().setDial(0, OPTIMAL_TUNING.A.greenDeg);
-    s().setDial(1, OPTIMAL_TUNING.A.redDeg);
+    s().setTuning(OPTIMAL_TUNING.A);
     playBatch(soloStore); // timeouts: 0%, but the dials' true rate is 85.4%
     const markup = html();
     expect(markup).toContain(S.readout.followed(0, BATCH_SIZE));
@@ -176,15 +190,14 @@ describe("Act III screens", () => {
 
   it("the debrief: best plan beside the crystals, and exact 50% clockwise rates", () => {
     toTuning(soloStore);
-    s().setDial(0, OPTIMAL_TUNING.A.greenDeg);
-    s().setDial(1, OPTIMAL_TUNING.A.redDeg);
+    s().setTuning(OPTIMAL_TUNING.A);
     playBatch(soloStore);
     s().startDebrief();
     s().openReport(); // the resolution, then the incident report
     s().setDebriefStep(1);
     const step2 = html();
     expect(step2).toContain(S.debrief.compare.plan);
-    expect(step2).toContain(S.debrief.compare.dials(true));
+    expect(step2).toContain(S.debrief.compare.dials(true, ""));
     expect(step2).toContain(S.debrief.compare.why);
     expect(step2).toContain("✗ 0%");
     s().setDebriefStep(2);

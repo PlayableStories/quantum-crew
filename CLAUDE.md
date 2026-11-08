@@ -347,6 +347,19 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   step-checked; never in `nextSteps` / the remote. Works in every build (the user's choice). Played stats are kept.
   **F** on the TV toggles full screen (`src/lib/fullscreen.ts`, the Fullscreen API on the whole page; webkit
   fallback; a refusal is ignored). `S.tv.keys` mentions it.
+- **Solo S3 (2026-11-09, solo's Act III in line with event mode; CORA the fixed partner at Table B):**
+  - **Store:** no `measure()`: `advance()` measures at round start in Act III (`measureFirst` for you, then
+    `measureSecond` for CORA at `coraPlan("B")`); `roundMs(3)` = `ROUND_MS` (`ACT3_ROUND_MS` is gone). The hint became
+    engineering's answer: `answerAvailable` (`act3FailedBatches >= ANSWER_AFTER_FAILED_BATCHES`), `showAnswer`,
+    `useAnswer` (= `answerPlanFor("A")`), `answerShown`; `setTuning` for the plan card. The gate is unchanged.
+  - **`Tuning.tsx` = the crystal plan screen:** `CrystalPlanCard like`, CORA's read-only card (`lead={false}`,
+    `.only-split`; one line `.only-stacked` on phones), `S.tuning.startCora` (live rate), `ClueHint` (`human` = you at
+    A, `rate={false}`), `S.tuning.nudge`, `CrystalFan chances`, the rule (`CrystalRuleTable follow={S.tuning.followRule}`)
+    in full on the first visit then a chip, the answer in a Sheet (`answerText`, `AnswerRow`), "Lock in your crystal
+    plan". Rounds: `CrystalChain` (shared with event phones) + `S.batch.followLine`; readout `CrystalCases gaps`.
+  - **Copy:** solo's Act III, resolution and report never say "dial" (test in `act3.test.tsx`); `S.pod` matches event
+    mode's; `S.crew.tuning(cool, hot)`; `S.debrief.compare.dials(yours, best)`. `S.batch.measure` stays only because
+    event tests check it's absent.
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.
@@ -378,7 +391,7 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     - Phone rules (`max-width: 599px`): 12px gaps and panel padding, and a compact test button. The huddle's h1 is
       visually hidden on phones (`.hide-on-phone`).
     - `pnpm shots` reports heights to 2 decimals and checks picking a board square from the keyboard.
-  - **Phase 3 (2026-10-17, Act III and debrief):**
+  - **Phase 3 (2026-10-17, Act III and debrief; the tuning screen was replaced in S3):**
     - Tool reveal: crystals and title in main, the text and radio in the side column.
     - Tuning: the player's dials first, full size.
       - The crewmate's dials are one line (`S.crew.dialsLine`), with **See dials** opening the locked dials in a
@@ -432,7 +445,7 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     - The luck line uses `luckLine(batchRate, trueRate)`.
     - On phones the two buttons sit side by side.
   - Engineering report: exact board only. "Tried" means played. `playerTried`.
-- **CORA Phase 3 (2026-10-29, Act III flow):**
+- **CORA Phase 3 (2026-10-29, Act III flow; MEASURE, the dials and the hint were replaced in S3):**
   - Rounds:
     - `measure()` reads both crystals: the player's suggestion is `round.crystal`, CORA's pump is `round.crewPump`.
     - The player then sets the pump with `answer` / `followCrystal`. Scoring uses that pump, and CORA follows her

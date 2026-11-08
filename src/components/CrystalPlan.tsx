@@ -3,7 +3,7 @@
 // crystals' rule, the "Plan locked" stamp, the clue ladder and clue 2's hint. The numbers
 // all come from src/shared/crystalPlan.ts (built on chsh.ts).
 import type { ReactNode } from "react";
-import { type Table, type TuningConfig } from "../shared/chsh.ts";
+import { type Table, type TuningConfig, type Valve } from "../shared/chsh.ts";
 import { SURVIVAL_THRESHOLD } from "../shared/chsh.ts";
 import {
   CLUE_SETTINGS,
@@ -23,7 +23,7 @@ import { COOL, HOT } from "../shared/fiction.ts";
 import type { PairInfo } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 import { AiBadge } from "./AiBadge.tsx";
-import { formatDeg } from "./Dial.tsx";
+import { Dial, formatDeg } from "./Dial.tsx";
 import { LightIcon } from "./SensorLight.tsx";
 
 const whole = (p: number) => `${Math.round(p * 100)}%`;
@@ -43,6 +43,7 @@ export function CrystalPlanCard({
   note,
   cora = false,
   like = false,
+  lead = true,
   className = "",
 }: {
   title: ReactNode;
@@ -52,6 +53,8 @@ export function CrystalPlanCard({
   cora?: boolean;
   /** The player's own card in event mode: "Like an Act II plan…" at the top. */
   like?: boolean;
+  /** The "When your sensor reads…" line (solo leaves it off CORA's card: it isn't the reader's sensor). */
+  lead?: boolean;
   className?: string;
 }) {
   const row = (light: 0 | 1, field: "greenDeg" | "redDeg") => (
@@ -85,7 +88,7 @@ export function CrystalPlanCard({
         {cora && <AiBadge />}
       </p>
       {like && <p className="crystal-plan__like">{P.like}</p>}
-      <p className="muted crystal-plan__lead">{P.lead}</p>
+      {lead && <p className="muted crystal-plan__lead">{P.lead}</p>}
       <div className="crystal-plan__rows">
         {row(COOL, "greenDeg")}
         {row(HOT, "redDeg")}
@@ -158,7 +161,16 @@ export const caseName = (c: Pick<PlanCase, "x" | "y">) => S.event.fan.caseName(S
 /** The crystals' rule (clue 1): each crystal alone is a coin flip; linked crystals land the same way more often the
  *  closer their settings (the gap table, from matchProbability); followed crystals make the pumps match exactly when
  *  they agree. `fold` = the note that a gap is never more than 90°. */
-export function CrystalRuleTable({ fold = true, className = "" }: { fold?: boolean; className?: string }) {
+export function CrystalRuleTable({
+  fold = true,
+  className = "",
+  follow,
+}: {
+  fold?: boolean;
+  className?: string;
+  /** Line 3 in other words (solo names CORA); event mode's by default. */
+  follow?: string;
+}) {
   const R = S.event.crystalRule;
   const max = RULE_GAPS.at(-1)!;
   // An example of folding: the first and last of the eight settings.
@@ -192,7 +204,25 @@ export function CrystalRuleTable({ fold = true, className = "" }: { fold?: boole
           {R.fold(formatDeg(2 * max), formatDeg(max), formatDeg(first), formatDeg(last), formatDeg(settingGap(first, last)))}
         </p>
       )}
-      <p>{R.follow}</p>
+      <p>{follow ?? R.follow}</p>
+    </div>
+  );
+}
+
+/** An Act III round (event phones and solo): what the station did with the plan: your plan's setting for this
+ *  reading → the crystal's direction (a coin flip), and the keys. */
+export function CrystalChain({ dialDeg, crystal }: { dialDeg: number; crystal: Valve }) {
+  return (
+    <div className="chain" role="status">
+      <span className="chain__step">
+        {S.event.chain.plan} <strong>{formatDeg(dialDeg)}</strong>
+      </span>
+      <Dial value={dialDeg} small />
+      <span className="chain__step chain__crystal">
+        {S.event.chain.crystal} <strong>{S.pump[crystal]}</strong>{" "}
+        <span className="muted small chain__flip">{S.event.chain.flip}</span>
+      </span>
+      <span className="muted small crystal-keys">{S.batch.follow}</span>
     </div>
   );
 }
@@ -254,12 +284,22 @@ export function hintText(plans: LockedPlans, tv = false, human: HumanWithCora = 
 }
 
 /** Clue 1 on a phone: the pair's live rate, then its hint (or "Found it"). Follows the plans as they change. */
-export function ClueHint({ plans, human = null }: { plans: LockedPlans; human?: HumanWithCora }) {
+export function ClueHint({
+  plans,
+  human = null,
+  rate = true,
+}: {
+  plans: LockedPlans;
+  human?: HumanWithCora;
+  /** Lead with the pair's live rate (solo shows it in its starting line instead). */
+  rate?: boolean;
+}) {
   const h = clueHint(plans);
   if (h.kind === "none") return null;
   return (
     <p className={`clue-hint clue-hint--${h.kind}`} role="status">
-      {S.event.clues.liveRate(rateText(h.rate))} {h.kind === "found" && "✓ "}
+      {rate && `${S.event.clues.liveRate(rateText(h.rate))} `}
+      {h.kind === "found" && "✓ "}
       {hintText(plans, false, human)}
     </p>
   );
