@@ -40,8 +40,9 @@ import { useElapsedMs, useRemainingMs } from "../net/useCountdown.ts";
 import { decisionMs, resultMs } from "../shared/pace.ts";
 import { Sheet } from "../components/Sheet.tsx";
 import { toggleFullscreen } from "../lib/fullscreen.ts";
-import { ClueList, CrystalRuleTable, answerOutText, humanWithCora } from "../components/CrystalPlan.tsx";
-import { weakestCase } from "../shared/crystalPlan.ts";
+import { ClueList, CrystalRuleTable, answerOutText, humanWithCora, rateText } from "../components/CrystalPlan.tsx";
+import { planRate, weakestCase } from "../shared/crystalPlan.ts";
+import { DEFAULT_TUNING } from "../config.ts";
 import { fetchStationInfo, joinUrl, remoteUrl, loadChosenAddress, pickJoinOrigin, saveChosenAddress } from "../net/joinOrigin.ts";
 import { roundIdOf, type Speed, type HostCommand, type PairInfo, type RateSummary, type RoomState, type RoundOutcome, type StationInfo, type JoinAddress } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
@@ -421,16 +422,25 @@ export function Explainer({ state, compact = false, withNow = false }: { state: 
   const step = state.phase === "roundResult" ? "round" : (state.phase as "tool" | "strategy" | "round" | "batchDone");
   const lines = E[step];
   if (!lines) return null;
+  // The first Act III lull (no Act III wave yet): measured at one setting the crystals always agree, and that only
+  // scores what a plan does (computed from the maths).
+  const first =
+    step === "strategy" && state.act === 3 && state.stability.act3.rounds === 0
+      ? E.strategy.firstSame(rateText(planRate(DEFAULT_TUNING, DEFAULT_TUNING)))
+      : null;
   if (compact)
     return (
-      <p className="tv__explain tv__explain--compact">
-        {withNow && (
-          <>
-            <b>{E.labels.now}:</b> {lines.now}{" "}
-          </>
-        )}
-        <b>{E.labels.can}:</b> {lines.can} <b>{E.labels.question}:</b> {lines.question}
-      </p>
+      <>
+        <p className="tv__explain tv__explain--compact">
+          {withNow && (
+            <>
+              <b>{E.labels.now}:</b> {lines.now}{" "}
+            </>
+          )}
+          <b>{E.labels.can}:</b> {lines.can} <b>{E.labels.question}:</b> {lines.question}
+          {first && <span className="tv__explain-first"> {first}</span>}
+        </p>
+      </>
     );
   return (
     <dl className="tv__explain">

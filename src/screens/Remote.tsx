@@ -8,7 +8,8 @@ import { useRemote } from "../net/remoteStore.ts";
 import { useElapsedMs } from "../net/useCountdown.ts";
 import { REPORT_STEPS, roundIdOf, type HostCommand, type RoomState, type RoundOutcome, type Speed } from "../shared/protocol.ts";
 import { SURVIVAL_THRESHOLD } from "../shared/chsh.ts";
-import { CLUE_SETTINGS, RULE_GAPS, clueAnswer } from "../shared/crystalPlan.ts";
+import { CLUE_SETTINGS, RULE_GAPS, clueAnswer, planRate } from "../shared/crystalPlan.ts";
+import { DEFAULT_TUNING } from "../config.ts";
 import { formatDeg } from "../components/Dial.tsx";
 import { rateText } from "../components/CrystalPlan.tsx";
 import { S, type ClueTalk } from "../strings.ts";
@@ -184,7 +185,14 @@ const remoteLabel = (state: RoomState, cmd: HostCommand) =>
  *  The phase's first point comes first (the remote fits one screen). */
 export function talkingPoints(state: RoomState): readonly string[] {
   const base = phasePoints(state);
-  if (state.phase === "tool") return [base[0]!, ...S.remote.talk.rule(clueTalk())];
+  const t = S.remote.talk;
+  // The tool reveal: engineering's note, the crystals as entangled coins, then the rule.
+  if (state.phase === "tool") return [base[0]!, t.toolCoins, ...t.rule(clueTalk())];
+  // The incident report's no-signalling step: randomness, not messages (quantum key distribution).
+  if (state.phase === "debrief" && state.debriefStep === NO_SIGNAL_STEP) return [t.noSignal];
+  // The first Act III lull (no wave yet): why perfect agreement only scores what a plan does, then clue 1.
+  if (state.phase === "strategy" && state.act === 3 && state.stability.act3.rounds === 0 && state.clue === 1)
+    return [t.firstLull(clueTalk().sameRate), ...t.clue(1, clueTalk())];
   const act3Talk = state.act === 3 && (state.phase === "strategy" || state.phase === "batchDone");
   const clue = act3Talk && state.clue > 0 ? S.remote.talk.clue(state.clue, clueTalk(), state.phase === "batchDone") : [];
   return clue.length ? [...base.slice(0, 1), ...clue] : base;
@@ -205,12 +213,16 @@ function phasePoints(state: RoomState): readonly string[] {
 }
 
 /** The numbers in the clue talking points, from the maths. */
+/** The incident report's step that explains no-signalling ("But no messages"). */
+const NO_SIGNAL_STEP = 2;
+
 export function clueTalk(): ClueTalk {
   const k = clueAnswer();
   const whole = (p: number) => `${Math.round(p * 100)}%`;
   const plan = (t: "A" | "B") =>
     S.event.clues.plan(t, formatDeg(CLUE_SETTINGS[t].greenDeg), formatDeg(CLUE_SETTINGS[t].redDeg));
   return {
+    sameRate: rateText(planRate(DEFAULT_TUNING, DEFAULT_TUNING)),
     minGap: formatDeg(RULE_GAPS[0]),
     maxGap: formatDeg(RULE_GAPS.at(-1)!),
     line: whole(SURVIVAL_THRESHOLD),

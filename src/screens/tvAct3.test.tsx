@@ -172,8 +172,10 @@ describe("Next clue: the answer (TV and remote, shared steps)", () => {
 
   it("the remote's talking points: the rule at the tool; clue 1 in the lull and after a wave; the answer at clue 2", () => {
     const k = clueTalk();
-    expect(talkingPoints(act3("tool", 0))).toEqual([S.remote.talk.tool[0], ...S.remote.talk.rule(k)]);
-    expect(talkingPoints(act3("strategy", 1, 0))).toEqual([S.remote.talk.act3Strategy[0], ...S.remote.talk.clue(1, k)]);
+    expect(talkingPoints(act3("tool", 0))).toEqual([S.remote.talk.tool[0], S.remote.talk.toolCoins, ...S.remote.talk.rule(k)]);
+    // The first lull (no wave yet): why perfect agreement only scores 75% (E3f), then clue 1.
+    expect(talkingPoints(act3("strategy", 1, 0))).toEqual([S.remote.talk.firstLull(k.sameRate), ...S.remote.talk.clue(1, k)]);
+    expect(talkingPoints(act3("strategy", 1, 1))).toEqual([S.remote.talk.act3Strategy[0], ...S.remote.talk.clue(1, k)]);
     expect(talkingPoints(act3("batchDone", 1, 1))).toEqual([S.remote.talk.act3BatchDone[0], ...S.remote.talk.clue(1, k, true)]);
     expect(talkingPoints(act3("strategy", 2, 1)).join(" ")).toContain("85.4%");
     expect(talkingPoints(act3("round", 2, 1))).toEqual(S.remote.talk.round);

@@ -4597,3 +4597,48 @@ button.board__cell:focus-visible {
     font-size: 0.78rem;
   }
 }
+
+/* E3f: the incident report gained a line in steps 1 and 3 (who tested it; shared randomness and secret keys), so on
+   phones the report's text is a touch tighter and each bar's label stays on one line. */
+@media (max-width: 599px) {
+  .debrief .layout__main {
+    font-size: 0.82rem;
+    line-height: 1.26;
+  }
+  .debrief .layout__main p {
+    margin-block: 0 0.4em;
+  }
+  .debrief .bar > span {
+    font-size: 0.72rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .debrief .bar__track {
+    height: 10px;
+  }
+}
+
+/* E3f: the first Act III lull's line under the explainer (full width, like the compact explainer); the answer line on
+   the wave done spans both columns of pairs. */
+.tv__explain-first {
+  font-style: italic;
+}
+
+/* 1280×720: the first lull's explainer (three sentences) and each pair's true-rate line (rate, hint, wave score) a
+   touch smaller, so the hint stays on one line beside the rate. */
+@media (max-height: 800px) {
+  .tv__explain--compact {
+    font-size: 0.88em;
+  }
+  .tv__pair-total {
+    font-size: 0.9em;
+  }
+  .tv__pair-hint {
+    font-size: 0.85em;
+  }
+}
+
+.tv__answer-out {
+  grid-column: 1 / -1;
+}

@@ -59,6 +59,8 @@ Biggest moment of frustration: __________________________________________
 1. Why couldn't any plan get past about 75%?
 2. What did the crystals do that a plan couldn't?
 3. Could you use the crystal to send your partner a message? Why or why not?
+   (After a talk on quantum: did anyone connect the crystals to the talk's entangled coins, or expect them to let the
+   tables "talk"?)
 4. When did talking to your partner matter most?
 
 ## Bugs and fixes

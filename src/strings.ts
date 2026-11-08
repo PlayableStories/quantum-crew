@@ -20,6 +20,8 @@ const planSays = (p: ClassicalStrategy) =>
 
 /** The numbers in the remote's clue talking points, computed from the maths (src/screens/Remote.tsx). */
 export type ClueTalk = {
+  /** Both players at one setting for COOL and HOT: the rate (75%). */
+  sameRate: string;
   minGap: string;
   maxGap: string;
   line: string;
@@ -393,6 +395,7 @@ export const S = {
         body: [
           "Under the station is the CHSH game (Clauser, Horne, Shimony and Holt, 1969). The sensors are its random input bits x, y (COOL = 0, HOT = 1), the pumps its output bits a, b (CLOCKWISE = 0, ANTICLOCKWISE = 1), and “match unless both HOT” is its rule: a ⊕ b = x ∧ y. The vent is the story for the flipped case.",
           "The wall you hit in Act II is a Bell inequality. Two players who can't talk, with any plan agreed in advance (even a random one), win at most 75% of rounds.",
+          "John Clauser, the C in CHSH, shared the 2022 Nobel Prize in Physics with Alain Aspect and Anton Zeilinger for experiments with entangled photons that broke this inequality.",
           "Mixing plans at random doesn't help: a random mix only averages cells on the plan board, so it can never beat the best cell.",
         ],
         stat: (pct: string) => `Your Act II rounds: ${pct}`,
@@ -411,6 +414,7 @@ export const S = {
         body: [
           "Your own pump ran clockwise about half the time, whether your crewmate's section was COOL or HOT. So you can't read their sensor from your result, and the tool can't carry a message.",
           "Only the correlation between your two results changed. That is what no-signalling means.",
+        "What the crystals gave you is shared randomness, not a message. That is how quantum key distribution works: entangled pairs give two distant stations the same secret key, and the message itself still travels the ordinary way.",
         ],
       },
       {
@@ -516,6 +520,7 @@ export const S = {
       lines: [
         "A supply pod docks from engineering: two linked crystals for every pair, one at each table.",
         "Engineering's note: the crystals carry no messages, so the storm can't jam them.",
+        "Think of them as entangled coins: each lands at random, but a linked pair measured at the same setting always lands the same way.",
         "The crystals don't replace your plan. They change what a plan can say.",
       ],
     },
@@ -628,6 +633,9 @@ export const S = {
         now: "The lull: the radio still works. Plan your crystal settings together.",
         can: "Pick a setting for COOL and for HOT on your phone; your partner sees it live.",
         question: "How close can you keep three gaps while the fourth stays far apart?",
+        /** The first Act III lull only (no Act III wave yet): perfect agreement isn't the advantage. `pct` is computed. */
+        firstSame: (pct: string) =>
+          `Measured at the same setting, the crystals always agree, and that scores exactly ${pct}: no better than a plan. Where can the crystals do better?`,
       },
       round: {
         now: "The wave: radio down. The station measures each crystal at your planned setting.",
@@ -700,6 +708,7 @@ export const S = {
           body: [
             "Under the station is the CHSH game (Clauser, Horne, Shimony and Holt, 1969). The sensors are its random input bits x, y (COOL = 0, HOT = 1), the pumps its output bits a, b (CLOCKWISE = 0, ANTICLOCKWISE = 1), and “match unless both HOT” is its rule: a ⊕ b = x ∧ y. The vent is the story for the flipped case.",
             "The wall you hit in Act II is a Bell inequality. Two players who can't talk, with any plan agreed in advance (even a random one), win at most 75% of rounds.",
+            "John Clauser, the C in CHSH, shared the 2022 Nobel Prize in Physics with Alain Aspect and Anton Zeilinger for experiments with entangled photons that broke this inequality.",
             "Mixing plans at random doesn't help: a random mix only averages cells on the plan board, so it can never beat the best cell.",
           ],
         },
@@ -716,6 +725,7 @@ export const S = {
           body: [
             "Your own pump ran clockwise about half the time, whether your partner's section was COOL or HOT. So you can't read their sensor from your result, and the crystals can't carry a message.",
             "Only the correlation between your two results changed. That is what no-signalling means.",
+          "What the crystals gave you is shared randomness, not a message. That is how quantum key distribution works: entangled pairs give two distant stations the same secret key, and the message itself still travels the ordinary way.",
           ],
         },
         { title: "Credits", body: [] as string[] },
@@ -916,6 +926,13 @@ export const S = {
         "Read engineering's note aloud: the crystals carry no messages, so the storm can't jam them.",
         "\"The crystals don't replace your plan. They change what a plan can say.\"",
       ],
+      /** The tool reveal: the crystals as entangled coins. */
+      toolCoins: "Compare the crystals to entangled coins: random on their own, linked as a pair.",
+      /** The first Act III lull (no Act III wave yet): `pct` = the starting plans' rate, computed. */
+      firstLull: (pct: string) => `Ask: if the crystals always agree at the same setting, why does that only score ${pct}?`,
+      /** The incident report's no-signalling step. */
+      noSignal:
+        "Entanglement shares randomness, not messages. Quantum key distribution uses that randomness as a secret key; the message still travels normally.",
       /** The tool reveal: the crystals' rule, read aloud (numbers from the maths). */
       rule: (k: ClueTalk): string[] => [
         "Read the crystals' rule aloud: each crystal alone is a coin flip, whatever its setting.",

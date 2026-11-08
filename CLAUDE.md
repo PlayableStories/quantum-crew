@@ -334,6 +334,13 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - **Scripts:** session (clue 0 → 1 at the lull, live hints, the answer refused before a wave, double press,
     `answerPlanFor` rows, 85.4% saved); shots (`act3-huddle-start`, `act3-huddle`, `answer`, `act3-lull-answer`,
     `clues-sheet-2`, `use-these`).
+- **Event E3f (2026-11-08, lines for playing after a talk on quantum; copy and docs only):** `S.event.pod.lines[2]`
+  (entangled coins; the phone's tool reveal shows lines 1–3), `S.event.explain.strategy.firstSame(pct)` (TV, the
+  first Act III lull only, under the compact explainer; pct = `planRate` at one setting = 75%), and in both report
+  versions (solo `S.debrief.steps`, event `S.event.report.steps`) step 1's Clauser / Aspect / Zeilinger line and step
+  3's shared-randomness / quantum key distribution line. Remote: `talk.toolCoins`, `talk.firstLull(sameRate)` (first
+  lull, replaces the phase's first point), `talk.noSignal` (report step 3 only). Talk-specific lines live only in
+  `docs/facilitator.md` ("Pairing the game with a talk on quantum"). Tests: `src/screens/talkLines.test.tsx`.
 - **Debug jump (2026-11-08, user request; testing):** **D** on the TV opens `DebugJump` (a Sheet in `HostControls`):
   host commands `debugAct2` (Act II lull; clears ceiling, tool and clue) and `debugAct3` (Act III tool reveal, as
   Reveal ceiling + Unlock tool: clue 0). TV only (a remote gets `not-host`), refused in a wave or the debrief,
