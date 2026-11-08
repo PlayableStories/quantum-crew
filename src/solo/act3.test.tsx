@@ -1,17 +1,21 @@
-// Act III and the debrief after Phase 3 (server-rendered, no browser): tuning with your dials first, the crewmate's
-// as one locked line, the hint and the asset list behind Sheet buttons, and the debrief's numbers in the side column.
+// Act III and the debrief (server-rendered, no browser): the crystal plan screen (since S3: event mode's card, CORA's
+// fixed plan, the starting line, the live hint, the rule, engineering's answer after a failed wave), and the debrief's
+// numbers in the side column.
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
-import { BATCH_SIZE, ACT3_ROUND_MS } from "../config.ts";
+import { BATCH_SIZE, DEFAULT_TUNING, ROUND_MS } from "../config.ts";
 import { Credits } from "../screens/Credits.tsx";
+import { rateText } from "../components/CrystalPlan.tsx";
+import { OPTIMAL_TUNING, QUANTUM_LIMIT } from "../shared/chsh.ts";
+import { answerPlanFor, coraPlan, pairRateFor } from "../shared/crystalPlan.ts";
 import { S } from "../strings.ts";
 import { Solo } from "./Solo.tsx";
-import { soloStore } from "./soloStore.ts";
+import { dialsRate, roundMs, soloStore } from "./soloStore.ts";
 import { toHuddle } from "./testkit.ts";
 
 const s = () => soloStore.getState();
 const html = () => renderToString(<Solo />);
-const esc = (text: string) => text.replace(/'/g, "&#x27;");
+const esc = (text: string) => text.replace(/'/g, "&#x27;").replace(/"/g, "&quot;");
 /** The markup of the side column (between <aside> and the ActionBar). */
 const side = (markup: string) => markup.slice(markup.indexOf("<aside"), markup.indexOf('class="action-bar"'));
 
@@ -24,7 +28,7 @@ function playBatch(act: () => void) {
   for (let i = 0; i < BATCH_SIZE; i++) {
     s().advance(now);
     act();
-    now += ACT3_ROUND_MS + 1;
+    now += ROUND_MS + 1;
     s().timeout(now);
   }
   s().advance(now);
@@ -38,34 +42,71 @@ function toTuning() {
   s().openTool();
 }
 
-describe("tuning", () => {
+describe("the crystal plan screen", () => {
   beforeEach(() => s().reset());
 
-  it("your dials first and full size; the crewmate's as one locked line; rule chip; no meter", () => {
+  it("your plan card (two lists, no dials), CORA's plan, the computed starting line, the live hint, the fan; no meter", () => {
     toTuning();
     const markup = html();
-    const main = markup.slice(markup.indexOf('class="layout__main"'), markup.indexOf("<aside"));
-    expect(main).toContain(S.tuning.yours);
-    expect(main.match(/class="dial "/g)).toHaveLength(2);
-    expect(side(markup)).toContain(S.crew.dialsLine("22.5°", "157.5°"));
-    expect(side(markup)).toContain(S.crew.seeDials);
-    expect(markup).toContain("rule-chip");
-    expect(markup).not.toContain('class="panel rule"');
+    expect(markup.match(/<select/g)).toHaveLength(2);
+    expect(markup).not.toContain('class="dial ');
+    expect(markup).toContain(esc(S.event.crystalPlan.like));
+    expect(markup).toContain(esc(S.event.crystalPlan.coraSet));
+    const rate = rateText(pairRateFor("A", DEFAULT_TUNING, coraPlan("B")));
+    expect(rate).toBe("67.7%");
+    expect(markup).toContain(esc(S.tuning.startCora("22.5°", "157.5°", rate)));
+    expect(markup).toMatch(/CORA&#x27;s plan is fixed: (bring|move) your (COOL|HOT) setting/);
+    expect(markup).not.toContain(esc(S.event.clues.liveRate(rate))); // the rate is in the starting line
+    expect(markup).toContain(esc(S.tuning.nudge));
+    expect(markup).toContain('class="fan"');
+    expect(markup).toContain(`· ${S.event.fan.chance("85%", "same")}`);
+    expect(markup).toContain(`>${S.tuning.start}<small>`);
     expect(markup).not.toContain('role="meter"');
-    // The locked dials live in a closed Sheet.
-    expect(markup).not.toContain("dials--locked");
   });
 
-  it("the hint button appears only once a hint is available; the hint itself stays in the closed Sheet", () => {
+  it("the hint follows your setting, names only yours, and becomes Found it at 80%+", () => {
     toTuning();
-    const button = `>${S.tuning.hintButton}</button>`;
-    expect(html()).not.toContain(button);
-    playBatch(() => {}); // every round times out: a batch under 80%, always
+    s().setTuning({ greenDeg: 0, redDeg: 90 });
+    const moved = html();
+    expect(moved).toMatch(/Your weakest case: A (COOL|HOT) · B (COOL|HOT)/);
+    s().setTuning(OPTIMAL_TUNING.A);
+    const found = html();
+    expect(found).toContain(S.event.clues.foundIt("80%"));
+    expect(found).not.toContain("Your weakest case");
+  });
+
+  it("the rule in full on the first visit, then behind a chip", () => {
+    toTuning();
+    expect(html()).toContain(esc(S.tuning.followRule));
+    playBatch(() => {});
     s().nextBatch();
-    expect(s().phase).toBe("act3Plan");
-    const markup = html();
-    expect(markup).toContain(button);
-    expect(markup).not.toContain(esc(S.tuning.hint));
+    const later = html();
+    expect(later).not.toContain(esc(S.tuning.followRule));
+    expect(later).toContain(`>${S.event.crystalRule.chip}</button>`);
+  });
+
+  it("Ask engineering for the answer: only after a wave that didn't pass; Use these settings gives 85.4% and passes", () => {
+    toTuning();
+    const button = `>${S.tuning.answerButton}</button>`;
+    expect(html()).not.toContain(button);
+    playBatch(() => {}); // the default plan, 67.7%: the gate doesn't pass
+    s().nextBatch();
+    expect(html()).toContain(button);
+    s().useAnswer();
+    expect(s().tuning).toEqual(answerPlanFor("A"));
+    expect(dialsRate(s())).toBeCloseTo(QUANTUM_LIMIT, 12);
+    playBatch(() => {});
+    expect(s().act3Passed).toBe(true);
+    s().nextBatch();
+    expect(html()).toContain(button); // still offered (one wave failed), but the plan now passes
+  });
+
+  it("no button before a wave, and none after a passing first wave", () => {
+    toTuning();
+    s().setTuning(OPTIMAL_TUNING.A);
+    playBatch(() => {});
+    s().nextBatch();
+    expect(html()).not.toContain(`>${S.tuning.answerButton}</button>`);
   });
 });
 
@@ -74,9 +115,9 @@ describe("debrief", () => {
 
   function toDebrief() {
     toTuning();
-    playBatch(() => (s().measure(0), s().followCrystal(0)));
+    playBatch(() => s().followCrystal(0));
     s().nextBatch();
-    playBatch(() => (s().measure(0), s().followCrystal(0)));
+    playBatch(() => s().followCrystal(0));
     s().startDebrief();
     s().openReport(); // the resolution, then the incident report
     expect(s().phase).toBe("debrief");
@@ -110,5 +151,27 @@ describe("debrief", () => {
       expect(markup).not.toContain('class="assets"');
       expect(markup).not.toContain("station-stability-0");
     }
+  });
+});
+
+describe("solo's Act III wording", () => {
+  /** Every string (and string-returning function, called with sample args) under a key. */
+  const texts = (v: unknown): string[] =>
+    typeof v === "string"
+      ? [v]
+      : typeof v === "function"
+        ? [String((v as (...a: unknown[]) => unknown)("x", "y", "z"))]
+        : v && typeof v === "object"
+          ? Object.values(v).flatMap(texts)
+          : [];
+
+  it("no player-facing solo string in Act III, the resolution or the incident report says dial", () => {
+    const keys = [S.pod, S.tuning, S.batch, S.readout, S.crew, S.resolution, S.report, S.debrief];
+    for (const t of keys.flatMap(texts)) expect(t).not.toMatch(/\bdials?\b/i);
+  });
+
+  it("Act III rounds use solo's normal decision time", () => {
+    expect(roundMs(3)).toBe(ROUND_MS);
+    expect(roundMs(2)).toBe(ROUND_MS);
   });
 });

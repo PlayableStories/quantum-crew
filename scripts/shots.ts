@@ -284,21 +284,21 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   await click(S.ceiling.go);
   await shot("tool-reveal");
   await click(S.pod.go);
+  // The crystal plan screen (since S3): your card, CORA's, the starting line, the live hint, the fan, and the rule in
+  // full on the first visit.
   await shot("tuning");
-  await checkSheet(page, S.crew.seeDials, "tuning-crew-dials", shot);
-  if (saved) {
-    // HOT dial (the second) from 0° to 45°: the best setting against CORA's.
-    const right = page.getByRole("button", { name: S.dial.next });
-    await right.nth(1).click();
-    await right.nth(1).click();
+  // Phones: the first visit opens the crystals' rule as a sheet over the plan; close it to see the plan.
+  if (await page.locator("dialog[open]").count()) {
+    await page.keyboard.press("Escape");
+    await page.locator("dialog[open]").waitFor({ state: "hidden" });
+    await shot("tuning-plan");
   }
 
   for (let batch = 1; ; batch++) {
-    await click(S.tuning.start(0).replace(/ 0$/, "")); // "Ride out wave …": waves count on from Act II
-    // MEASURE (Space), then follow the crystal (Enter) or choose directly (A / C, sometimes against it).
+    await click(S.tuning.start);
+    // No MEASURE: the crystal has spoken when the round starts. Follow it (Enter) or choose directly (A / C).
     const act3Answer = async (i: number) => {
-      await page.keyboard.press("Space");
-      await page.locator(".crystal-says").waitFor();
+      await page.locator(".chain").waitFor();
       if (batch === 1 && i === 0) await shot("act3-crystal", ".pumpbtn");
       await page.keyboard.press(["Enter", "a", "c"][i % 3]!);
       return true;
@@ -307,10 +307,23 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
     if (await page.getByRole("button", { name: S.readout.debrief, exact: true }).isVisible()) break;
     if (batch >= 4) throw new Error("debrief never unlocked");
     await click(S.readout.again3);
-    // Back at tuning after a batch under 80%: engineering's hint is on offer.
+    // Back at the crystal plan after a wave under 80%: the rule behind its chip, engineering's answer on offer.
     if (batch === 1) {
       await shot("tuning-retune");
-      await checkSheet(page, S.tuning.hintButton, "tuning-hint", shot);
+      await checkSheet(page, S.event.crystalRule.chip, "tuning-rule", shot);
+      if (saved) {
+        // The saved run asks engineering for the answer and uses it (85.4%).
+        await page.getByRole("button", { name: S.tuning.answerButton }).click();
+        await page.locator("dialog[open]").waitFor();
+        await shot("tuning-answer", null, true);
+        await page.getByRole("button", { name: S.event.clues.useThese }).click();
+        // The button goes once the plan holds 80%+, so close the sheet with its ✕ (Escape needs focus inside).
+        await page.locator("dialog[open] .sheet__close").click();
+        await page.locator("dialog[open]").waitFor({ state: "hidden" });
+        await shot("tuning-answer-used");
+      } else {
+        await checkSheet(page, S.tuning.answerButton, "tuning-answer", shot);
+      }
     }
   }
   await shot("act3-readout");

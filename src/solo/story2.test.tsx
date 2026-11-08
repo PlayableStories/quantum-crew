@@ -2,7 +2,7 @@
 // the player used the crystal, the resolution (only after the gate or the last wave) and the incident report.
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
-import { ACT3_ROUND_MS, BATCH_SIZE } from "../config.ts";
+import { ROUND_MS, BATCH_SIZE } from "../config.ts";
 import { OPTIMAL_TUNING, scoreRound, winRate } from "../shared/chsh.ts";
 import { pct } from "../components/StabilityMeter.tsx";
 import { CLOCKWISE } from "../shared/fiction.ts";
@@ -23,7 +23,7 @@ function playBatch(act: () => void = () => {}) {
   for (let i = 0; i < BATCH_SIZE; i++) {
     s().advance(now);
     act();
-    now += ACT3_ROUND_MS + 1;
+    now += ROUND_MS + 1;
     s().timeout(now);
   }
   s().advance(now);
@@ -56,7 +56,7 @@ describe("storm waves", () => {
     s().revealTool();
     expect(html()).toContain(S.pod.kicker);
     s().openTool();
-    expect(html()).toContain(S.tuning.start(2)); // Act III's first wave is the storm's second
+    expect(html()).toContain(S.tuning.startSub(2)); // Act III's first wave is the storm's second
   });
 
   it("event mode's own keys are untouched by solo's (event mode counts storm waves too, since E1)", () => {

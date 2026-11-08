@@ -78,11 +78,11 @@ flowchart TD
   ceiling --> tool["The Entanglement Tool arrives"]
   tool --> tune
   subgraph act3 ["Act III: the tool"]
-    tune["Tune your dials<br/>(hint after a batch whose dials are under 80%)"] --> batch3["Batch: 12 rounds, MEASURE,<br/>the crystal suggests, you set the pump"]
-    batch3 --> read3["Readout: followed N of 12<br/>+ the dials' four cases (exact)"]
-    read3 -- "Retune and go again" --> tune
+    tune["Crystal plan: your settings, CORA's fixed plan, a live hint<br/>(engineering's answer after a wave under 80%)"] --> batch3["Wave: 12 rounds; the crystal is measured<br/>at round start, you set the pump"]
+    batch3 --> read3["Readout: followed N of 12<br/>+ each case's gap and chance (exact)"]
+    read3 -- "Change your crystal plan" --> tune
   end
-  read3 -- "The storm passes: the dials played are ≥ 80% exactly<br/>or after 2 Act III waves" --> resolution["Resolution: the radio comes back<br/>CORA: we were in step anyway"]
+  read3 -- "The storm passes: the crystal plan played is ≥ 80% exactly<br/>or after 2 Act III waves" --> resolution["Resolution: the radio comes back<br/>CORA: we were in step anyway"]
   resolution -- "Read the incident report" --> debrief["Incident report: 4 steps<br/>(the three numbers first)"]
   debrief --> credits["Credits → Play again / Home"]
 ```
@@ -140,38 +140,48 @@ flowchart TD
    board shows every square's **exact** rate, 75% or 25%: *"The best plan's true rate is exactly 75%: it loses one
    round in four. The station needs 80%. A batch above 75% is luck."* The crewmate: *"So it was never us."* Then: *"Then we need something that isn't a plan."*
 5. **Receive the tool.** During a lull a **supply pod** docks from engineering. The game changes look (a live
-   Entanglement Shader, two synced crystals). Engineering's note: the crystals don't carry messages, so the storm
-   can't jam them; measure one and it gives a direction, linked to its partner in a way no plan can copy. CORA:
+   Entanglement Shader, two synced crystals). Engineering's note: the crystals carry no messages, so the storm can't
+   jam them. *"Think of them as entangled coins: each lands at random, but a linked pair measured at the same setting
+   always lands the same way."* *"The crystals don't replace your plan. They change what a plan can say."* CORA:
    *"A crystal that tells me which way to turn. Fine. That's my new procedure."*
-6. **Tune your dials (Act III).** One dial for COOL and one for HOT, 8 stops each (0° to 157.5° in 22.5° steps),
-   starting at 0°/0°. Your own dials come first and large. CORA's are one line, *"CORA: COOL 22.5° · HOT
-   157.5°, locked"* (*"Mine sit where my crystal settles… Nobody knows yet if that's right."*), and **See dials**
-   shows them in full; you tune only your own. On the first visit a short note explains the tool, without giving
-   the answer: *"The closer your dial points to CORA's, the more often your crystals give the same direction. Need
-   your pumps to match? Point close to hers. Need them to differ? Point far away."* There's no live rate while you
-   turn the dials. After a batch whose dials didn't pass, **Ask engineering for a hint** opens: *"Try making your
-   two dials 45° apart, and your partner's offset by half that."*
+6. **Your crystal plan (Act III; event mode's crystal plan since S3, with CORA as the fixed partner).** The card has
+   the shape of an Act II plan (*"Like an Act II plan, but for each reading you choose a crystal setting, not a
+   direction."*): a setting for COOL and one for HOT, each picked from the 8 settings (0° to 157.5°), starting at
+   0°/0°. CORA's plan sits beside it, read-only (*"CORA has set her own plan."*: COOL 22.5°, HOT 157.5°; one line on
+   phones), and she says so on the radio. Below:
+   - the **starting line**, computed live: *"CORA measures at COOL 22.5°, HOT 157.5°. With your plan as it is, you
+     two hold 67.7%. Can you do better?"*;
+   - **clue 1** from the first visit: the live hint for your weakest case, which only ever moves your own setting
+     (*"CORA's plan is fixed: move your HOT setting further from hers."*), or **Found it: 80%+**, and the nudge (the
+     differ gap can never be bigger than the three match gaps added together);
+   - the read-only **fan**: the four settings, each case's gap and its chance;
+   - **the crystals' rule** (each crystal is a coin flip; linked crystals land the same way more often the closer
+     their settings, with the gap table; follow your crystal and your pumps match exactly when the crystals agree),
+     in full on the first visit, then behind a **Crystal rule** chip;
+   - after a wave that didn't pass, **Ask engineering for the answer**: the settings spread 22.5° apart, your row
+     (COOL 0°, HOT 45°) and **Use these settings**, which completes CORA's plan to 85.4%.
 
-   **Rounds** last 7 seconds. Your dial turns to the angle for your sensor; you tap **MEASURE** and the crystal
-   suggests a pump (*"Crystal says: ANTICLOCKWISE"*, that button highlighted). Then you set the pump yourself:
-   Enter follows the crystal, A / C choose directly, and you may go against it. Scoring uses the pump you set; CORA
-   always follows her crystal. The result shows the same way as in Act II.
+   **Lock in your crystal plan** starts the wave. **Rounds** last 5 seconds, like Act II. The station measures both
+   crystals at their planned settings when the round starts; you see *"Your sensor: HOT → your plan: 45° → the
+   crystal says ANTICLOCKWISE (this time; it could have been either)"*, with *"Follow your crystal: that's how your
+   plan works. Going against it is a guess."* Your only action is the pump: Enter follows the crystal, A / C choose
+   directly. Scoring uses the pump you set; CORA always follows her crystal.
 
-   | Your dials (COOL / HOT) | Win rate |
+   | Your crystal plan (COOL / HOT) | Win rate |
    |---|---|
-   | **0° / 45°** | **85.4%**, the only best setting of the 64 |
+   | **0° / 45°** | **85.4%**, the only best plan of the 64 |
    | 0°/22.5°, 0°/67.5°, 22.5°/45°, 157.5°/45° | 80.2%, which passes the gate |
    | 0° / 0° (the start) | 67.7% |
 
 7. **Readout and the gate.** The readout says *"You followed the crystal in N of 12 rounds."* CORA notices too:
    *"You went your own way a lot. I just did what my crystal said."* (more than 3 rounds against it) or *"You
    followed your crystal every round. So did I."* **If we both follow
-   the crystals** shows the four sensor combinations with both dial angles and the exact chance each holds, then
-   the dials' true rate. A luck line appears when the batch and the true rate disagree about passing 80%. The
-   **debrief unlocks after a batch played with dials whose exact rate is 80% or more**, whatever the batch scored.
-   Otherwise you ride out another wave (with the hint); after **2** Act III waves it opens either way, so every
+   the crystals** shows the four sensor combinations with each case's gap and the exact chance it holds, then
+   the crystal plan's true rate. A luck line appears when the batch and the true rate disagree about passing 80%. The
+   **debrief unlocks after a wave played with a crystal plan whose exact rate is 80% or more**, whatever the wave
+   scored. Otherwise you ride out another wave (with engineering's answer on offer); after **2** Act III waves it opens either way, so every
    player reaches the end. **The storm passes** first, and how it ends depends on whether you **saved the station**
-   (your dials passed the gate):
+   (your crystal plan passed the gate):
    - **Saved:** the station holds, calm and clear, and the radio comes back. CORA: *"I couldn't hear you the whole
      time. But we were in step anyway."*
    - **Not saved** (the report opened only because the last wave was played): engineering held the core together
@@ -181,18 +191,18 @@ flowchart TD
    **Read the incident report** opens the debrief.
 8. **The incident report (debrief).** The physics words appear only here, in four steps. The first opens with the
    three numbers side by side: Act I with the radio (100% possible, and your own Act I score), Act II's best plan
-   (75%) and Act III's crystals. If you saved the station, that's your dials' exact rate, with *"Talking made every
+   (75%) and Act III's crystals. If you saved the station, that's your crystal plan's exact rate, with *"Talking made every
    round winnable. No plan could replace talking. The crystals beat every plan without carrying a single
-   message."* If not, the report doesn't pretend: the card leads with the best dials (85.4%) and shows yours
-   underneath (e.g. "your dials, 67.7%"), and the summary says the best crystal settings beat every plan, while
-   yours didn't get there this time. Step 2's side-by-side views also show the best dials unless yours saved the
-   station.
+   message."* If not, the report doesn't pretend: the card leads with the best crystal plan (85.4%) and shows
+   yours underneath (e.g. "your crystal plan, 67.7%"), and the summary says the best crystal settings beat every plan, while
+   yours didn't get there this time. Step 2's side-by-side views also show the best crystal plan unless yours saved
+   the station.
    - **No plan beats 75%:** the fiction mapped back to the game (sensors = input bits, pumps = output bits, "match
      unless both HOT" = the CHSH rule), and the wall was a Bell inequality, with your Act II rate. Mixing plans at
      random only averages cells on the plan board, so it can never beat the best cell.
    - **Entanglement broke through:** the crystals agree with probability cos²(θA − θB), up to 85.4% (the Tsirelson
-     bound), with your dials' true rate. Two four-case views sit side by side: the best plan (three cases always
-     held, one always lost: 75%) and your dials (or the best dials, if yours didn't pass), where every case holds
+     bound), with your crystal plan's true rate. Two four-case views sit side by side: the best plan (three cases
+     always held, one always lost: 75%) and your crystal plan (or the best one, if yours didn't pass), where every case holds
      about 85%. *A plan has to give up one case completely; the crystals spread a small loss across all four.*
    - **But no messages:** each pump runs clockwise exactly 50% of the time whatever the partner's sensor read
      (computed exactly), so no message gets through (no-signalling). Your own 12-round numbers sit underneath, and
@@ -205,7 +215,7 @@ All player-facing text is in `src/strings.ts`; pacing and unlock rules are in `s
 
 ## How to play (solo)
 Open the app and choose **Solo demo**. It takes about 6 minutes on a phone or a laptop. On a laptop or a landscape
-iPad the type, plan board, dials and ring scale up with the screen, and every screen still fits without scrolling.
+iPad the type, plan board, crystal plan and ring scale up with the screen, and every screen still fits without scrolling.
 
 1. **Briefing.** You keep the night shift at Table A on Kestrel Station. CORA, the station's AI, is Table B. Each round
    your sensor reads **COOL** or **HOT**, and you set your pump **CLOCKWISE** or **ANTICLOCKWISE**. The station rule:
@@ -221,15 +231,14 @@ iPad the type, plan board, dials and ring scale up with the screen, and every sc
    pair beats 75%.
 4. **Engineering report.** After the first batch you can call engineering (or try more plans first): they fill in
    every pair you didn't try, and none beats 75%.
-5. **Act III: the Entanglement Tool.** You get two dials, one for COOL and one for HOT; your crewmate's are locked
-   where they set them (**See dials**). In each round, tap **MEASURE**: the crystal suggests a pump, and you set it
-   (follow it or not). Find dials whose exact rate passes 80%; after a batch with dials that don't, you can ask
-   engineering for a hint, and after two batches the debrief opens either way.
+5. **Act III: the Entanglement Tool.** You plan a crystal setting for COOL and one for HOT; CORA's plan is fixed. A
+   live hint points at your weakest case. In each round the station has already measured your crystal: it suggests
+   a pump, and you set it (follow it or not). Find a crystal plan whose exact rate passes 80%; after a wave that
+   doesn't, you can ask engineering for the answer, and after two waves the debrief opens either way.
 6. **The storm passes, then the incident report.** You learn the physics and see your own numbers, starting with
    the three that tell the story (100%, 75%, ≈ 85%), then the credits.
 
-Keyboard: **A / ←** = ANTICLOCKWISE, **C / →** = CLOCKWISE. Act III: **Space / Enter** = MEASURE, then **Enter**
-follows the crystal. On a round's result, **Space / Enter** = Next round.
+Keyboard: **A / ←** = ANTICLOCKWISE, **C / →** = CLOCKWISE. Act III: **Enter** follows the crystal. On a round's result, **Space / Enter** = Next round.
 
 ## How to play (event)
 Two tables of players, one phone each, and a TV or projector. A facilitator runs the session from the TV.
@@ -356,8 +365,6 @@ playtest: [`docs/playtest.md`](docs/playtest.md).
 From the lobby, **Use the lull** or **Start the wave** still skip the night shift and go straight to Act II (for a
 short session).
 
-**Follow-ups:** bring solo's Act III in line with event mode's (a crystal plan card in place of the dials, the
-crystals' rule, the room measuring at round start with no MEASURE, a clue ladder in place of the hint).
 
 ## The physics
 This is the **CHSH game**, a Bell test. Two players who can't talk each get a random bit (the sensor: COOL = 0,
@@ -467,10 +474,11 @@ saved); the debrief. CI runs it after `pnpm smoke`.
 landing, both intro steps, the huddle (first view, after picking a plan from the keyboard, and with the rule sheet
 open), a live round in Acts II and III with the first result of each outcome (circulating, heat carried off, purge,
 pressure spike, overheat, too slow; the last Act II round is left to time out; results move on by Next round, Enter
-and the auto-advance), both readouts (Act II also with the four cases open), the engineering report, tool reveal, tuning (with the crewmate's dials sheet, and
-again after a batch under 80% with the hint sheet), the crystal's suggestion in Act III, the resolution and every debrief step on the not-saved path (the dials are never
-tuned), then a second short run with the dials tuned to 0° / 45° for the saved resolution and the saved report's
-first step and credits (with the asset-list sheet).
+and the auto-advance), both readouts (Act II also with the four cases open), the engineering report, tool reveal, the crystal plan screen (first visit with the
+rule; again after a wave under 80% with the rule and engineering's-answer sheets), the crystal's suggestion in an Act III round, the resolution and every debrief step on the not-saved path (the
+plan stays at 0° / 0°), then a second short run that asks engineering for the answer and uses it ("Use these
+settings", 0° / 45°) for the saved resolution and the saved report's first step and credits (with the asset-list
+sheet).
 
 ```sh
 pnpm exec playwright install chromium   # once (or set SHOTS_CHANNEL=chrome to use your installed Chrome)

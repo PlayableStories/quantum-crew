@@ -1,104 +1,132 @@
-// Act III strategy phase (comms open): one dial per sensor reading. Your own dials come first and large. The
-// crewmate's dials are locked at their setting (the optimal Table B one): one reference line here, the full locked
-// dials in a Sheet. Engineering's hint, once available, also opens in a Sheet.
-import { useCallback, useState } from "react";
-import { AiBadge, CrewName } from "../components/AiBadge.tsx";
-import { Dial, formatDeg } from "../components/Dial.tsx";
-import { RuleChip } from "../components/RuleChip.tsx";
+// Solo Act III, the crystal plan screen (comms open): event mode's crystal plan, with CORA as the fixed partner at
+// Table B and no facilitator. Your plan card (two settings from the list), CORA's read-only plan, the starting line
+// (her settings and what you two hold with your plan as it is), clue 1 (the live hint for your weakest case, which
+// only ever moves your own setting, and the nudge), the fan with each case's chance, the crystals' rule (in full on
+// the first visit, then behind a chip) and, after a wave that didn't pass, engineering's answer on request.
+import { useCallback, useEffect, useState } from "react";
+import { AiBadge } from "../components/AiBadge.tsx";
+import {
+  AnswerRow,
+  ClueHint,
+  CrystalFan,
+  CrystalPlanCard,
+  CrystalRuleTable,
+  answerText,
+  planLine,
+  rateText,
+} from "../components/CrystalPlan.tsx";
+import { formatDeg } from "../components/Dial.tsx";
+import { Rule } from "../components/Rule.tsx";
 import { ScreenLayout } from "../components/ScreenLayout.tsx";
-import { SensorLight } from "../components/SensorLight.tsx";
 import { Sheet } from "../components/Sheet.tsx";
-import { OPTIMAL_TUNING } from "../shared/chsh.ts";
-import { COOL, HOT } from "../shared/fiction.ts";
+import { answerPlanFor, coraPlan, pairRateFor } from "../shared/crystalPlan.ts";
 import { S } from "../strings.ts";
 import { CrewRadio } from "./CrewRadio.tsx";
-import { hintAvailable, nextWave, useSolo } from "./soloStore.ts";
+import { answerAvailable, nextWave, useSolo } from "./soloStore.ts";
+
+/** You are always Table A beside CORA: the hint names only your own setting. */
+const YOU = { table: "A", name: "" } as const;
 
 export function Tuning() {
   const s = useSolo((st) => st);
-  const [sheet, setSheet] = useState<"dials" | "hint" | "explain" | null>(null);
-  // How the tool works: shown in full on the first visit, then behind a button.
-  const firstVisit = s.act3Batches === 0;
+  const [sheet, setSheet] = useState<"station" | "rule" | "answer" | null>(null);
   const close = useCallback(() => setSheet(null), []);
-  const crew = OPTIMAL_TUNING.B;
-  const openHint = () => {
-    s.showHint();
-    setSheet("hint");
+  // The crystals' rule: on screen on the first visit (beside the plan; the full rule with its 180° note is in the
+  // chip's sheet), then behind the chip. On phones there's no room beside the plan, so the first visit opens it over
+  // the screen instead (once).
+  const firstVisit = s.act3Batches === 0;
+  useEffect(() => {
+    if (firstVisit && typeof matchMedia === "function" && matchMedia("(max-width: 599px)").matches) setSheet("rule");
+  }, [firstVisit]);
+  const cora = coraPlan("B");
+  const plans = { a: s.tuning, b: cora };
+  const rate = pairRateFor("A", s.tuning, cora);
+  const openAnswer = () => {
+    s.showAnswer();
+    setSheet("answer");
   };
+  const rule = <CrystalRuleTable follow={S.tuning.followRule} />;
   return (
     <ScreenLayout
+      className="crystal-screen"
       header={<p className="kicker">{S.tuning.kicker}</p>}
       side={
         <>
-          <CrewRadio />
-          <div className="crew-dials">
-            <p className="crew-dials__line">
-              <CrewName />
-              {S.crew.dialsLine(formatDeg(crew.greenDeg), formatDeg(crew.redDeg))}
-            </p>
-            <button className="btn btn--ghost crew-dials__btn" aria-haspopup="dialog" onClick={() => setSheet("dials")}>
-              {S.crew.seeDials}
-            </button>
+          <div className="crystal-screen__radio">
+            <CrewRadio />
           </div>
-          {!firstVisit && (
-            <button className="btn btn--ghost" aria-haspopup="dialog" onClick={() => setSheet("explain")}>
-              {S.tuning.explainHead}
-            </button>
+          {firstVisit && (
+            <div className="panel stack crystal-screen__rule">
+              <p className="kicker">{S.event.crystalRule.head}</p>
+              {/* Beside the plan: the three lines and the table; the 180° note is in the chip's sheet. */}
+              <CrystalRuleTable follow={S.tuning.followRule} fold={false} />
+            </div>
           )}
-          {hintAvailable(s) && (
-            <button className="btn btn--ghost" aria-haspopup="dialog" onClick={openHint}>
-              {S.tuning.hintButton}
+          {/* The station rule, the crystals' rule (after the first visit; on phones always) and engineering's answer. */}
+          <div className="row chips crystal-screen__chips">
+            <button className="btn btn--ghost chip" aria-haspopup="dialog" onClick={() => setSheet("station")}>
+              {S.rule.head}
             </button>
-          )}
-          <RuleChip />
+            <button className="btn btn--ghost chip" aria-haspopup="dialog" onClick={() => setSheet("rule")}>
+              {S.event.crystalRule.chip}
+            </button>
+            {answerAvailable(s) && (
+              <button className="btn btn--ghost chip chip--fresh" aria-haspopup="dialog" onClick={openAnswer}>
+                {S.tuning.answerButton}
+              </button>
+            )}
+          </div>
         </>
       }
       actions={
         <button className="btn btn--primary" onClick={s.beginBatch}>
-          {S.tuning.start(nextWave(s))}
+          {S.tuning.start}
+          <small>{S.tuning.startSub(nextWave(s))}</small>
         </button>
       }
     >
       <h1 className="hide-on-phone">{S.tuning.title}</h1>
-      {firstVisit && (
-        <div className="panel explain">
-          <p className="kicker">{S.tuning.explainHead}</p>
-          <p>{S.tuning.explain}</p>
-        </div>
-      )}
-      <div className="panel stack">
-        <p className="kicker">{S.tuning.yours}</p>
-        <div className="row">
-          <Dial
-            value={s.tuning.greenDeg}
-            onChange={(d) => s.setDial(COOL, d)}
-            label={<SensorLight light={COOL} small />}
-          />
-          <Dial value={s.tuning.redDeg} onChange={(d) => s.setDial(HOT, d)} label={<SensorLight light={HOT} small />} />
-        </div>
+      <div className="crystal-screen__cards">
+        <CrystalPlanCard title={S.event.crystalPlan.head} value={s.tuning} onChange={s.setTuning} like />
+        {/* CORA's plan: a read-only card beside yours on wide screens, one line on phones. */}
+        <CrystalPlanCard
+          title={S.tuning.coraHead}
+          value={cora}
+          cora
+          lead={false}
+          note={S.event.crystalPlan.coraSet}
+          className="only-split"
+        />
       </div>
+      <p className="partner-plan only-stacked" role="status">
+        <span className="kicker">
+          {S.tuning.coraHead}
+          <AiBadge />
+        </span>{" "}
+        <strong>{planLine(cora)}</strong>
+        <span className="muted small"> · {S.event.crystalPlan.coraSet}</span>
+      </p>
+      <p className="start-line">{S.tuning.startCora(formatDeg(cora.greenDeg), formatDeg(cora.redDeg), rateText(rate))}</p>
+      {/* Clue 1, from the first visit: the live hint (your own setting only; "Found it" at 80%+) and the nudge. */}
+      <ClueHint plans={plans} human={YOU} rate={false} />
+      <p className="muted small crystal-screen__nudge">{S.tuning.nudge}</p>
+      <CrystalFan a={s.tuning} b={cora} chances />
 
-      <Sheet open={sheet === "dials"} onClose={close} label={S.crew.dialsHead(S.crew.name)}>
-        <div className="panel stack dials--locked">
-          <p className="kicker">
-            {S.crew.dialsHead(S.crew.name)} <AiBadge />
-          </p>
-          <div className="row">
-            <Dial value={crew.greenDeg} small label={<SensorLight light={COOL} small />} />
-            <Dial value={crew.redDeg} small label={<SensorLight light={HOT} small />} />
-          </div>
+      <Sheet open={sheet === "station"} onClose={close} label={S.rule.head}>
+        <Rule diagram />
+      </Sheet>
+      <Sheet open={sheet === "rule"} onClose={close} label={S.event.crystalRule.head}>
+        <div className="stack">
+          <p className="kicker">{S.event.crystalRule.head}</p>
+          {rule}
         </div>
       </Sheet>
-      <Sheet open={sheet === "explain"} onClose={close} label={S.tuning.explainHead}>
-        <div className="panel stack">
-          <p className="kicker">{S.tuning.explainHead}</p>
-          <p>{S.tuning.explain}</p>
-        </div>
-      </Sheet>
-      <Sheet open={sheet === "hint"} onClose={close} label={S.tuning.hintButton}>
-        <div className="panel stack">
-          <p className="kicker">{S.tuning.hintButton}</p>
-          <p role="status">{S.tuning.hint}</p>
+      <Sheet open={sheet === "answer"} onClose={close} label={S.tuning.answerHead}>
+        <div className="stack clues__answer">
+          <p className="kicker">{S.tuning.answerHead}</p>
+          <p>{answerText()}</p>
+          <AnswerRow table="A" plans={plans} onUse={() => s.useAnswer()} />
+          <CrystalFan a={answerPlanFor("A")} b={cora} chances />
         </div>
       </Sheet>
     </ScreenLayout>

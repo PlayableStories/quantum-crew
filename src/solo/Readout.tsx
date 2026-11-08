@@ -3,13 +3,14 @@
 // the plan perfectly"), with a luck line when the batch passed 80% but the plan can't; in Act III a 1,000-round test.
 import { useEffect, useState } from "react";
 import { CrystalCases } from "../components/CrystalCases.tsx";
+import { coraPlan } from "../shared/crystalPlan.ts";
 import { FourCases } from "../components/FourCases.tsx";
 import { playSfx } from "../audio/sfx.ts";
 import { ScreenLayout } from "../components/ScreenLayout.tsx";
 import { StabilityMeter, pct } from "../components/StabilityMeter.tsx";
 import { StationVisual } from "../components/StationVisual.tsx";
 import { BATCH_SIZE } from "../config.ts";
-import { OPTIMAL_TUNING, SURVIVAL_THRESHOLD, classicalExpectedWinRate } from "../shared/chsh.ts";
+import { SURVIVAL_THRESHOLD, classicalExpectedWinRate } from "../shared/chsh.ts";
 import { S } from "../strings.ts";
 import { CrewRadio } from "./CrewRadio.tsx";
 import {
@@ -91,7 +92,7 @@ export function Readout() {
             (act === 2 ? (
               <FourCases plan={s.plan} crewPlan={s.crewPlan} />
             ) : (
-              <CrystalCases tuning={s.tuning} crew={OPTIMAL_TUNING.B} />
+              <CrystalCases tuning={s.tuning} crew={coraPlan("B")} gaps />
             ))}
         </div>
       }

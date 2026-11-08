@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { ACT2_BATCHES, BATCH_SIZE, DEBRIEF_AFTER_BATCHES, HINT_AFTER_FAILED_BATCHES, ROUND_MS, ACT3_ROUND_MS } from "../config.ts";
+import { ACT2_BATCHES, BATCH_SIZE, DEBRIEF_AFTER_BATCHES, ANSWER_AFTER_FAILED_BATCHES, ROUND_MS } from "../config.ts";
 import { CLOSED, OPEN, OPTIMAL_TUNING, classicalExpectedWinRate, winRate } from "../shared/chsh.ts";
-import { canReportCeiling, createSoloStore, debriefAvailable, dialsRate, displayedStability, hintAvailable } from "./soloStore.ts";
+import { answerPlanFor } from "../shared/crystalPlan.ts";
+import { canReportCeiling, createSoloStore, debriefAvailable, dialsRate, displayedStability, answerAvailable } from "./soloStore.ts";
 import { toHuddle } from "./testkit.ts";
 
 type Store = ReturnType<typeof createSoloStore>;
@@ -13,7 +14,7 @@ function playBatch(store: Store, act: (s: Store) => void) {
   for (let i = 0; i < BATCH_SIZE; i++) {
     store.getState().advance(now);
     act(store);
-    now += ACT3_ROUND_MS + 1;
+    now += ROUND_MS + 1;
     store.getState().timeout(now);
   }
   store.getState().advance(now); // ends the batch
@@ -51,7 +52,6 @@ describe("solo flow", () => {
     s().setDial(0, OPTIMAL_TUNING.A.greenDeg);
     s().setDial(1, OPTIMAL_TUNING.A.redDeg);
     playBatch(store, (st) => {
-      st.getState().measure(0);
       st.getState().followCrystal(0);
     });
     expect(s().phase).toBe("act3Readout");
@@ -105,7 +105,7 @@ describe("solo flow", () => {
     expect(s().round!.result!.a).toBe(CLOSED);
   });
 
-  it("unlocks the hint after failed Act III batches and the debrief after enough batches", () => {
+  it("offers engineering's answer after failed Act III waves, and the debrief after enough waves", () => {
     const store = createSoloStore(5);
     const s = () => store.getState();
     toHuddle(s);
@@ -118,13 +118,15 @@ describe("solo flow", () => {
     s().revealTool();
     s().openTool();
     for (let b = 0; b < DEBRIEF_AFTER_BATCHES; b++) {
-      expect(hintAvailable(s())).toBe(b >= HINT_AFTER_FAILED_BATCHES);
+      expect(answerAvailable(s())).toBe(b >= ANSWER_AFTER_FAILED_BATCHES);
       playBatch(store, () => {}); // timeouts: every batch fails
       s().nextBatch();
     }
-    expect(hintAvailable(s())).toBe(true);
-    s().showHint();
-    expect(s().hintShown).toBe(true);
+    expect(answerAvailable(s())).toBe(true);
+    s().showAnswer();
+    expect(s().answerShown).toBe(true);
+    s().useAnswer();
+    expect(s().tuning).toEqual(answerPlanFor("A"));
     expect(debriefAvailable(s())).toBe(true);
   });
 });
