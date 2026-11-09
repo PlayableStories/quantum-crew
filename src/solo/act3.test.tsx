@@ -6,8 +6,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { BATCH_SIZE, DEFAULT_TUNING, ROUND_MS } from "../config.ts";
 import { Credits } from "../screens/Credits.tsx";
 import { rateText } from "../components/CrystalPlan.tsx";
-import { OPTIMAL_TUNING, QUANTUM_LIMIT } from "../shared/chsh.ts";
-import { answerPlanFor, coraPlan, pairRateFor } from "../shared/crystalPlan.ts";
+import { CLASSICAL_LIMIT, OPTIMAL_TUNING, QUANTUM_LIMIT } from "../shared/chsh.ts";
+import { answerPlanFor, coraPlan, pairRateFor, planRate } from "../shared/crystalPlan.ts";
 import { S } from "../strings.ts";
 import { Solo } from "./Solo.tsx";
 import { dialsRate, roundMs, soloStore } from "./soloStore.ts";
@@ -135,8 +135,9 @@ describe("debrief", () => {
   it("who tested it (step 1) and no messages but a shared key (step 3), as in event mode", () => {
     toDebrief();
     const esc = (t: string) => t.replace(/'/g, "&#x27;");
-    expect(html()).toContain(esc(S.debrief.steps[0]!.body[2]!));
-    expect(S.debrief.steps[0]!.body[2]).toMatch(/^John Clauser, the C in CHSH/);
+    const clauser = S.debrief.steps[0]!.body.find((l) => l.startsWith("John Clauser, the C in CHSH"));
+    expect(clauser).toBeDefined();
+    expect(html()).toContain(esc(clauser!));
     s().setDebriefStep(2);
     expect(html()).toContain(esc(S.debrief.steps[2]!.body[2]!));
     expect(S.debrief.steps[2]!.body[2]).toMatch(/quantum key distribution/);
@@ -151,6 +152,28 @@ describe("debrief", () => {
       expect(markup).not.toContain('class="assets"');
       expect(markup).not.toContain("station-stability-0");
     }
+  });
+});
+
+describe("the incident report's physics lines (S4)", () => {
+  it("step 1 names local hidden variables; step 2 says the crystals (not the pumps) follow cos², and same settings score the classical limit", () => {
+    const one = S.debrief.steps[0]!.body;
+    const bell = one.findIndex((l) => l.startsWith("The wall you hit in Act II is a Bell inequality"));
+    expect(one[bell + 1]).toBe("Physicists call a plan agreed in advance a local hidden-variable theory.");
+    const two = S.debrief.steps[1]!.body.join(" ");
+    expect(two).toContain("your two crystals give the same direction with probability cos²(θA − θB)");
+    expect(two).not.toMatch(/pumps agree/);
+    expect(two).not.toMatch(/Nobel/); // step 1 covers it
+    const same = S.debrief.steps[1]!.body.find((l) => l.startsWith("Crystals measured at the same setting"))!;
+    expect(same).toContain(`exactly ${CLASSICAL_LIMIT * 100}%`);
+    for (const d of [0, 45, 157.5]) expect(planRate({ greenDeg: d, redDeg: d }, { greenDeg: d, redDeg: d })).toBeCloseTo(CLASSICAL_LIMIT, 12);
+    const tsirelson = S.debrief.steps[1]!.body.findIndex((l) => l.includes("Tsirelson"));
+    expect(S.debrief.steps[1]!.body[tsirelson - 1]).toBe(same);
+  });
+
+  it("CORA's Act II opening fits the plan boxes (no squares to tap)", () => {
+    expect(S.crew.opening).not.toMatch(/square/);
+    expect(S.crew.opening).toContain("pick both our plans");
   });
 });
 

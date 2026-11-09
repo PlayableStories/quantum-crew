@@ -215,7 +215,7 @@ flowchart TD
 All player-facing text is in `src/strings.ts`; pacing and unlock rules are in `src/config.ts`.
 
 ## How to play (solo)
-Open the app and choose **Solo demo**. It takes about 6 minutes on a phone or a laptop. On a laptop or a landscape
+Open the app and choose **Solo demo**. It takes about 10 minutes on a phone or a laptop (7 if you skim and pass Act III first time). On a laptop or a landscape
 iPad the type, plan board, crystal plan and ring scale up with the screen, and every screen still fits without scrolling.
 
 1. **Briefing.** You keep the night shift at Table A on Kestrel Station. CORA, the station's AI, is Table B. Each round

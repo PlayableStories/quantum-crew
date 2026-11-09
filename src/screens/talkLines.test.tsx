@@ -63,8 +63,9 @@ describe("the incident report: who tested it, and no messages but a shared key",
 
   it("step 1 names Clauser, Aspect and Zeilinger; step 3 explains shared randomness and key distribution", () => {
     const one = renderToString(<TvDebrief state={report(0)} onCommand={() => {}} />);
-    expect(one).toContain(esc(S.event.report.steps[0]!.body[2]!));
-    expect(S.event.report.steps[0]!.body[2]).toBe(S.debrief.steps[0]!.body[2]); // the same line in solo
+    const clauser = (body: readonly string[]) => body.find((l) => l.startsWith("John Clauser"));
+    expect(one).toContain(esc(clauser(S.event.report.steps[0]!.body)!));
+    expect(clauser(S.event.report.steps[0]!.body)).toBe(clauser(S.debrief.steps[0]!.body)); // the same line in solo
     const three = renderToString(<TvDebrief state={report(2)} onCommand={() => {}} />);
     expect(three).toContain(esc(S.event.report.steps[2]!.body[2]!));
     expect(S.event.report.steps[2]!.body[2]).toBe(S.debrief.steps[2]!.body[2]);
