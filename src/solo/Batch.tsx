@@ -6,6 +6,7 @@
 // Keyboard: A / ← = ANTICLOCKWISE, C / → = CLOCKWISE. Act III: Enter follows the crystal. On a result, Space / Enter =
 // Next round.
 import { useEffect } from "react";
+import { roundCue } from "../audio/cues.ts";
 import { playSfx } from "../audio/sfx.ts";
 import { Countdown } from "../components/Countdown.tsx";
 import { CrystalChain } from "../components/CrystalPlan.tsx";
@@ -37,8 +38,14 @@ export function Batch() {
     return () => clearTimeout(t);
   }, [round, advance, timeout]);
 
+  // Your round's sounds (src/audio/cues.ts): the tap of your pump, then held or lost (a too-slow round is just lost).
   useEffect(() => {
-    if (round?.result?.win) playSfx("win", "solo");
+    const result = round?.result;
+    if (!result) return;
+    if (result.a === null) return playSfx(roundCue(result), "solo");
+    playSfx("tap", "solo");
+    const t = setTimeout(() => playSfx(roundCue(result), "solo"), 140);
+    return () => clearTimeout(t);
   }, [round?.result]);
 
   useEffect(() => {

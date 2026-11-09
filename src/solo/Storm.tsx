@@ -1,7 +1,8 @@
 // The storm: after Act I's last round, CORA's voice breaks into static mid-sentence (step 1), then the station log
 // explains (step 2): a solar storm arriving in waves, which the radio won't survive. The way on is the first lull, the
 // Act II huddle. Two steps in the screen's own state, each moved on by a button (nothing runs away from the player).
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { playSfx } from "../audio/sfx.ts";
 import { ScreenLayout } from "../components/ScreenLayout.tsx";
 import { StationVisual } from "../components/StationVisual.tsx";
 import { S } from "../strings.ts";
@@ -11,6 +12,7 @@ import { displayedStability, useSolo } from "./soloStore.ts";
 export function Storm() {
   const s = useSolo((st) => st);
   const [step, setStep] = useState(0);
+  useEffect(() => playSfx("storm", "solo"), []); // the storm hits
   const dots = (
     <div className="steps" aria-hidden="true">
       {[0, 1].map((i) => (

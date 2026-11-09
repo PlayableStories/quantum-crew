@@ -1,9 +1,13 @@
-// Sound effects: the Atlas sound files when present (sfx-alarm / sfx-win / sfx-reveal in src/assets/atlas/),
-// else a short Web Audio stand-in. Muting is remembered per device and per context (solo, TV, phone).
+// Sound effects: the Atlas sound files when present (sfx-<name> in src/assets/atlas/), else a short Web Audio
+// stand-in. Muting is remembered per device and per context (solo, TV, phone). Who plays which sound: src/audio/cues.ts
+// (solo and the TV carry the game; a phone only its own player's tap, win and lost).
 import { create } from "zustand";
 import { atlasUrl } from "../assets/atlas/manifest.ts";
 
-export type Sfx = "alarm" | "win" | "reveal";
+export type Sfx = "alarm" | "win" | "lost" | "tap" | "storm" | "reveal" | "saved";
+
+/** Each sound's loudness (file or stand-in): the tap is quiet (every press), the room's big moments a little louder. */
+const VOLUME: Record<Sfx, number> = { tap: 0.35, win: 0.8, lost: 0.7, alarm: 0.6, storm: 0.85, reveal: 0.8, saved: 0.85 };
 /** Where the sound plays. Defaults: on for solo and the TV (spec), off on event phones so a room isn't a chorus. */
 export type SoundContext = "solo" | "tv" | "phone";
 
@@ -61,7 +65,7 @@ export function playSfx(name: Sfx, where: SoundContext) {
   const url = atlasUrl(`sfx-${name}`);
   if (url) {
     const audio = new Audio(url);
-    audio.volume = name === "alarm" ? 0.6 : 0.8;
+    audio.volume = VOLUME[name];
     void audio.play().catch(() => {});
     return;
   }
@@ -83,13 +87,48 @@ function tone(c: AudioContext, freq: number, start: number, dur: number, type: O
   osc.stop(start + dur + 0.02);
 }
 
+/** A burst of low-passed noise (the storm), fading out. */
+function noise(c: AudioContext, start: number, dur: number, gain: number) {
+  const buffer = c.createBuffer(1, Math.floor(c.sampleRate * dur), c.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const src = c.createBufferSource();
+  src.buffer = buffer;
+  const filter = c.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(900, start);
+  filter.frequency.exponentialRampToValueAtTime(200, start + dur);
+  const g = c.createGain();
+  g.gain.setValueAtTime(0, start);
+  g.gain.linearRampToValueAtTime(gain, start + 0.08);
+  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  src.connect(filter).connect(g).connect(c.destination);
+  src.start(start);
+  src.stop(start + dur + 0.02);
+}
+
 function synth(name: Sfx) {
   unlockAudio();
   if (!ctx || ctx.state !== "running") return;
   const t = ctx.currentTime;
+  const v = VOLUME[name];
   if (name === "win") {
     tone(ctx, 660, t, 0.12, "sine", 0.18);
     tone(ctx, 990, t + 0.09, 0.2, "sine", 0.18);
+  } else if (name === "lost") {
+    // two falling low tones
+    tone(ctx, 330, t, 0.16, "triangle", 0.2 * v);
+    tone(ctx, 220, t + 0.14, 0.28, "triangle", 0.2 * v);
+  } else if (name === "tap") {
+    // a short soft click
+    tone(ctx, 1200, t, 0.04, "sine", 0.12 * v);
+  } else if (name === "storm") {
+    noise(ctx, t, 1.1, 0.25 * v);
+    tone(ctx, 55, t, 1.2, "sawtooth", 0.06 * v);
+    tone(ctx, 41, t + 0.1, 1.2, "sine", 0.12 * v);
+  } else if (name === "saved") {
+    // a calm rising major chord
+    [392, 494, 587, 784].forEach((f, i) => tone(ctx!, f, t + i * 0.16, 1.1, "sine", 0.1 * v));
   } else if (name === "alarm") {
     for (let i = 0; i < 3; i++) {
       tone(ctx, 880, t + i * 0.3, 0.14, "square", 0.06);

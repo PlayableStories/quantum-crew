@@ -2,9 +2,10 @@
 // countdown; Act III: the setting the plan chose and what the crystal said). Everything else is on the TV.
 // Act I (the night shift): the radio works, so the phone also shows the partner's reading and pump, and the pump can
 // change until the round ends. The storm breaks the radio up mid-line.
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AiBadge } from "../components/AiBadge.tsx";
 import { Countdown } from "../components/Countdown.tsx";
+import { phoneCues } from "../audio/cues.ts";
 import { playSfx } from "../audio/sfx.ts";
 import { CrewIcon } from "../components/CrewIcon.tsx";
 import { Crystals } from "../components/EntanglementSurface.tsx";
@@ -160,14 +161,18 @@ function InRoom() {
     return () => window.removeEventListener("keydown", onKey);
   }, [answer, followCrystal]);
 
-  // Phone sounds (off by default in a room; see audio/sfx.ts).
+  // Phone sounds (off by default in a room): only this player's own action and its consequence (src/audio/cues.ts):
+  // the tap of their pump, then their own pair's result. The room's moments (the storm, the tool…) are the TV's.
+  const lastFlash = useRef<string | null>(null);
   useEffect(() => {
-    if (flash?.win) playSfx("win", "phone");
+    for (const cue of phoneCues(lastFlash.current, flash)) playSfx(cue, "phone");
+    if (flash) lastFlash.current = flash.roundId;
   }, [flash]);
-  const phase = state?.phase;
+  const answered = round?.answered ?? null;
+  const roundId = round?.roundId ?? null;
   useEffect(() => {
-    if (phase === "tool") playSfx("reveal", "phone");
-  }, [phase]);
+    if (answered !== null) playSfx("tap", "phone");
+  }, [answered, roundId]);
 
   if (!state || !seat) return null;
 
