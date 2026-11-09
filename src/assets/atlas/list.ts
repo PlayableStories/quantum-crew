@@ -72,13 +72,21 @@ export const ATLAS_ASSETS: AtlasAsset[] = [
     placeholder: "css",
     use: "The Entanglement Tool's crystals, the reveal and the Act III background, rendered live from the engine's shader",
   },
-  ...(["alarm", "win", "reveal"] as const).map(
+  ...(["alarm", "win", "lost", "tap", "storm", "reveal", "saved"] as const).map(
     (name): AtlasAsset => ({
       key: `sfx-${name}`,
       file: `sfx-${name}.mp3`,
       engine: "Atlas sound engine (to confirm)",
       placeholder: "synth",
-      use: { alarm: "Alarm below 80% stability", win: "Round won", reveal: "Tool reveal" }[name],
+      use: {
+        alarm: "Alarm below 80% stability (solo, TV)",
+        win: "Round held (solo; TV when half the pairs held; a phone's own pair)",
+        lost: "Round lost (solo; a phone's own pair)",
+        tap: "Your pump set (solo, phone)",
+        storm: "The storm hits (solo, TV)",
+        reveal: "Tool reveal (solo, TV)",
+        saved: "The storm passes, station saved (solo, TV)",
+      }[name],
     }),
   ),
 ];

@@ -2,6 +2,8 @@
 // Saved (the gate passed): the station is calm and clear. Not saved (only the last wave was played): engineering held
 // the core with emergency measures and the station is damaged. Either way the storm clears from the art, CORA speaks,
 // and the incident report (the debrief) follows.
+import { useEffect } from "react";
+import { playSfx } from "../audio/sfx.ts";
 import { ScreenLayout } from "../components/ScreenLayout.tsx";
 import { StationVisual } from "../components/StationVisual.tsx";
 import { S } from "../strings.ts";
@@ -11,6 +13,9 @@ import { stationSaved, useSolo } from "./soloStore.ts";
 export function Resolution() {
   const openReport = useSolo((s) => s.openReport);
   const saved = useSolo(stationSaved);
+  useEffect(() => {
+    if (saved) playSfx("saved", "solo"); // the storm passes and the station held
+  }, [saved]);
   return (
     <ScreenLayout
       className="resolution"

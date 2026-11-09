@@ -421,7 +421,7 @@ sound), so the game always works.
 | `station-base`, `crew-icons` | Tessa (`tessa-image-v1`) |
 | `station-stability-0…4` | Quantum Blur (`blur-v1`) |
 | `entanglement-reveal` | Entanglement Shader (`entanglement-shader-v1`), **rendered live** (see below) |
-| `sfx-alarm`, `sfx-win`, `sfx-reveal` | Atlas sound engine (to confirm) |
+| `sfx-tap`, `sfx-win`, `sfx-lost`, `sfx-alarm`, `sfx-storm`, `sfx-reveal`, `sfx-saved` | Atlas sound engine (to confirm) |
 
 ### The Entanglement Shader, live
 `entanglement-shader-v1` doesn't return an image: it simulates light bouncing between stacked, ultra-thin conducting
@@ -450,12 +450,25 @@ made from the drawn station with `--blur-source drawn`; `station-base` and `crew
 
 Where they appear: `station-base` and `station-stability-0…4` on the TV, readouts and landing (the level follows
 stability: 0 failing … 4 stable); `crew-icons` (one image, Table A left half, Table B right half) on the TV pair
-cards and phones; `entanglement-reveal` behind the tool reveal and as the Act III background; `sfx-win` on a won
-round, `sfx-alarm` when stability drops below 80% or a batch ends below it, `sfx-reveal` when the tool arrives.
+cards and phones; `entanglement-reveal` behind the tool reveal and as the Act III background; the `sfx-*` sounds as in
+[Sound](#sound).
 
 ### Sound
-Every screen has a mute button. Sound is on by default in solo and on the TV, and off by default on event phones
-(a room of 8 phones chiming is a lot); each device remembers its choice.
+Solo's screen and the event TV carry the game's sound; a phone only ever plays its own player's action and its
+consequence (`src/audio/cues.ts`, tested). Every screen has a mute button (and **M** on solo and the TV). Sound is on
+by default in solo and on the TV, and off by default on event phones (a room of 8 phones chiming is a lot); each device
+remembers its choice. Until the Atlas sound files are added, each sound is a short Web Audio stand-in.
+
+| Moment | Solo | TV (the room) | Phone (you) |
+|---|---|---|---|
+| You set your pump | tap | – | tap |
+| Your round (solo) / your pair's round (phone) is held | win | – | win |
+| …is lost, including too slow | lost | – | lost |
+| A round where at least half the pairs held | – | win | – |
+| Below 80%: a readout under 80%; the gauge crossing 80% or a wave under 80% | alarm | alarm | – |
+| The storm hits (end of Act I) | storm | storm | – |
+| The tool arrives | reveal | reveal | – |
+| The storm passes and the station is saved | saved | saved | – |
 
 ## Run it locally
 Needs Node ≥ 22.18 (`nvm use` picks up `.nvmrc`) and pnpm (`corepack enable`).

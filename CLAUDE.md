@@ -91,9 +91,13 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   all failed with engine_timeout after ~60 s, so Blur levels 0–4 were made from the drawn station
   (`--blur-source drawn`), jobs a2dfaf41 (0), b9bd20ff (1), dd70e7a7 (2), 074738dc (3), 5a991314 (4); ~12 s each.
   Provenance files sit next to each PNG; manifest `assetProvenance()` feeds the credits. Display: pixelated, contain.
-- **Sound (M5):** `audio/sfx.ts` plays `sfx-*` files or a Web Audio stand-in; mute per context (solo/tv/phone) in
-  localStorage, defaults on/on/off; audio unlocks on the first tap. Triggers: win chime (solo round won, TV when
-  ≥ half the pairs held, phone flash), alarm (batch ends < 80%, TV rolling crosses below 80%), reveal (tool).
+- **Sound (M5; A1 2026-11-09):** `audio/sfx.ts` plays `sfx-*` files or a Web Audio stand-in (per-sound `VOLUME`);
+  mute per context (solo/tv/phone) in localStorage, defaults on/on/off; audio unlocks on the first tap. Who hears
+  what lives in `audio/cues.ts` (pure, `cues.test.ts`): solo and the TV carry the game, a phone only `PHONE_CUES`
+  (tap, win, lost: its own pump and its own pair's result). Solo: tap + win/lost per round (`Batch.tsx`), storm
+  (`Storm.tsx`), alarm (readout < 80%), reveal (tool), saved (`Resolution.tsx`, when saved). TV (`tvResultCues` /
+  `tvStateCues`): win when ≥ half the pairs held, alarm (gauge crosses 80% or a wave < 80%), storm, reveal, saved.
+  Phone (`Play.tsx`): tap when its pump is set, `phoneCues` on its result flash; no room sounds. README "Sound".
 - **Decisions:** marginals in `simulate` are the fraction of ANTICLOCKWISE pumps (bit 1). In simulation, who measures first is a coin
   flip per round unless `order` is given. Solo: the player always measures first; Act II plan pickers feed the
   1,000-round test (rounds are tapped live); solo pacing (2026-10-06, user request): 5 s rounds, 2.2 s result,

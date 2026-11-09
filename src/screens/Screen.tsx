@@ -10,6 +10,7 @@ import { atlasUrl } from "../assets/atlas/manifest.ts";
 import { Crystals } from "../components/EntanglementSurface.tsx";
 import { RevealField } from "../solo/ToolReveal.tsx";
 import { playSfx, useSound } from "../audio/sfx.ts";
+import { tvResultCues, tvStateCues, type TvMemory } from "../audio/cues.ts";
 import { CreditsList } from "../components/CreditsList.tsx";
 import { SeatName } from "../components/AiBadge.tsx";
 import { CrewIcon } from "../components/CrewIcon.tsx";
@@ -197,31 +198,18 @@ export function Screen() {
 }
 
 /**
- * TV sounds: a chime when most pairs held a round, the alarm when pooled stability drops below the survival line
- * (or a batch ends below it), and the reveal when the tool unlocks.
+ * TV sounds (the room's; see src/audio/cues.ts): a chime when at least half the pairs held a round, the alarm when
+ * pooled stability drops below the survival line (or a wave ends below it), the storm hitting, the tool's reveal, and
+ * the station saved when the storm passes.
  */
 function useTvSounds(state: RoomState | null, results: { roundId: string; results: { win: boolean }[] } | null) {
-  const prev = useRef<{ roundId?: string; rolling: number | null; phase?: string }>({ rolling: null });
+  const mem = useRef<TvMemory>({ rolling: null });
   useEffect(() => {
-    const p = prev.current;
-    if (results && results.roundId !== p.roundId) {
-      p.roundId = results.roundId;
-      const wins = results.results.filter((r) => r.win).length;
-      if (results.results.length && wins * 2 >= results.results.length) playSfx("win", "tv");
-    }
+    for (const cue of tvResultCues(mem.current, results)) playSfx(cue, "tv");
   }, [results]);
   useEffect(() => {
     if (!state) return;
-    const p = prev.current;
-    const r = state.stability.rolling;
-    const crossed = p.rolling !== null && r !== null && p.rolling >= SURVIVAL_THRESHOLD && r < SURVIVAL_THRESHOLD;
-    const batchLow =
-      state.phase === "batchDone" && p.phase !== "batchDone" && !!state.lastBatch &&
-      state.lastBatch.wins / Math.max(1, state.lastBatch.rounds) < SURVIVAL_THRESHOLD;
-    if (crossed || batchLow) playSfx("alarm", "tv");
-    if (state.phase === "tool" && p.phase !== "tool") playSfx("reveal", "tv");
-    p.rolling = r;
-    p.phase = state.phase;
+    for (const cue of tvStateCues(mem.current, state)) playSfx(cue, "tv");
   }, [state]);
 }
 
