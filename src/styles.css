@@ -4846,3 +4846,19 @@ kbd {
     margin-block: 0 0.3em;
   }
 }
+
+/* E3g: the briefing's routine names no time now (the facilitator sets the pace) and runs a little longer, so at
+   1280×720 the briefing's text is a touch smaller. */
+@media (max-height: 800px) {
+  .tv__briefing .tv__line {
+    font-size: 0.95rem;
+  }
+}
+
+/* 1280×720 wave done, the worst case (a luck line in both rows of pairs): the luck line a touch smaller. */
+@media (max-height: 800px) {
+  .tv__luck {
+    font-size: 0.88em;
+    line-height: 1.15;
+  }
+}

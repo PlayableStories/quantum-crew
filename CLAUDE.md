@@ -345,6 +345,10 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   3's shared-randomness / quantum key distribution line. Remote: `talk.toolCoins`, `talk.firstLull(sameRate)` (first
   lull, replaces the phase's first point), `talk.noSignal` (report step 3 only). Talk-specific lines live only in
   `docs/facilitator.md` ("Pairing the game with a talk on quantum"). Tests: `src/screens/talkLines.test.tsx`.
+- **Event E3g (2026-11-09, copy):** the event report matches solo's S4 physics lines (crystals, not pumps, follow cos²; the
+  local hidden-variable line; the same-setting line with the computed `SAME_SETTING_RATE`; no repeated Nobel line);
+  `S.event.briefing.routine` names no time (the facilitator sets the pace); `bestPlans` shows both tables (`BEST_PLAN`
+  from `answerPlanFor`); `crewRounds` says "pump choices". Tests in `endingEvent.test.tsx`.
 - **Debug jump (2026-11-08, user request; testing):** **D** on the TV opens `DebugJump` (a Sheet in `HostControls`):
   host commands `debugAct2` (Act II lull; clears ceiling, tool and clue) and `debugAct3` (Act III tool reveal, as
   Reveal ceiling + Unlock tool: clue 0). TV only (a remote gets `not-host`), refused in a wave or the debrief,

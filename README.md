@@ -260,8 +260,9 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    and its rule); phones show the quick rule.
 4. **Start the rounds:** Act I, six rounds with the radio working. Each phone shows its own sensor and, on the radio,
    the partner's reading, then their pump as soon as they set it (CORA calls hers at the start of the round). Players
-   may talk out loud too. A pump can be changed until the round ends; a round ends after 8 s, or once both pumps
-   are set and have stayed put for 1.5 s. Each pair meets all four sensor combinations, never a double HOT first.
+   may talk out loud too. A pump can be changed until the round ends; a round ends once both pumps are set and
+   have stayed put for 1.5 s, or when the facilitator presses Next (in auto, also when its time runs out: 15 s at
+   Relaxed, 8 s at Brisk; see **Pacing**). Each pair meets all four sensor combinations, never a double HOT first.
    Phones and the TV's pair cards show the cause (Circulating, Heat carried off, Purge, Pressure spike, Overheat,
    Too slow).
 5. **The storm** follows by itself: every phone's radio breaks up mid-line under static, then the TV shows the

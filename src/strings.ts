@@ -1,14 +1,17 @@
 // All player-facing text in one place. Edit freely.
 // In-world copy only, up to the debrief: physics words (qubit, Bell, CHSH…) appear only in `debrief`.
-import { ACT1_ROUND_MS, ACT1_ROUNDS, MP_ACT1_ROUND_MS } from "./config.ts";
+import { ACT1_ROUND_MS, ACT1_ROUNDS } from "./config.ts";
 import type { ClassicalStrategy, RoundResult } from "./shared/chsh.ts";
 import { HOT, roundCause } from "./shared/fiction.ts";
-import { planRate } from "./shared/crystalPlan.ts";
+import { answerPlanFor, planRate } from "./shared/crystalPlan.ts";
 import { DEFAULT_TUNING } from "./config.ts";
 
 /** Both sides measured at one setting for COOL and HOT: the crystals always agree, and that scores exactly this
  *  (computed: the classical limit). Used by solo's incident report, step 2. */
 const SAME_SETTING_RATE = `${Math.round(planRate(DEFAULT_TUNING, DEFAULT_TUNING) * 1000) / 10}%`;
+
+/** A table's best crystal plan (the answer's row), as "0° / 45°" (computed). Used by event mode's report. */
+const BEST_PLAN = (t: "A" | "B") => `${answerPlanFor(t).greenDeg}° / ${answerPlanFor(t).redDeg}°`;
 
 /** The AI crewmate's name: CORA, the Coolant Ring Assistant. Solo radio lines, and event mode's bot seats (server). */
 export const CREW_NAME = "CORA";
@@ -499,7 +502,8 @@ export const S = {
         `${STATION_NAME} drifts on the edge of a young, restless star. When it flares, one of the station's two sections heats up without warning, and a coolant ring through both carries the heat away.`,
         `Tonight you keep the night shift in pairs: one of you at Table A, one at Table B, each running the pump in your own section. ${CREW_NAME}, the station's AI, runs any empty seat.`,
       ],
-      routine: `Each round: your sensor on your phone, your partner's reading and pump on the radio. Set your pump within ${MP_ACT1_ROUND_MS / 1000} seconds.`,
+      /** No time: the facilitator sets the pace (manual, Relaxed or Brisk). */
+      routine: "Each round: your sensor on your phone, your partner's reading and pump on the radio. Set your pump when you're ready; the facilitator moves things on.",
     },
     /** Act I on a phone: the radio with a human partner (CORA speaks her own lines, `crew.reading`). */
     radio: {
@@ -719,7 +723,8 @@ export const S = {
           "Talking made every round winnable. No plan could replace talking. The best crystal settings beat every plan without carrying a single message; the crew's didn't get there this time.",
       },
       pairDials: (pair: number, a: string, b: string) => `Pair ${pair}'s crystal plans (${a} & ${b})`,
-      bestPlans: "The best crystal plans (0° / 45°)",
+      /** Both tables' best settings, computed (the answer's rows). */
+      bestPlans: `The best crystal plans (A: ${BEST_PLAN("A")} · B: ${BEST_PLAN("B")})`,
       /** The report's steps in the crew's words (solo keeps S.debrief.steps). */
       steps: [
         {
@@ -727,6 +732,7 @@ export const S = {
           body: [
             "Under the station is the CHSH game (Clauser, Horne, Shimony and Holt, 1969). The sensors are its random input bits x, y (COOL = 0, HOT = 1), the pumps its output bits a, b (CLOCKWISE = 0, ANTICLOCKWISE = 1), and “match unless both HOT” is its rule: a ⊕ b = x ∧ y. The vent is the story for the flipped case.",
             "The wall you hit in Act II is a Bell inequality. Two players who can't talk, with any plan agreed in advance (even a random one), win at most 75% of rounds.",
+            "Physicists call a plan agreed in advance a local hidden-variable theory.",
             "John Clauser, the C in CHSH, shared the 2022 Nobel Prize in Physics with Alain Aspect and Anton Zeilinger for experiments with entangled photons that broke this inequality.",
             "Mixing plans at random doesn't help: a random mix only averages cells on the plan board, so it can never beat the best cell.",
           ],
@@ -734,9 +740,9 @@ export const S = {
         {
           title: "Entanglement broke through",
           body: [
-            "The two crystals were a pair of entangled qubits. Measured at settings θA and θB, your two pumps agree with probability cos²(θA − θB): the crystals' rule.",
+            "The two crystals were a pair of entangled qubits. Measured at settings θA and θB, your two crystals give the same direction with probability cos²(θA − θB): the crystals' rule.",
+            `Crystals measured at the same setting always agree, like perfectly correlated coins, and that alone scores exactly ${SAME_SETTING_RATE}, no better than a plan. The advantage comes from settings that differ.`,
             "With the four settings spread evenly, 22.5° apart (A: 0° and 45°; B: 22.5° and −22.5°, shown as 157.5°), a crystal plan wins cos²(22.5°) ≈ 85.4% of rounds. No quantum strategy does better: this is the Tsirelson bound.",
-            "Real experiments have broken the 75% wall with entangled photons; that work won the 2022 Nobel Prize in Physics.",
           ],
         },
         {
@@ -744,7 +750,7 @@ export const S = {
           body: [
             "Your own pump ran clockwise about half the time, whether your partner's section was COOL or HOT. So you can't read their sensor from your result, and the crystals can't carry a message.",
             "Only the correlation between your two results changed. That is what no-signalling means.",
-          "What the crystals gave you is shared randomness, not a message. That is how quantum key distribution works: entangled pairs give two distant stations the same secret key, and the message itself still travels the ordinary way.",
+            "What the crystals gave you is shared randomness, not a message. That is how quantum key distribution works: entangled pairs give two distant stations the same secret key, and the message itself still travels the ordinary way.",
           ],
         },
         { title: "Credits", body: [] as string[] },
@@ -763,7 +769,7 @@ export const S = {
       phoneAct3Note: "true rate, exactly",
       notPlayed: "not played",
       crewRounds: (n: number, cool: string, hot: string) =>
-        `In the crew's ${n} real Act III pumps, a pump ran clockwise ${cool} of the time when the partner's section was COOL, and ${hot} when it was HOT.`,
+        `In the crew's ${n} real Act III pump choices, a pump ran clockwise ${cool} of the time when the partner's section was COOL, and ${hot} when it was HOT.`,
     },
     /** The storm in event mode. With a human partner the radio's last words come from the station log. */
     storm: {
