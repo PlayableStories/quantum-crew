@@ -3,7 +3,8 @@
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
 import { pct } from "../components/StabilityMeter.tsx";
-import { OPTIMAL_TUNING, QUANTUM_LIMIT } from "../shared/chsh.ts";
+import { CLASSICAL_LIMIT, OPTIMAL_TUNING, QUANTUM_LIMIT } from "../shared/chsh.ts";
+import { answerPlanFor } from "../shared/crystalPlan.ts";
 import type { RoomState } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 import { put, room, seat } from "./eventFixture.ts";
@@ -118,5 +119,41 @@ describe("the ending on a phone", () => {
     expect(markup).toContain(`>${pct(QUANTUM_LIMIT)}<`);
     seat(room("debrief", false, 3)); // a pair that played nothing
     expect(phone().match(/>—</g)).toHaveLength(3);
+  });
+});
+
+describe("the event report's physics and the briefing (E3g)", () => {
+  /** Every string under a key (functions called with sample args). */
+  const texts = (v: unknown): string[] =>
+    typeof v === "string"
+      ? [v]
+      : typeof v === "function"
+        ? [String((v as (...a: unknown[]) => unknown)(1, "x", "y"))]
+        : v && typeof v === "object"
+          ? Object.values(v).flatMap(texts)
+          : [];
+
+  it("no report string says the pumps agree with probability cos²; the crystals' rule is about the crystals", () => {
+    for (const t of texts(S.event.report)) expect(t).not.toMatch(/pumps agree/);
+    expect(S.event.report.steps[1]!.body.join(" ")).toContain("your two crystals give the same direction with probability cos²(θA − θB)");
+    expect(S.event.report.steps[1]!.body.join(" ")).not.toMatch(/Nobel/); // step 1 covers it
+    const one = S.event.report.steps[0]!.body;
+    const bell = one.findIndex((l) => l.startsWith("The wall you hit in Act II"));
+    expect(one[bell + 1]).toBe("Physicists call a plan agreed in advance a local hidden-variable theory.");
+    const two = S.event.report.steps[1]!.body;
+    const same = two.find((l) => l.startsWith("Crystals measured at the same setting"))!;
+    expect(same).toContain(`exactly ${CLASSICAL_LIMIT * 100}%`);
+    expect(two[two.findIndex((l) => l.includes("Tsirelson")) - 1]).toBe(same);
+    expect(S.event.report.crewRounds(24, "50.0%", "48.0%")).toContain("pump choices");
+  });
+
+  it("the briefing names no number of seconds (the facilitator sets the pace)", () => {
+    for (const t of texts(S.event.briefing)) expect(t).not.toMatch(/\d+\s*(s\b|sec)/i);
+  });
+
+  it("the best-plan label shows both tables' settings, computed from the answer", () => {
+    const deg = (t: "A" | "B") => `${answerPlanFor(t).greenDeg}° / ${answerPlanFor(t).redDeg}°`;
+    expect(S.event.report.bestPlans).toBe(`The best crystal plans (A: ${deg("A")} · B: ${deg("B")})`);
+    expect(S.event.report.bestPlans).toContain("B: 22.5° / 157.5°");
   });
 });
