@@ -8,7 +8,7 @@ An example game from [Playable Stories](https://github.com/PlayableStories), bui
 
 ![Quantum Crew poster](showcase/poster.png)
 
-**Play the solo demo:** https://quantum-crew-iota.vercel.app/solo
+**Play the solo demo (the hackathon build, older than this README):** https://quantum-crew-iota.vercel.app/solo
 
 Quantum Crew is inspired by *Spaceteam*. Players never sit through a physics lecture. They feel a limit first, and
 only then learn what it is.
@@ -31,7 +31,7 @@ The game's three numbers tell the story:
 - **Act II, comms lost (75%):** a solar storm knocks the radio out in waves, and no plan agreed in advance beats 75%.
 - **Act III, the crystals (≈ 85%):** two linked crystals beat every plan without carrying a single message.
 
-Act I was milestone M6 in the hackathon plan, never built then; it's built now (solo). In solo the storm frames
+Act I was milestone M6 in the hackathon plan, never built then; it's built now, in solo and event mode. In solo the storm frames
 everything after it: each **batch is a storm wave** (counted across Acts II and III), the huddle is **the lull**
 between waves, the tool arrives in a **supply pod** from engineering, and after the last wave **the storm passes**:
 the radio comes back and the debrief becomes **Kestrel Station's incident report**.
@@ -54,7 +54,8 @@ storm is a still glow and texture.
 
 **Comms.** In Act I the radio works; from the storm on, talking is only possible between waves. Solo mode shows that
 with three states:
-- **Comms open** (Act I's night shift, the huddle, the readout, the engineering report, the tool reveal, tuning):
+- **Comms open** (Act I's night shift, the huddle, the readout, the engineering report, the tool reveal, the crystal
+  plan):
   CORA talks on the radio. In Act I she calls her reading every round; the huddle is the last chance to talk before
   a batch.
 - **Comms dark** (during a storm wave): the radio is down, shown as static, and CORA says nothing.
@@ -238,7 +239,8 @@ iPad the type, plan board, crystal plan and ring scale up with the screen, and e
 6. **The storm passes, then the incident report.** You learn the physics and see your own numbers, starting with
    the three that tell the story (100%, 75%, ≈ 85%), then the credits.
 
-Keyboard: **A / ←** = ANTICLOCKWISE, **C / →** = CLOCKWISE. Act III: **Enter** follows the crystal. On a round's result, **Space / Enter** = Next round.
+Keyboard: **Space / Enter** presses the highlighted button; in a round **A / ←** = ANTICLOCKWISE, **C / →** =
+CLOCKWISE, and in Act III **Enter** follows the crystal. **?** lists every key; see [Keyboard shortcuts](#keyboard-shortcuts).
 
 ## How to play (event)
 Two tables of players, one phone each, and a TV or projector. A facilitator runs the session from the TV.
@@ -279,8 +281,9 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
 9. Play a few waves, then **Reveal ceiling**: the engineering report shows the 4×4 plan board at exact rates (75% or
    25%), every pairing the crew played marked as tried and the rest run by engineering. No plan beats 75%.
 10. **Unlock tool**: a supply pod from engineering brings two linked crystals for every pair, one at each table;
-   engineering's note says they carry no messages, so the storm can't jam them, and *"The crystals don't replace your
-   plan. They change what a plan can say."* The TV shows **the crystals' rule** in three lines (basic information,
+   engineering's note says they carry no messages, so the storm can't jam them; *"Think of them as entangled coins:
+   each lands at random, but a linked pair measured at the same setting always lands the same way."* and *"The
+   crystals don't replace your plan. They change what a plan can say."* The TV shows **the crystals' rule** in three lines (basic information,
    not a clue; since E3e): each crystal alone says CLOCKWISE or ANTICLOCKWISE at random, like a coin flip, whatever its
    setting; two linked crystals land the same way more often the closer their settings (the gap table: 0° 100%,
    22.5° 85%, 45° 50%, 67.5° 15%, 90° 0%, from `matchProbability`); and followed crystals make the pumps match
@@ -343,7 +346,8 @@ At the engineering report, human pairs get a prompt instead of CORA's personal l
 plan beats 75%: it was never either of you."); pairs with CORA hear her line.
 
 **Pacing.** The facilitator paces the room from the TV. The host row shows only what applies now, plus Play / Pause
-with a small **▾** for the speed, and Reset. Space or → presses Next; P switches between play and pause. Every change
+with a small **▾** for the speed, and Reset. Space or → presses Next; P switches between play and pause (all the TV's
+keys: [Keyboard shortcuts](#keyboard-shortcuts)). Every change
 takes effect at once, on the running round or result too.
 - **Manual (Pause;** the default for each act's first wave, the night shift included): no countdown. A round closes
   when every pair has chosen (the TV shows who is still choosing) or on **Next** ("Close the round"); the result stays
@@ -366,6 +370,27 @@ From the lobby, **Use the lull** or **Start the wave** still skip the night shif
 short session).
 
 
+## Keyboard shortcuts
+Solo (`/solo`) and the TV (`/screen`) share one key map (`src/lib/keys.ts`); **?** opens it in a sheet on either.
+Phones (`/play`) and the remote (`/host`) are touch-first and keep only their round keys.
+
+| Key | Solo | TV | Event phone |
+|---|---|---|---|
+| **Space / Enter** | the highlighted button (Next round after a round) | **Space** (or **→**): the next step | – |
+| **A / ←**, **C / →** | the pumps, in a round | (→ = next) | the pumps, in a round |
+| **Enter** (Act III round) | follow your crystal | – | follow your crystal |
+| **P** | – | play / pause | – |
+| **M** | sound on / off | sound on / off | – |
+| **F** | full screen on / off | full screen on / off | – |
+| **D** | debug: jump to Act II or Act III | debug: jump to Act II or Act III | – |
+| **?** | the list of keys | the list of keys | – |
+| **Esc** | close a sheet | close a sheet or menu | close a sheet |
+
+D, F, M and ? work even with a button focused (they press nothing); Space and Enter leave a focused button to
+itself. None of them act while you type in a field or inside an open sheet. **D** is for testing: it skips the story
+and keeps what has been played; it's refused during a wave and in the report. In solo there's also a **?** button
+beside mute on keyboard-sized screens.
+
 ## The physics
 This is the **CHSH game**, a Bell test. Two players who can't talk each get a random bit (the sensor: COOL = 0,
 HOT = 1) and output a bit (the pump: CLOCKWISE = 0, ANTICLOCKWISE = 1). They win if `a XOR b == x AND y`, which is
@@ -376,7 +401,7 @@ HOT = 1) and output a bit (the pump: CLOCKWISE = 0, ANTICLOCKWISE = 1). They win
 - **Quantum limit: cos²(π/8) ≈ 85.4%.** The players share an entangled pair of qubits (the Bell state |Φ+⟩). Each measures at
   an angle chosen by their own sensor, and the results agree with probability cos²(θA − θB). The best angles are
   A: 0°/45° and B: 22.5°/−22.5°. No quantum strategy beats this (the Tsirelson bound).
-- **No signalling.** Each player's own pump direction is a 50/50 coin whatever the partner's sensor or dial. Only the
+- **No signalling.** Each player's own pump direction is a 50/50 coin whatever the partner's sensor or setting. Only the
   *correlation* between the two players changes, so the tool can't carry a message. The debrief shows this with the
   player's own tool settings.
 
@@ -440,7 +465,7 @@ pnpm install
 pnpm dev        # http://localhost:5173/solo
 pnpm dev:phone  # same, reachable from a phone on your Wi-Fi
 pnpm test       # core logic + solo flow tests
-pnpm sim        # classical best, quantum optimum, top-5 dial setups
+pnpm sim        # classical best, quantum optimum, top-5 crystal settings
 pnpm assets     # Atlas asset checklist
 pnpm build      # static build in dist/
 ```
@@ -454,10 +479,11 @@ pnpm smoke     # real WebSocket server + 1 TV + 4 phones, one Act II batch
 pnpm session   # a whole session in-process with a fake clock (see below)
 ```
 
-**Debug jump (testing):** on the TV (`/screen`), **D** opens a small panel with **Jump to Act II (lull)** and **Jump
-to Act III (tool reveal)** (the room's `debugAct2` / `debugAct3` host commands; TV only, never from the remote, not
-during a wave). Act III arrives as Reveal ceiling + Unlock tool leave it (no clue yet). It works in every build.
-**F** on the TV toggles full screen (the browser's own, so no frame shows; F or Esc leaves it).
+**Debug jump (testing):** on the TV (`/screen`) and in solo, **D** opens a small panel with **Jump to Act II (lull)**
+and **Jump to Act III (tool reveal)**: on the TV the room's `debugAct2` / `debugAct3` host commands (TV only, never
+from the remote), in solo the store's `debugJump`. Never during a wave; Act III arrives as Reveal ceiling + Unlock
+tool leave it (no clue yet). It works in every build. **F** toggles full screen (the browser's own, so no frame
+shows; F or Esc leaves it). All the keys: [Keyboard shortcuts](#keyboard-shortcuts).
 
 `pnpm session` (`scripts/session.ts`) runs the station in-process with a fake clock and a seeded RNG, so it takes
 about a second and is the same every run. It plays a whole session: 4 pairs join and a 9th player is turned away;
@@ -498,13 +524,15 @@ timers with Playwright's clock. Output goes to the git-ignored `shots/<out>/<siz
 two phones (Table A and Table B, one pair), plus six more players over plain WebSockets so the TV shows four pairs
 (they answer every round at once and aren't screenshotted): the lobby (empty and seated), joining, the briefing, an Act I round (and
 Table B's radio once Table A has set a pump), an Act I result, the storm's static and its log, the lull, a live round, a result,
-wave done, the engineering report, the tool, the Act III huddle, an Act III round (and a phone that has measured), a
-result, wave done and every debrief step. It runs the session twice: the TV at 1920×1080 with phones at 390×844, then
+wave done, the engineering report, the tool (and the TV's debug jump and ? sheets), the first Act III lull with clue 1, the
+lull after a setting change, an Act III round, a result, wave done, the answer (released from the remote) and the lull
+with it, **Use these settings**, the resolution and every debrief step. It runs the session twice: the TV at 1920×1080 with phones at 390×844, then
 the TV at 1280×720 with phones at 375×667. The server's timers are real, so live rounds and results get viewport
 shots only. `/station-info` answers a made-up `192.168.1.20` plus a VPN-like `100.101.7.3` (so the lobby shows "Not working? Try: …"), and the shots never show your machine's address. Output
 goes to `shots/<out>/event/<device>-<size>/`, with the same `report.md`; `--compare before after --event` makes the
 contact sheets. `--quick` runs only the tight pass (TV 1280×720 with phones 375×667), for fit work. In Act III,
-Table A and B tune to the best dials, so wave done shows a pair that holds. The TV never scrolls, so for TV screens the report also flags any region whose content is cut off
+the phones' pair moves to a 67.5% plan (so their phones show a hint) and the crowd's Cy and Di play the answer (so the
+TV shows a pair that found it). The TV never scrolls, so for TV screens the report also flags any region whose content is cut off
 (`⚠ cut off: briefing 13px`). After a wave it also checks the worst case, every pair with a luck line, and fails if
 that would be cut off.
 
@@ -594,8 +622,9 @@ Render's own docs for the current options.
   `PUBLIC_URL` isn't needed.
 
 ## Built with an AI coding agent
-Quantum Crew was designed by a person and written almost entirely by Claude Code, in milestones (M0–M5), one branch
-and one reviewed pull request per milestone. [`CLAUDE.md`](CLAUDE.md) is the agent's working memory: goal, layout,
+Quantum Crew was designed by a person and written almost entirely by Claude Code: the hackathon milestones (M0–M5),
+then event-mode phases after real playtests (E0–E3f) and solo's updates (S3, K1), one branch and one reviewed pull
+request each. [`CLAUDE.md`](CLAUDE.md) is the agent's working memory: goal, layout,
 decisions, rules for the Atlas API, and status. It is kept up to date as the game changes, so a fresh agent session
 can pick the project up where the last one left off.
 

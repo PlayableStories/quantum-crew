@@ -163,7 +163,7 @@ async function capture(browser: Browser, out: string, sizes: Size[]) {
       console.log(`${size.name}…`);
       await mkdir(join(dir, size.name), { recursive: true });
       rows.push(...(await playThrough(browser, base, size, join(dir, size.name))));
-      // The saved path: the same night, but the dials are tuned to 0° / 45°, so the first Act III wave passes.
+      // The saved path: the same night; after the first Act III wave it asks engineering for the answer and uses it.
       rows.push(...(await playThrough(browser, base, size, join(dir, size.name), true)));
     }
   } finally {
@@ -241,6 +241,18 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
 
   await click(S.landing.solo);
   await shot("intro");
+  // The keyboard shortcuts (K1, main run only): ? opens the list, D the debug jump; Escape closes each.
+  if (!saved && (S as Record<string, unknown>).keys) {
+    for (const [key, name] of [["?", "keys-sheet"], ["d", "debug-jump"]] as const) {
+      await page.locator("body").click({ position: { x: 2, y: 2 } }).catch(() => {});
+      await page.keyboard.press(key);
+      if (await page.locator("dialog[open]").waitFor({ timeout: 3000 }).then(() => true, () => false)) {
+        await shot(name, null);
+        await page.keyboard.press("Escape");
+        await page.locator("dialog[open]").waitFor({ state: "hidden" });
+      }
+    }
+  }
   await click(S.intro.next);
   await shot("intro-2");
   await click(S.intro.go);
@@ -678,6 +690,13 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     await tv.page.locator("body").click({ position: { x: 5, y: 5 } }).catch(() => {});
     await tv.page.keyboard.press("d");
     if (await ready("debug jump", tv.page.locator("dialog[open]").waitFor({ timeout: 5000 }))) await shot("debug-jump", [[tv, "", null]]);
+    await tv.page.keyboard.press("Escape");
+  }
+  // The keyboard shortcuts (K1): ? opens the TV's list.
+  if ((S as Record<string, unknown>).keys) {
+    await tv.page.locator("dialog[open]").waitFor({ state: "hidden" }).catch(() => {});
+    await tv.page.keyboard.press("?");
+    if (await ready("keys sheet", tv.page.locator("dialog[open]").waitFor({ timeout: 5000 }))) await shot("keys-sheet", [[tv, "", null]]);
     await tv.page.keyboard.press("Escape");
   }
 

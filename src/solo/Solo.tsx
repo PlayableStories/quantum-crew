@@ -10,6 +10,7 @@ import { Storm } from "./Storm.tsx";
 import { ToolReveal } from "./ToolReveal.tsx";
 import { Tuning } from "./Tuning.tsx";
 import { QuantumBackdrop } from "../components/QuantumBackdrop.tsx";
+import { SoloKeys } from "./SoloKeys.tsx";
 import { useSolo, type Phase } from "./soloStore.ts";
 
 const QUANTUM_PHASES: Phase[] = ["toolReveal", "act3Plan", "act3Batch", "act3Readout"];
@@ -20,6 +21,7 @@ export function Solo() {
     <div className={`solo ${QUANTUM_PHASES.includes(phase) ? "quantum" : ""}`}>
       {QUANTUM_PHASES.includes(phase) && <QuantumBackdrop />}
       {screenFor(phase)}
+      <SoloKeys />
     </div>
   );
 }

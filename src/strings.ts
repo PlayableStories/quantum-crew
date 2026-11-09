@@ -766,6 +766,32 @@ export const S = {
     },
   },
 
+  /** The keyboard shortcuts (K1), in the ? sheet on solo and the TV. Phones and the remote are touch-first. */
+  keys: {
+    title: "Keyboard shortcuts",
+    open: "Keyboard shortcuts (?)",
+    solo: [
+      ["Space / Enter", "Press the highlighted button (Next round, after a round)"],
+      ["A / ←", "Pump ANTICLOCKWISE (in a round)"],
+      ["C / →", "Pump CLOCKWISE (in a round)"],
+      ["Enter", "Follow your crystal (in an Act III round)"],
+      ["M", "Sound on / off"],
+      ["F", "Full screen on / off"],
+      ["D", "Debug: jump to Act II or Act III (for testing)"],
+      ["?", "This list"],
+      ["Esc", "Close a sheet"],
+    ] as [string, string][],
+    tv: [
+      ["Space / →", "The next step (Close the round, Next round, Start the wave, Next in the report)"],
+      ["P", "Play / pause"],
+      ["M", "Sound on / off"],
+      ["F", "Full screen on / off"],
+      ["D", "Debug: jump to Act II or Act III (for testing)"],
+      ["?", "This list"],
+      ["Esc", "Close a sheet or menu"],
+    ] as [string, string][],
+  },
+
   tv: {
     station: (code: string) => `Station ${code}`,
     join: "Join on your phone",
@@ -845,7 +871,7 @@ export const S = {
       summary: (choose: string, result: string) => `${choose} s to choose · ${result} s result`,
       manualNote: "Manual: press Next",
     },
-    keys: "Space / → next · P play / pause · F full screen",
+    keys: "Space / → next · P play / pause · ? all keys",
     /** The lull: how long the room has been talking (a guide, not a countdown). */
     talking: (time: string) => `Talking for ${time}`,
     /** A round, on a pair card: who hasn't chosen yet (never what anyone chose). */
