@@ -360,6 +360,14 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - **Copy:** solo's Act III, resolution and report never say "dial" (test in `act3.test.tsx`); `S.pod` matches event
     mode's; `S.crew.tuning(cool, hot)`; `S.debrief.compare.dials(yours, best)`. `S.batch.measure` stays only because
     event tests check it's absent.
+- **Keyboard K1 (2026-11-09, user request):** one key map for solo and the TV in `src/lib/keys.ts` (`keyAction(e,
+  mode, keyTarget(e.target), inWave)`; tested in `keys.test.ts`): D debug jump, F full screen, M mute
+  (`useSound.toggle`), ? the shortcut sheet (`components/KeysSheet.tsx`, rows `S.keys.solo` / `S.keys.tv`), both
+  modes; solo Space / Enter = the ActionBar's `.btn--primary` outside a wave (rounds keep Batch.tsx's keys); TV Space /
+  → next, P play / pause. D/F/M/? also with a button focused; never while typing or inside a sheet. Solo: `SoloKeys`
+  (mounted in `Solo.tsx`, sheets via `useKeySheet`), `soloStore.debugJump(2 | 3)` (act2Plan / toolReveal; refused in a
+  wave and the debrief), a "?" button in `ScreenLayout`'s header (landscape ≥ 900 only). `DebugJumpPanel` is shared
+  (the TV's `DebugJump` wraps it). Phones and the remote keep only their round keys. README "Keyboard shortcuts".
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.

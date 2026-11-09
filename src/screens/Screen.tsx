@@ -9,7 +9,7 @@ import { StabilityMeter, pct } from "../components/StabilityMeter.tsx";
 import { atlasUrl } from "../assets/atlas/manifest.ts";
 import { Crystals } from "../components/EntanglementSurface.tsx";
 import { RevealField } from "../solo/ToolReveal.tsx";
-import { playSfx } from "../audio/sfx.ts";
+import { playSfx, useSound } from "../audio/sfx.ts";
 import { CreditsList } from "../components/CreditsList.tsx";
 import { SeatName } from "../components/AiBadge.tsx";
 import { CrewIcon } from "../components/CrewIcon.tsx";
@@ -40,6 +40,9 @@ import { useElapsedMs, useRemainingMs } from "../net/useCountdown.ts";
 import { decisionMs, resultMs } from "../shared/pace.ts";
 import { Sheet } from "../components/Sheet.tsx";
 import { toggleFullscreen } from "../lib/fullscreen.ts";
+import { keyAction, keyTarget } from "../lib/keys.ts";
+import { DebugJumpPanel } from "../components/DebugJumpPanel.tsx";
+import { KeysSheet } from "../components/KeysSheet.tsx";
 import { ClueList, CrystalRuleTable, answerOutText, humanWithCora, rateText } from "../components/CrystalPlan.tsx";
 import { planRate, weakestCase } from "../shared/crystalPlan.ts";
 import { DEFAULT_TUNING } from "../config.ts";
@@ -809,39 +812,33 @@ function HostControls({
   const [debugOpen, setDebugOpen] = useState(false);
   const closeDebug = useCallback(() => setDebugOpen(false), []);
 
-  // Keyboard for a facilitator at a laptop: Space or → for the natural next step, P for play / pause. Not while a
-  // button, a field or the reset confirm has focus (Space would press that button too). D opens the debug jump
-  // (testing) and F toggles full screen, also with a button focused (they press nothing).
+  const [keysOpen, setKeysOpen] = useState(false);
+  const closeKeys = useCallback(() => setKeysOpen(false), []);
+  const toggleMute = useSound((st) => st.toggle);
+
+  // Keyboard for a facilitator at a laptop (the shared map in src/lib/keys.ts): Space or → for the natural next step,
+  // P play / pause, M mute, F full screen, D the debug jump, ? the shortcut sheet. Not while typing or inside a sheet;
+  // Space / → / P not on a focused button (Space would press it too).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
-      const target = e.target as HTMLElement | null;
-      const typing = !!target?.closest("input, select, textarea, [contenteditable], dialog");
-      if ((e.key === "d" || e.key === "D") && !typing) {
-        e.preventDefault();
-        setDebugOpen((o) => !o);
-        return;
-      }
-      // F: full screen on or off (the browser's own, so no frame shows; Esc also leaves it).
-      if ((e.key === "f" || e.key === "F") && !typing) {
-        e.preventDefault();
-        toggleFullscreen();
-        return;
-      }
-      if (target?.closest("button, input, select, textarea, [contenteditable], dialog")) return;
-      if (e.key === "p" || e.key === "P") {
-        e.preventDefault();
-        onCommand(state.auto ? "manual" : "auto");
-      } else if (e.key === " " || e.key === "ArrowRight") {
+      const action = keyAction(e, "tv", keyTarget(e.target));
+      if (!action) return;
+      if (action === "next") {
         const cmd = keyStep(state);
         if (!cmd) return;
         e.preventDefault();
-        onCommand(cmd);
+        return onCommand(cmd);
       }
+      e.preventDefault();
+      if (action === "playPause") onCommand(state.auto ? "manual" : "auto");
+      else if (action === "debug") setDebugOpen((o) => !o);
+      else if (action === "fullscreen") toggleFullscreen();
+      else if (action === "mute") toggleMute("tv");
+      else if (action === "help") setKeysOpen((o) => !o);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [state, onCommand]);
+  }, [state, onCommand, toggleMute]);
 
   return (
     <footer className="tv__controls" aria-label={S.tv.controls}>
@@ -857,6 +854,7 @@ function HostControls({
       {/* The shortcuts, when Space has a step to take (not in the lobby, where nothing waits on it). */}
       {keyStep(state) && <span className="muted small tv__keys">{S.tv.keys}</span>}
       {error && <span className="tv__error">{error}</span>}
+      <KeysSheet mode="tv" open={keysOpen} onClose={closeKeys} />
       <Sheet open={debugOpen} onClose={closeDebug} label={S.tv.debug.title}>
         <DebugJump
           state={state}
@@ -874,17 +872,5 @@ function HostControls({
  *  TV only; the room refuses it from a remote. */
 export function DebugJump({ state, onJump }: { state: RoomState; onJump: (cmd: "debugAct2" | "debugAct3") => void }) {
   const inBatch = state.phase === "round" || state.phase === "roundResult";
-  const blocked = inBatch || state.phase === "debrief";
-  return (
-    <div className="stack debug-jump">
-      <h2>{S.tv.debug.title}</h2>
-      <p className="muted small">{S.tv.debug.note}</p>
-      {inBatch && <p className="small">{S.tv.debug.inWave}</p>}
-      {(["debugAct2", "debugAct3"] as const).map((cmd) => (
-        <button key={cmd} type="button" className="btn" disabled={blocked} onClick={() => onJump(cmd)}>
-          {S.tv.cmd[cmd]}
-        </button>
-      ))}
-    </div>
-  );
+  return <DebugJumpPanel inWave={inBatch} blocked={inBatch || state.phase === "debrief"} onJump={onJump} />;
 }

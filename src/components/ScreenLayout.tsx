@@ -7,6 +7,8 @@ import type { ReactNode } from "react";
 import type { SoundContext } from "../audio/sfx.ts";
 import { ActionBar } from "./ActionBar.tsx";
 import { MuteToggle } from "./MuteToggle.tsx";
+import { useKeySheet } from "../lib/keys.ts";
+import { S } from "../strings.ts";
 
 type Props = {
   header?: ReactNode;
@@ -31,6 +33,18 @@ export function ScreenLayout({ header, children, side, actions, mute = "solo", c
     <main className={cls.filter(Boolean).join(" ")}>
       <header className="layout__head">
         <div className="layout__title">{header}</div>
+        {/* Solo: the keyboard shortcuts (?), on keyboard-sized screens only (K1). */}
+        {mute === "solo" && (
+          <button
+            type="button"
+            className="btn btn--ghost keys-btn"
+            aria-label={S.keys.open}
+            title={S.keys.open}
+            onClick={() => useKeySheet.getState().set("help")}
+          >
+            ?
+          </button>
+        )}
         <MuteToggle where={mute} />
       </header>
       <div className="layout__main">{children}</div>

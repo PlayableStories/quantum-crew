@@ -146,6 +146,8 @@ export type SoloActions = {
   /** Act III, after a wave that didn't pass: engineering's answer, and filling in the player's own row. */
   showAnswer(): void;
   useAnswer(): void;
+  /** Testing (key D): jump to Act II's lull or Act III's tool reveal, outside a wave and the report. */
+  debugJump(act: 2 | 3): void;
   /** The player's whole crystal plan (both settings), from the plan card's lists. */
   setTuning(t: TuningConfig): void;
   /** After the gate (or the last Act III wave): the storm passes (the resolution). */
@@ -273,6 +275,13 @@ export function createSoloStore(seed: number = randomSeed()) {
 
       setDial: (light, deg) =>
         set((s) => ({ tuning: light === 0 ? { ...s.tuning, greenDeg: deg } : { ...s.tuning, redDeg: deg } })),
+
+      debugJump: (act) => {
+        const { phase } = get();
+        if (phase === "act1Batch" || phase === "act2Batch" || phase === "act3Batch" || phase === "debrief") return;
+        // Played stats are kept, so the storm waves count on.
+        set({ phase: act === 2 ? "act2Plan" : "toolReveal", round: null, batch: [] });
+      },
 
       setTuning: (tuning) => {
         if (get().phase === "act3Plan") set({ tuning });
