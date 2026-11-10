@@ -106,6 +106,9 @@ export type PairInfo = {
   dials: { a: TuningConfig; b: TuningConfig };
   /** Act III: the dials locked when the latest Act III wave started (null before the first). */
   lockedDials: { a: TuningConfig; b: TuningConfig } | null;
+  /** The lull: whether each seat has said it's ready (CORA's seat, empty or covering an away player, always is). All
+   *  false outside a lull. A plan change clears a player's readiness; a lull opening clears everyone's. */
+  ready: { a: boolean; b: boolean };
   /** Act III: in the current or latest wave, how many pumps the pair's players set the way their crystal said, of
    *  the pumps they set (CORA always follows and isn't counted; timeouts aren't counted). */
   followed: Followed | null;
@@ -161,7 +164,10 @@ export type RoomState = {
   /** Act III's clue ladder: 0 before the tool, 1 at the tool reveal (the crystals' rule), up to 4 (the answer). It
    *  only rises (Next clue), until Reset. */
   clue: number;
-  /** Changes with every phase, round, report step or clue. A host command that carries an older `step` is ignored, so a
+  /** The lull: Start the wave was pressed while some pairs were still planning, and the next press starts it anyway.
+   *  It expires after START_CONFIRM_MS, when any readiness changes, or when the phase changes. */
+  startConfirm: boolean;
+  /** Changes with every phase, round, report step, clue or start confirmation. A host command that carries an older `step` is ignored, so a
    *  double press (or the TV and a remote pressing at once) never skips two steps. */
   step: string;
   ceilingRevealed: boolean;
@@ -188,6 +194,8 @@ export type ClientMsg =
   | { type: "player:join"; room: string; name: string; table: Table }
   | { type: "player:strategy"; act: Act; classical?: ClassicalStrategy; tuning?: TuningConfig }
   | { type: "player:valve"; roundId: string; valve: Valve }
+  /** The lull (Acts II and III): this player has finished planning, or (false) is planning again. */
+  | { type: "player:ready"; ready: boolean }
   /** The player leaves: their seat stays theirs and CORA covers it until they rejoin (same name and table). */
   | { type: "player:leave" }
   | { type: "host:command"; cmd: HostCommand; step?: string; speed?: Speed }
@@ -306,6 +314,8 @@ export function parseClientMsg(raw: string): ClientMsg | null {
         ...(o.speed !== undefined && { speed: o.speed as Speed }),
       };
     }
+    case "player:ready":
+      return typeof o.ready === "boolean" ? { type: "player:ready", ready: o.ready } : null;
     case "player:leave":
       return { type: "player:leave" };
     default:

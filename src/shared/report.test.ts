@@ -23,6 +23,7 @@ function pair(id: number, lockedDials: PairInfo["lockedDials"], extra: Partial<P
     lastWave: null,
     dials: { a: zero, b: zero },
     lockedDials,
+    ready: { a: false, b: false },
     followed: null,
     ...extra,
   };
