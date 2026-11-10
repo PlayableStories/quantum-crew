@@ -299,8 +299,11 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   // The crystal plan screen (since S3): your card, CORA's, the starting line, the live hint, the fan, and the rule in
   // full on the first visit.
   await shot("tuning");
-  // Phones: the first visit opens the crystals' rule as a sheet over the plan; close it to see the plan.
-  if (await page.locator("dialog[open]").count()) {
+  // Phones: the first visit opens the crystals' rule as a sheet over the plan (from an effect, so give it a moment to
+  // open); close it to see the plan. Checking at once raced the effect and left the sheet blocking Lock in.
+  const ruleSheet = page.locator("dialog[open]");
+  if (size.mobile) await ruleSheet.waitFor({ timeout: 2000 }).catch(() => {});
+  if (await ruleSheet.count()) {
     await page.keyboard.press("Escape");
     await page.locator("dialog[open]").waitFor({ state: "hidden" });
     await shot("tuning-plan");
