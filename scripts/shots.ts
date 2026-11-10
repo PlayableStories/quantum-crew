@@ -563,15 +563,17 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     );
   };
   // The TV's primary action is the host controls; a phone's is whatever it should press now.
-  // Since E3b the facilitator's phone remote (/host) joins after the lobby and is in every shot of all three.
+  // Since E3b the facilitator's phone remote (/host) joins after the lobby and is in every shot of all three. Since U1
+  // a paired remote hides the TV's host row, so from then on the script presses the remote's buttons.
   let remote: View | null = null;
   const all = (primary: string | null = null): [View, string, string | null][] => [
-    [tv, "", ".tv__controls .btn"],
+    [tv, "", remote ? null : ".tv__controls .btn"],
     [a, "-a", primary],
     [b, "-b", primary],
     ...(remote ? [[remote, "-remote", ".remote__primary"] as [View, string, string | null]] : []),
   ];
-  const host = async (cmd: string) => tv.page.locator(".tv__controls").getByRole("button", { name: cmd, exact: true }).click({ timeout: 5000 });
+  const controls = () => (remote ? remote.page.locator(".remote__controls") : tv.page.locator(".tv__controls"));
+  const host = async (cmd: string) => controls().getByRole("button", { name: cmd, exact: true }).first().click({ timeout: 5000 });
   const banner = (phase: string) => tv.page.locator(`.tv__banner--${phase}`);
   // A capture that doesn't come up in time is skipped with a warning, so one blocked screen never stalls the run.
   const ready = (what: string, wait: Promise<unknown>) =>
@@ -580,8 +582,8 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
       () => (console.warn(`  skipped: ${what} (${tvSize.name})`), false),
     );
   // Manual results (each act's first wave) wait for the facilitator: press Next round when the TV offers it.
-  const nextRoundBtn = tv.page.locator(".tv__controls").getByRole("button", { name: S.tv.nextRound, exact: true });
   const moveOn = async () => {
+    const nextRoundBtn = controls().getByRole("button", { name: S.tv.nextRound, exact: true }).first();
     if (await nextRoundBtn.count()) await nextRoundBtn.click({ timeout: 2000 }).catch(() => {});
   };
 
@@ -655,6 +657,15 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     await host(nightShift);
     await banner("briefing").waitFor();
     await shot("briefing", all(), true);
+    // Since U1: after the lobby the join panel is a small code in the TV's header; J (or a click) shows the QR.
+    if ((S.tv as Record<string, unknown>).joinChip) {
+      await tv.page.locator("body").click({ position: { x: 5, y: 5 } }).catch(() => {});
+      await tv.page.keyboard.press("j");
+      if (await ready("join sheet", tv.page.locator("dialog[open] [data-join-url]").waitFor({ timeout: 5000 })))
+        await shot("join-sheet", [[tv, "", null]]);
+      await tv.page.keyboard.press("Escape");
+      await tv.page.locator("dialog[open]").waitFor({ state: "hidden" }).catch(() => {});
+    }
     await host((S.tv as Record<string, unknown>).startRounds as string);
     await playAct1();
     await banner("storm").waitFor();
@@ -747,9 +758,8 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
   }
   // A last wave (Next closes each round and result at once), so the ending can follow.
   await host(S.tv.cmd.startBatch);
-  const nextBtn = tv.page.locator(".tv__controls .btn--primary");
   for (let i = 0; i < 60 && !(await banner("batchDone").isVisible()); i++) {
-    await nextBtn.click({ timeout: 2000 }).catch(() => {});
+    await controls().locator(".btn--primary").first().click({ timeout: 2000 }).catch(() => {});
     await tv.page.waitForTimeout(150);
   }
 
@@ -859,18 +869,20 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
         await shot(`${prefix}-round`, all(control));
         gotRound = (await Promise.all([a, b].map((v) => v.page.locator(control).first().isVisible()))).every(Boolean);
         if (!gotRound) n--; // moved on mid-shot: take it again next round, over the same files
-        // The speed menu (▾ beside Play), open over the host row, then closed with Escape.
-        const moreBtn = tv.page.locator(".tv__auto-more");
+        // The speed menu (▾ beside Play), open over the host row (on the remote once one is paired, since U1), then
+        // closed with Escape.
+        const pad = remote ?? tv;
+        const moreBtn = pad.page.locator(".tv__auto-more");
         if (gotRound && prefix === "act2" && (await moreBtn.count())) {
           await moreBtn.click();
-          if (await ready("speed menu", tv.page.locator(".tv__auto-menu").waitFor({ timeout: 5000 }))) await shot("speed-menu", [[tv, "", null]]);
-          await tv.page.keyboard.press("Escape");
+          if (await ready("speed menu", pad.page.locator(".tv__auto-menu").waitFor({ timeout: 5000 }))) await shot("speed-menu", [[pad, pad === tv ? "" : "-remote", null]]);
+          await pad.page.keyboard.press("Escape");
           // Play: auto at once, the button counting down (and the TV's bar); then Pause, back to manual.
-          const toggle = tv.page.locator(".tv__auto-toggle");
+          const toggle = pad.page.locator(".tv__auto-toggle");
           await toggle.click();
           if (await ready("auto countdown", tv.page.locator(".tv__banner .countdown__bar").waitFor({ timeout: 5000 }))) {
             await tv.page.waitForTimeout(1200);
-            await shot("auto-countdown", [[tv, "", null]]);
+            await shot("auto-countdown", remote ? [[tv, "", null], [remote, "-remote", null]] : [[tv, "", null]]);
           }
           await toggle.click().catch(() => {});
         }

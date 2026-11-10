@@ -4725,3 +4725,64 @@ kbd {
     line-height: 1.15;
   }
 }
+
+/* U1: after the lobby, the join code is a small button in the TV's header (the QR opens in a sheet, or with J). */
+.screen-top .tv__join-chip {
+  min-height: 36px;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+}
+
+.tv__head .keys-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  min-width: 36px;
+  margin: 0;
+  padding: 2px 8px;
+}
+
+/* U1: a paired remote runs the room, so the host row is gone and the game takes its height. */
+.tv--remote {
+  grid-template-areas: "head" "main" "side";
+}
+
+@media (min-width: 900px) {
+  .tv--remote {
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: "head head" "main side";
+  }
+
+  .tv--remote.tv--wide,
+  .tv--remote.tv--cases {
+    grid-template-areas: "head head" "main main";
+  }
+}
+
+/* U1: the join panel in the TV's sheet (after the lobby): stacked, so the QR, the code and the link fit its width. */
+.sheet .tv__join {
+  flex-direction: column;
+  align-items: stretch;
+  text-align: center;
+  min-width: 0;
+}
+
+.sheet .tv__join .tv__qr {
+  width: min(100%, 280px);
+  margin-inline: auto;
+}
+
+.sheet .tv__join .tv__code {
+  font-size: clamp(2rem, 3vw, 3.5rem);
+}
+
+.sheet .tv__join p {
+  overflow-wrap: anywhere;
+}
+
+.plan-badge {
+  white-space: nowrap;
+  flex: none;
+}

@@ -799,6 +799,7 @@ export const S = {
     tv: [
       ["Space / →", "The next step (Close the round, Next round, Start the wave, Next in the report)"],
       ["P", "Play / pause"],
+      ["J", "The join QR code, for late joiners (after the lobby)"],
       ["M", "Sound on / off"],
       ["F", "Full screen on / off"],
       ["D", "Debug: jump to Act II or Act III (for testing)"],
@@ -810,6 +811,9 @@ export const S = {
   tv: {
     station: (code: string) => `Station ${code}`,
     join: "Join on your phone",
+    /** After the lobby: the join code, small in the header; a click (or J) shows the QR for late joiners. */
+    joinChip: (code: string) => `Join: ${code}`,
+    joinChipLabel: (code: string) => `Join: code ${code}. Show the QR code (J)`,
     joinAt: (url: string) => `or open ${url}`,
     /** The laptop has other network addresses; one of them may be the one phones can reach. */
     tryOther: "Not working? Try:",

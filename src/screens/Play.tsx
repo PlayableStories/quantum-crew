@@ -400,9 +400,8 @@ function InRoom() {
 
       {!round && state.phase === "strategy" && (
         <div className={`stack lull ${state.act === 3 ? "lull--act3" : ""}`}>
-          <div className="lull__head">
-            <h2>{S.phone.huddle}</h2>
-          </div>
+          {/* The header's status names the lull; the heading stays for screen readers (U1). */}
+          <h2 className="hide-on-phone">{S.phone.huddle}</h2>
           {state.act === 2 && <p>{S.phone.huddleBody}</p>}
           {state.act === 2 ? <RuleChip /> : act3Chips}
           {state.act === 2 ? (

@@ -56,3 +56,34 @@ describe("the TV's host row (paced)", () => {
     expect(markup).not.toContain(`>${S.tv.cmd.revealCeiling}</button>`); // not this step's
   });
 });
+
+describe("a quieter TV (U1)", () => {
+  it("the large join panel only in the lobby; from the briefing on, a small Join: code in the header (QR on demand)", () => {
+    const lobby = tv(room("lobby"));
+    expect(lobby).toContain("tv__join--big");
+    expect(lobby).not.toContain("tv__join-chip");
+    for (const phase of ["briefing", "round", "strategy", "debrief"] as const) {
+      const markup = tv(room(phase, false, 2));
+      expect(markup, phase).not.toContain("data-join-url"); // the QR is in a closed sheet, not on screen
+      expect(markup, phase).toContain(`>${S.tv.joinChip("ABCD")}</button>`);
+      expect(markup, phase).toContain(`aria-label="${S.tv.joinChipLabel("ABCD")}"`);
+    }
+    expect(S.keys.tv.some(([key]) => key === "J")).toBe(true);
+  });
+
+  it("a paired remote hides the host row and its key hint; the ? and the keyboard's sheets stay", () => {
+    const keysSheet = `aria-label="${S.keys.title}"`;
+    const paired = tv({ ...room("round", false, 2), remotes: 1 });
+    expect(paired).not.toContain("tv__controls");
+    expect(paired).not.toContain(S.tv.keys);
+    expect(paired).not.toContain(`>${S.tv.closeRound}</button>`);
+    expect(paired).toContain("tv--remote");
+    expect(paired).toContain(`aria-label="${S.keys.open}"`);
+    expect(paired).toContain(keysSheet); // TvKeys is mounted: the keyboard still works
+    const alone = tv(room("round", false, 2));
+    expect(alone).toContain("tv__controls");
+    expect(alone).toContain(`>${S.tv.closeRound}</button>`);
+    expect(alone).toContain(`aria-label="${S.keys.open}"`);
+    expect(alone).toContain(keysSheet);
+  });
+});
