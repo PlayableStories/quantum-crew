@@ -146,24 +146,22 @@ describe("readout reactions", () => {
   });
 });
 
-describe("station telemetry", () => {
-  it("says in one impersonal sentence why the round held or failed", () => {
+describe("a result's why line (U1)", () => {
+  it("gives only the reason; the ring shows the sensors and pumps", () => {
     const why = S.telemetry.why;
-    expect(why(scoreRound(HOT, HOT, CLOCKWISE, CLOCKWISE))).toBe(
-      "Both sections HOT and the pumps matched, so nothing pushed the heat out of the open vent.",
-    );
-    expect(why(scoreRound(HOT, HOT, ANTICLOCKWISE, CLOCKWISE))).toBe(
-      "Both sections HOT and the pumps fought, so the vent opened and purged the heat.",
-    );
-    expect(why(scoreRound(HOT, COOL, ANTICLOCKWISE, CLOCKWISE))).toBe(
-      "The pumps fought, but the vent stays locked unless both sections are HOT.",
-    );
-    expect(why(scoreRound(COOL, HOT, CLOCKWISE, CLOCKWISE))).toBe(
-      "One section HOT and the pumps matched, so the heat was carried to the cool side.",
-    );
-    expect(why(scoreRound(COOL, COOL, ANTICLOCKWISE, ANTICLOCKWISE))).toBe(
-      "Both sections COOL and the pumps matched, so the coolant circulated.",
-    );
+    const lines = {
+      overheat: why(scoreRound(HOT, HOT, CLOCKWISE, CLOCKWISE)),
+      purge: why(scoreRound(HOT, HOT, ANTICLOCKWISE, CLOCKWISE)),
+      spike: why(scoreRound(HOT, COOL, ANTICLOCKWISE, CLOCKWISE)),
+      carry: why(scoreRound(COOL, HOT, CLOCKWISE, CLOCKWISE)),
+      circulate: why(scoreRound(COOL, COOL, ANTICLOCKWISE, ANTICLOCKWISE)),
+    };
+    expect(lines.spike).toBe("The pumps fought, and the vent stays locked unless both sections are HOT.");
+    expect(new Set(Object.values(lines)).size).toBe(5);
+    for (const line of Object.values(lines)) {
+      expect(line).not.toMatch(/clockwise/i); // no pump directions
+      expect(line).not.toMatch(/sections? (COOL|HOT)\b|(Both|One) sections?/); // no sensor readings
+    }
     expect(why(scoreRound(COOL, HOT, null, CLOCKWISE))).toBe("Your pump wasn't set in time.");
   });
 });

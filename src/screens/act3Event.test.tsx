@@ -55,7 +55,7 @@ describe("Act III on a phone", () => {
     expect(markup).toContain(`>${S.batch.crystalTag}</span>`);
   });
 
-  it("a result: the cause, a line of telemetry and the ring", () => {
+  it("a result: the headline, one why line and the ring (labelled with both sides)", () => {
     seat(act3("roundResult"));
     const flash: { roundId: string } & RoundOutcome = {
       roundId: "2-1",
@@ -71,7 +71,11 @@ describe("Act III on a phone", () => {
     put({ flash });
     const markup = html();
     expect(markup).toContain(S.outcome.carry.title);
-    expect(markup).toContain(S.telemetry.head);
+    expect(markup.match(/class="why"/g)).toHaveLength(1);
+    expect(markup).not.toContain("Station telemetry");
+    expect(markup).toContain(
+      S.ring.result(S.event.ringSide("A", S.event.you), "COOL", S.pump[0], S.event.ringSide("B", "Bo"), "HOT", S.pump[0], S.ring.ventLocked),
+    );
     expect(markup).toContain(S.event.ringSide("B", "Bo"));
   });
 });

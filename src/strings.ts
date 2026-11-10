@@ -76,6 +76,9 @@ export const S = {
     ventOpen: "Vent unlocked",
     ventLocked: "Vent locked",
     notSet: "NOT SET",
+    /** A result ring for screen readers: the facts it draws (the text beside it gives only the reason). */
+    result: (a: string, aLight: string, aPump: string, b: string, bLight: string, bPump: string, vent: string) =>
+      `${a}: ${aLight}, pump ${aPump}. ${b}: ${bLight}, pump ${bPump}. ${vent}.`,
   },
 
   landing: {
@@ -151,17 +154,16 @@ export const S = {
     darkSub: "It may come back when the wave passes.",
   },
 
-  /** The station's automatic log after each round: one impersonal sentence on why it held or failed. The ring shows
-   *  both sensors and both pumps. */
+  /** After each round, under the headline: one plain line on why it held or failed. Only the reason: the ring is
+   *  where both sensors, both pumps and the vent are shown, so these lines don't repeat them. */
   telemetry: {
-    head: "Station telemetry",
     why: (r: RoundResult) =>
       ({
-        circulate: "Both sections COOL and the pumps matched, so the coolant circulated.",
-        carry: "One section HOT and the pumps matched, so the heat was carried to the cool side.",
-        purge: "Both sections HOT and the pumps fought, so the vent opened and purged the heat.",
-        spike: "The pumps fought, but the vent stays locked unless both sections are HOT.",
-        overheat: "Both sections HOT and the pumps matched, so nothing pushed the heat out of the open vent.",
+        circulate: "Nothing was hot, so the coolant just went round.",
+        carry: "The flow carried the heat round to the cool side.",
+        purge: "The pumps pushed against each other and forced the heat out of the unlocked vent.",
+        spike: "The pumps fought, and the vent stays locked unless both sections are HOT.",
+        overheat: "The vent was unlocked, but matched pumps only push heat round the ring, and there was no cool side to take it.",
         slow: r.a === null ? "Your pump wasn't set in time." : `${CREW_NAME}'s pump wasn't set in time.`,
       })[roundCause(r)],
   },
@@ -517,7 +519,7 @@ export const S = {
     },
     /** Act II on a phone: the partner's plan, live in the lull (`name` is the partner's, or CORA's). */
     partnerPlan: (name: string) => `${name}'s plan`,
-    /** A round's telemetry line. Only "too slow" names anyone: whose pump wasn't set. */
+    /** A result's why line. Only "too slow" names anyone: whose pump wasn't set. */
     why: (r: RoundResult, mine: "a" | "b", partner: string) => {
       if (roundCause(r) !== "slow") return S.telemetry.why(r);
       const theirs = mine === "a" ? r.b : r.a;

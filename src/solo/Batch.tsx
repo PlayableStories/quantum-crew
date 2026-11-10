@@ -159,16 +159,14 @@ export function Batch() {
   );
 }
 
-/** The round's outcome: the cause, one sentence of station telemetry on why, and (on phones and portrait) the ring
- *  with both sensors and both pumps. On landscape the ring is the side column. Comms are dark: no crewmate text. */
+/** The round's outcome: the cause, one line on why, and (on phones and portrait) the ring, the one place for both
+ *  sensors and both pumps. On landscape the ring is the side column. Comms are dark: no crewmate text. */
 function RoundOutcome({ result }: { result: RoundResult }) {
   const title = S.outcome[roundCause(result)].title;
   return (
     <div className={`result spacer ${result.win ? "result--win" : "result--loss"}`} role="status">
       <div className="result__verdict">{result.win ? "✓ " : "✗ "}{title}</div>
-      <p className="telemetry">
-        <span className="telemetry__head">{S.telemetry.head}</span> {S.telemetry.why(result)}
-      </p>
+      <p className="why">{S.telemetry.why(result)}</p>
       <div className="only-stacked result__ring">
         <RingDiagram result={result} small />
       </div>

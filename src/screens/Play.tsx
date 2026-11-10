@@ -360,9 +360,7 @@ function InRoom() {
           </div>
           {partner && (
             <>
-              <p className="telemetry">
-                <span className="telemetry__head">{S.telemetry.head}</span> {S.event.why(flash, mine, partner.name)}
-              </p>
+              <p className="why">{S.event.why(flash, mine, partner.name)}</p>
               <div className="result__ring">
                 <RingDiagram result={flash} small labels={ringLabels(seat.table, partner.name)} />
               </div>

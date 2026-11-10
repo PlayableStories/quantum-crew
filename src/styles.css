@@ -1632,22 +1632,12 @@ p {
 
 /* ---------- Station telemetry (after each round) ---------- */
 
-.telemetry {
+/* U1: a result's one plain line on why it held or failed (the ring shows the sensors and pumps). */
+.why {
   margin: 0;
-  max-width: 36ch;
-  padding: 6px 10px;
-  border-left: 3px solid var(--edge-bright);
-  background: var(--panel);
+  max-width: 40ch;
   color: var(--ink-muted);
   font-size: var(--fs-s);
-  text-align: left;
-}
-.telemetry__head {
-  display: block;
-  color: var(--amber);
-  font-size: 0.75rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 /* ---------- Selected pair (huddle): "You: Reverse when HOT ❄↻ 🔥↺ · Crewmate: …" ---------- */
