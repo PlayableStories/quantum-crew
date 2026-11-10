@@ -13,12 +13,15 @@ import {
   RELAXED_ACT1_ROUND_MS,
   RELAXED_RESULT_MS,
   RELAXED_ROUND_MS,
+  DEFAULT_PLAN,
   DEFAULT_TUNING,
+  START_CONFIRM_MS,
 } from "../src/config.ts";
 import type { ClientMsg, RoomState, Speed, ServerMsg } from "../src/shared/protocol.ts";
 import { OPTIMAL_TUNING, QUANTUM_LIMIT, matchProbability, quantumExpectedWinRate } from "../src/shared/chsh.ts";
 import { CLUE_SETTINGS, RULE_GAPS, coraPlan, pairRateFor } from "../src/shared/crystalPlan.ts";
 import { mulberry32 } from "../src/shared/rng.ts";
+import { pairReady, readyPairs } from "../src/shared/ready.ts";
 import { BOT_NAME } from "./room.ts";
 import { createStation } from "./station.ts";
 
@@ -65,8 +68,14 @@ function setup(seed = 1, speed: Speed | null = "brisk") {
   const join = (conn: string, name: string, table: "A" | "B") => send(conn, { type: "player:join", room, name, table });
   const host = (cmd: Extract<ClientMsg, { type: "host:command" }>["cmd"]) => send("tv", { type: "host:command", cmd });
   if (speed) send("tv", { type: "host:command", cmd: "setSpeed", speed });
+  /** Start the wave: from a lull with pairs still planning (R1) the first press asks "Start anyway?", so press again. */
+  const startWave = () => {
+    host("startBatch");
+    const s = last("tv", "room:state")?.state;
+    if (s?.phase === "strategy" && s.startConfirm) host("startBatch");
+  };
 
-  return { station, send, msgs, last, roomState, advance, clear, room, join, host };
+  return { station, send, msgs, last, roomState, advance, clear, room, join, host, startWave };
 }
 
 describe("rooms and pairing", () => {
@@ -108,7 +117,7 @@ describe("rooms and pairing", () => {
     t.join("p1", "Ada", "A");
     t.join("p2", "Bo", "B");
     const id = t.last("p1", "player:joined")!.playerId;
-    t.host("startBatch");
+    t.startWave();
     const light = t.last("p1", "round:start")!.light;
     t.station.disconnect("p1");
     expect(t.roomState("tv").players.find((p) => p.id === id)!.connected).toBe(false);
@@ -136,7 +145,7 @@ describe("Act II rounds", () => {
     t.join("a2", "Cy", "A");
     t.host("startStrategy");
     expect(t.roomState("tv").phase).toBe("strategy");
-    t.host("startBatch"); // the lull is untimed: the facilitator starts the wave
+    t.startWave(); // the lull is untimed: the facilitator starts the wave
     for (let r = 1; r <= MP_WAVE_SIZE; r++) {
       expect(t.roomState("tv")).toMatchObject({ phase: "round", roundNo: r });
       for (const conn of ["a1", "b1", "a2"]) {
@@ -170,7 +179,7 @@ describe("Act II rounds", () => {
     const t = setup();
     t.join("a1", "Ada", "A");
     t.join("b1", "Bo", "B");
-    t.host("startBatch");
+    t.startWave();
     const id = t.last("a1", "round:start")!.roundId;
     t.send("a1", { type: "player:valve", roundId: id, valve: 0 });
     expect(t.roomState("tv").pairs[0]!.answered).toEqual({ a: true, b: false });
@@ -185,7 +194,7 @@ describe("Act II rounds", () => {
     const t = setup();
     t.join("a1", "Ada", "A");
     for (let b = 0; b < 7; b++) {
-      t.host("startBatch");
+      t.startWave();
       t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
     }
     const s = t.roomState("tv");
@@ -195,7 +204,7 @@ describe("Act II rounds", () => {
     expect(7 * MP_WAVE_SIZE).toBeGreaterThan(ROLLING_WINDOW);
     t.host("revealCeiling");
     expect(t.roomState("tv")).toMatchObject({ phase: "ceiling", ceilingRevealed: true });
-    t.host("startBatch");
+    t.startWave();
     expect(t.last("tv", "error")!.code).toBe("not-now");
     t.host("reset");
     expect(t.roomState("tv")).toMatchObject({ phase: "lobby", batchNo: 0, ceilingRevealed: false });
@@ -206,12 +215,12 @@ describe("Act II rounds", () => {
   it("players joining mid-batch are seated after it", () => {
     const t = setup();
     t.join("a1", "Ada", "A");
-    t.host("startBatch");
+    t.startWave();
     t.join("b1", "Bo", "B");
     expect(t.roomState("tv").pairs[0]!.b.playerId).toBeNull();
     expect(t.last("b1", "round:start")).toBeUndefined();
     t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
-    t.host("startBatch");
+    t.startWave();
     expect(t.roomState("tv").pairs[0]!.b.name).toBe("Bo");
     expect(t.last("b1", "round:start")).toBeDefined();
   });
@@ -229,7 +238,7 @@ describe("Act III rounds", () => {
       ["a3", "Ed", "A"],
     ] as const;
     for (const [conn, name, table] of seats) t.join(conn, name, table);
-    t.host("startBatch");
+    t.startWave();
     t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
     t.host("revealCeiling");
     t.host("unlockTool");
@@ -247,7 +256,7 @@ describe("Act III rounds", () => {
     follow: (conn: string) => boolean = () => true,
   ) {
     for (let b = 0; b < batches; b++) {
-      t.host("startBatch");
+      t.startWave();
       for (let r = 0; r < MP_WAVE_SIZE; r++) {
         for (const conn of order(r).filter((c) => conns.includes(c))) {
           const { roundId, crystal } = t.last(conn, "round:start")!;
@@ -262,7 +271,7 @@ describe("Act III rounds", () => {
   it("unlocks the tool into Act III; the round starts with this phone's setting and crystal, and sets no pump", () => {
     const { t } = act3Room(1);
     expect(t.roomState("tv")).toMatchObject({ phase: "tool", act: 3, toolUnlocked: true, clue: 0 });
-    t.host("startBatch");
+    t.startWave();
     const start = t.last("a1", "round:start")!;
     expect(start).toMatchObject({ act: 3, dialDeg: OPTIMAL_TUNING.A[start.light === 0 ? "greenDeg" : "redDeg"] });
     expect([0, 1]).toContain(start.crystal);
@@ -289,7 +298,7 @@ describe("Act III rounds", () => {
 
   it("the pump set is what scores, even against the crystal; followed counts only players' answered pumps", () => {
     const { t } = act3Room(6);
-    t.host("startBatch");
+    t.startWave();
     const id = t.last("a1", "round:start")!.roundId;
     const crystalA = t.last("a1", "round:start")!.crystal!;
     const crystalB = t.last("b1", "round:start")!.crystal!;
@@ -347,7 +356,7 @@ describe("Act III rounds", () => {
   it("a timeout in Act III is a loss; tunings snap to the dial", () => {
     const { t } = act3Room(5);
     t.send("a1", { type: "player:strategy", act: 3, tuning: { greenDeg: 46, redDeg: -22 } });
-    t.host("startBatch");
+    t.startWave();
     const start = t.last("a1", "round:start")!;
     expect(start.dialDeg).toBe(start.light === 0 ? 45 : 157.5);
     t.clear("a1");
@@ -375,7 +384,7 @@ describe("Act I: the night shift and the storm", () => {
     expect(t.roomState("tv")).toMatchObject({ phase: "briefing", act: 1 });
     t.host("startStrategy"); // not from the briefing
     expect(t.last("tv", "error")!.code).toBe("not-now");
-    t.host("startBatch");
+    t.startWave();
     expect(t.roomState("tv")).toMatchObject({ phase: "round", act: 1, roundNo: 1, batchNo: 0 });
     for (let r = 1; r <= ACT1_ROUNDS; r++) {
       expect(t.last("a1", "round:start")!.roundId).toBe(`act1-${r}`);
@@ -388,21 +397,21 @@ describe("Act I: the night shift and the storm", () => {
     expect(storm.stability.rolling).toBeNull(); // the station gauge starts with the first wave
     t.host("startStrategy");
     expect(t.roomState("tv")).toMatchObject({ phase: "strategy", act: 2 });
-    t.host("startBatch");
+    t.startWave();
     expect(t.roomState("tv")).toMatchObject({ phase: "round", act: 2, batchNo: 1 });
     expect(t.last("a1", "round:start")!.roundId).toBe("1-1");
 
     // From the lobby, Start the wave still goes straight to Act II.
     const u = setup(4);
     u.join("a1", "Ada", "A");
-    u.host("startBatch");
+    u.startWave();
     expect(u.roomState("tv")).toMatchObject({ phase: "round", act: 2, batchNo: 1 });
   });
 
   it("each pair sees every sensor combination, never a double HOT first", () => {
     const t = setup(11);
     toBriefing(t, [["a1", "Ada", "A"], ["b1", "Bo", "B"], ["a2", "Cy", "A"], ["b2", "Di", "B"]]);
-    t.host("startBatch");
+    t.startWave();
     const seen = new Map<string, string[]>();
     for (let r = 1; r <= ACT1_ROUNDS; r++) {
       for (const [a, b] of [["a1", "b1"], ["a2", "b2"]] as const) {
@@ -424,7 +433,7 @@ describe("Act I: the night shift and the storm", () => {
   it("the partner hears each tap; the last tap counts; the round ends once pumps settle", () => {
     const t = setup(5);
     toBriefing(t, [["a1", "Ada", "A"], ["b1", "Bo", "B"]]);
-    t.host("startBatch");
+    t.startWave();
     const id = t.last("a1", "round:start")!.roundId;
     const a = t.last("a1", "round:start")!;
     const b = t.last("b1", "round:start")!;
@@ -452,7 +461,7 @@ describe("Act I: the night shift and the storm", () => {
   it("a pump that isn't set by the deadline is too slow", () => {
     const t = setup(6);
     toBriefing(t, [["a1", "Ada", "A"], ["b1", "Bo", "B"]]);
-    t.host("startBatch");
+    t.startWave();
     const id = t.last("a1", "round:start")!.roundId;
     t.send("a1", { type: "player:valve", roundId: id, valve: 0 });
     t.advance(MP_ACT1_ROUND_MS - 1);
@@ -464,7 +473,7 @@ describe("Act I: the night shift and the storm", () => {
   it("CORA in an empty seat calls her reading and a random pump at the start of each round", () => {
     const t = setup(9);
     toBriefing(t, [["a1", "Ada", "A"]]);
-    t.host("startBatch");
+    t.startWave();
     const pumps: (0 | 1)[] = [];
     for (let r = 1; r <= ACT1_ROUNDS; r++) {
       const start = t.last("a1", "round:start")!;
@@ -488,7 +497,7 @@ describe("Act I: the night shift and the storm", () => {
   it("a phone that rejoins mid-round gets its reading, the partner's call and its own pump back", () => {
     const t = setup(12);
     toBriefing(t, [["a1", "Ada", "A"], ["b1", "Bo", "B"]]);
-    t.host("startBatch");
+    t.startWave();
     const id = t.last("a1", "round:start")!.roundId;
     const light = t.last("a1", "round:start")!.light;
     t.send("a1", { type: "player:valve", roundId: id, valve: 1 });
@@ -502,7 +511,7 @@ describe("Act I: the night shift and the storm", () => {
   it("reset goes back to the lobby before the night shift", () => {
     const t = setup(2);
     toBriefing(t, [["a1", "Ada", "A"]]);
-    t.host("startBatch");
+    t.startWave();
     t.advance(MP_ACT1_ROUND_MS + MP_ACT1_RESULT_MS);
     t.host("reset");
     expect(t.roomState("tv")).toMatchObject({ phase: "lobby", act: 1, roundNo: 0 });
@@ -535,7 +544,7 @@ describe("Act II plans (E2a)", () => {
     t.join("b1", "Bo", "B");
     t.send("a1", { type: "player:strategy", act: 2, classical: revHot });
     t.send("b1", { type: "player:strategy", act: 2, classical: revCool });
-    t.host("startBatch");
+    t.startWave();
     t.send("a1", { type: "player:strategy", act: 2, classical: always });
     const s = t.roomState("tv");
     expect(s.pairs[0]!.locked).toEqual({ a: revHot, b: revCool });
@@ -546,7 +555,7 @@ describe("Act II plans (E2a)", () => {
     expect(done.phase).toBe("batchDone");
     expect(done.pairs[0]!.lastWave).toEqual({ rounds: MP_WAVE_SIZE, wins: 0, timeouts: MP_WAVE_SIZE });
     // The next wave locks the new plan and adds its pairing.
-    t.host("startBatch");
+    t.startWave();
     expect(t.roomState("tv").pairs[0]!.locked).toEqual({ a: always, b: revCool });
     expect(t.roomState("tv").triedPlans.sort()).toEqual(["0-2", "1-2"]);
     expect(t.roomState("tv").pairs[0]!.lastWave).toEqual({ rounds: 0, wins: 0, timeouts: 0 });
@@ -555,7 +564,7 @@ describe("Act II plans (E2a)", () => {
   it("results carry the cause and both pumps; reset clears plans, locks and pairings", () => {
     const t = setup(23);
     t.join("a1", "Ada", "A");
-    t.host("startBatch");
+    t.startWave();
     const start = t.last("a1", "round:start")!;
     t.send("a1", { type: "player:valve", roundId: start.roundId, valve: 0 });
     t.advance(CORA_DELAY_MS[1]);
@@ -581,13 +590,13 @@ describe("Act III dials and saved or not (E2b)", () => {
     t.join("a1", "Ada", "A");
     t.join("b1", "Bo", "B");
     t.join("a2", "Cy", "A"); // with CORA
-    t.host("startBatch");
+    t.startWave();
     t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
     t.host("revealCeiling");
     t.host("unlockTool");
   }
   const wave = (t: ReturnType<typeof setup>) => {
-    t.host("startBatch");
+    t.startWave();
     t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
   };
 
@@ -599,7 +608,7 @@ describe("Act III dials and saved or not (E2b)", () => {
     const s = t.roomState("b1");
     expect(s.pairs[0]!.dials).toEqual({ a: OPTIMAL_TUNING.A, b: near });
     expect(s.pairs[1]!.dials.b).toEqual(OPTIMAL_TUNING.B);
-    t.host("startBatch");
+    t.startWave();
     t.send("a1", { type: "player:strategy", act: 3, tuning: near });
     expect(t.roomState("tv").pairs[0]!.lockedDials).toEqual({ a: OPTIMAL_TUNING.A, b: near });
   });
@@ -637,7 +646,7 @@ describe("Act III dials and saved or not (E2b)", () => {
   it("the crew's followed count adds up the pairs'", () => {
     const t = setup(33);
     toTool(t);
-    t.host("startBatch");
+    t.startWave();
     const id = t.last("a1", "round:start")!.roundId;
     for (const conn of ["a1", "b1", "a2"]) t.send(conn, { type: "player:valve", roundId: id, valve: t.last(conn, "round:start")!.crystal! });
     t.advance(CORA_DELAY_MS[1]);
@@ -651,7 +660,7 @@ describe("crystal plans and the clue ladder (E3c)", () => {
     t.join("a1", "Ada", "A");
     t.join("b1", "Bo", "B");
     if (withCora) t.join("a2", "Cy", "A");
-    t.host("startBatch");
+    t.startWave();
     t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
     t.host("revealCeiling");
     t.host("unlockTool");
@@ -660,7 +669,7 @@ describe("crystal plans and the clue ladder (E3c)", () => {
     t.send(conn, { type: "player:strategy", act: 3, tuning });
   /** A wave where every phone follows its crystal straight away. */
   const followWave = (t: ReturnType<typeof setup>, conns: string[]) => {
-    t.host("startBatch");
+    t.startWave();
     for (let r = 0; r < MP_WAVE_SIZE; r++) {
       for (const conn of conns) {
         const { roundId, crystal } = t.last(conn, "round:start")!;
@@ -679,7 +688,7 @@ describe("crystal plans and the clue ladder (E3c)", () => {
     let same = 0;
     let n = 0;
     for (let w = 0; w < 120; w++) {
-      t.host("startBatch");
+      t.startWave();
       for (let r = 0; r < MP_WAVE_SIZE; r++) {
         const a = t.last("a1", "round:start")!;
         const b = t.last("b1", "round:start")!;
@@ -736,7 +745,7 @@ describe("crystal plans and the clue ladder (E3c)", () => {
     expect(t.roomState("tv")).toMatchObject({ phase: "strategy", clue: 1 }); // the first lull: the hint and the nudge
     t.host("nextClue");
     expect(t.last("tv", "error")!.code).toBe("not-now"); // the answer needs an Act III wave
-    t.host("startBatch");
+    t.startWave();
     t.host("nextClue");
     expect(t.roomState("tv").clue).toBe(1); // not during a wave
     t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
@@ -763,7 +772,7 @@ describe("crystal plans and the clue ladder (E3c)", () => {
   it("a wave started straight from the tool reveal (no lull) brings clue 1, so the answer can follow", () => {
     const t = setup(65);
     toTool(t);
-    t.host("startBatch");
+    t.startWave();
     expect(t.roomState("tv").clue).toBe(1);
   });
 });
@@ -772,13 +781,13 @@ describe("the ending and the incident report (E3a)", () => {
   function toAct3(t: ReturnType<typeof setup>) {
     t.join("a1", "Ada", "A");
     t.join("b1", "Bo", "B");
-    t.host("startBatch");
+    t.startWave();
     t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
     t.host("revealCeiling");
     t.host("unlockTool");
   }
   const wave = (t: ReturnType<typeof setup>) => {
-    t.host("startBatch");
+    t.startWave();
     t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
   };
 
@@ -787,7 +796,7 @@ describe("the ending and the incident report (E3a)", () => {
     toAct3(t);
     t.host("stormPasses");
     expect(t.last("tv", "error")!.code).toBe("not-now"); // no Act III wave yet
-    t.host("startBatch");
+    t.startWave();
     t.host("stormPasses");
     expect(t.roomState("tv").phase).toBe("round"); // not during a wave
     t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
@@ -852,7 +861,7 @@ describe("pacing (facilitator-paced event mode)", () => {
 
   it("manual (each act's first wave by default): no countdown; the round waits for every player, the result for Next", () => {
     const t = pair();
-    t.host("startBatch");
+    t.startWave();
     let s = t.roomState("tv");
     expect(s).toMatchObject({ phase: "round", auto: false, autoChosen: false, deadline: null, batchSize: MP_WAVE_SIZE });
     expect(t.last("a1", "round:start")!.deadline).toBeNull();
@@ -869,7 +878,7 @@ describe("pacing (facilitator-paced event mode)", () => {
 
   it("Next in a round closes it: anyone who hasn't chosen counts as too slow", () => {
     const t = pair();
-    t.host("startBatch");
+    t.startWave();
     t.send("a1", { type: "player:valve", roundId: t.last("a1", "round:start")!.roundId, valve: 0 });
     t.host("next");
     expect(t.last("a1", "round:result")).toMatchObject({ timedOut: true, a: 0, b: null, cause: "slow" });
@@ -877,7 +886,7 @@ describe("pacing (facilitator-paced event mode)", () => {
 
   it("Next works in auto too: it skips the rest of the result", () => {
     const t = pair("brisk");
-    t.host("startBatch");
+    t.startWave();
     answerBoth(t);
     expect(t.roomState("tv").phase).toBe("roundResult");
     t.host("next");
@@ -886,7 +895,7 @@ describe("pacing (facilitator-paced event mode)", () => {
 
   it("a repeated command from the same step only advances once", () => {
     const t = pair();
-    t.host("startBatch");
+    t.startWave();
     answerBoth(t);
     const step = t.roomState("tv").step;
     cmd(t, { type: "host:command", cmd: "next", step });
@@ -897,13 +906,13 @@ describe("pacing (facilitator-paced event mode)", () => {
 
   it("later waves default to auto at Relaxed, with a countdown on the round and the result", () => {
     const t = pair();
-    t.host("startBatch");
+    t.startWave();
     for (let r = 0; r < MP_WAVE_SIZE; r++) {
       answerBoth(t);
       t.host("next");
     }
     expect(t.roomState("tv")).toMatchObject({ phase: "batchDone", auto: false });
-    t.host("startBatch");
+    t.startWave();
     let s = t.roomState("tv");
     expect(s).toMatchObject({ auto: true, speed: "relaxed" });
     expect(s.deadline! - s.serverNow).toBe(RELAXED_ROUND_MS);
@@ -917,7 +926,7 @@ describe("pacing (facilitator-paced event mode)", () => {
 
   it("auto on a waiting result takes effect at once: the result moves on after its time", () => {
     const t = pair();
-    t.host("startBatch");
+    t.startWave();
     answerBoth(t);
     t.advance(60_000); // the result has waited a minute in manual
     t.host("auto");
@@ -932,7 +941,7 @@ describe("pacing (facilitator-paced event mode)", () => {
 
   it("manual mid-round takes effect at once: the deadline goes, and players can still answer", () => {
     const t = pair("brisk");
-    t.host("startBatch");
+    t.startWave();
     t.advance(1000);
     t.host("manual");
     expect(t.roomState("tv")).toMatchObject({ auto: false, deadline: null });
@@ -946,7 +955,7 @@ describe("pacing (facilitator-paced event mode)", () => {
 
   it("a speed change mid-round takes effect at once (the time already spent counts, at least 2 s left)", () => {
     const t = pair("relaxed");
-    t.host("startBatch");
+    t.startWave();
     t.advance(1000);
     cmd(t, { type: "host:command", cmd: "setSpeed", speed: "brisk" });
     let s = t.roomState("tv");
@@ -965,7 +974,7 @@ describe("pacing (facilitator-paced event mode)", () => {
 
   it("picking a speed in manual switches to auto, starting the full time now", () => {
     const t = pair();
-    t.host("startBatch");
+    t.startWave();
     t.advance(30_000);
     cmd(t, { type: "host:command", cmd: "setSpeed", speed: "brisk" });
     const s = t.roomState("tv");
@@ -975,14 +984,14 @@ describe("pacing (facilitator-paced event mode)", () => {
 
   it("the facilitator's choice holds into the next wave; Reset restores the default", () => {
     const t = pair();
-    t.host("startBatch");
+    t.startWave();
     t.host("auto"); // chosen in the first wave
     t.host("manual");
     for (let r = 0; r < MP_WAVE_SIZE; r++) {
       answerBoth(t);
       t.host("next");
     }
-    t.host("startBatch"); // a second wave would default to auto; the choice (manual) holds
+    t.startWave(); // a second wave would default to auto; the choice (manual) holds
     expect(t.roomState("tv")).toMatchObject({ auto: false, autoChosen: true, deadline: null });
     t.host("reset");
     expect(t.roomState("tv")).toMatchObject({ auto: false, autoChosen: false, speed: "relaxed" });
@@ -991,7 +1000,7 @@ describe("pacing (facilitator-paced event mode)", () => {
   it("Relaxed gives Act I 15 s to decide", () => {
     const t = pair("relaxed");
     t.host("startNightShift");
-    t.host("startBatch");
+    t.startWave();
     const s = t.roomState("tv");
     expect(s.deadline! - s.serverNow).toBe(RELAXED_ACT1_ROUND_MS);
   });
@@ -1004,13 +1013,13 @@ describe("pacing (facilitator-paced event mode)", () => {
     expect(s.lullSince).toBe(s.serverNow);
     t.advance(30 * 60_000);
     expect(t.roomState("tv").phase).toBe("strategy");
-    t.host("startBatch");
+    t.startWave();
     expect(t.roomState("tv")).toMatchObject({ phase: "round", lullSince: null });
   });
 
   it("a player who leaves mid-round is covered by CORA until they rejoin, which gives the seat back", () => {
     const t = pair("brisk");
-    t.host("startBatch");
+    t.startWave();
     const id = t.last("a1", "round:start")!.roundId;
     t.send("a1", { type: "player:valve", roundId: id, valve: 0 });
     t.send("b1", { type: "player:leave" });
@@ -1065,14 +1074,14 @@ describe("the facilitator's remote (E3b)", () => {
 
   it("gets each round's results, to read the causes aloud", () => {
     const { t } = withRemote();
-    t.host("startBatch");
+    t.startWave();
     answerBoth(t);
     expect(t.last("r1", "round:results")!.results).toHaveLength(1);
   });
 
   it("the TV and the remote pressing Next from the same step advance once", () => {
     const { t } = withRemote();
-    t.host("startBatch");
+    t.startWave();
     answerBoth(t);
     const step = t.roomState("tv").step;
     t.send("tv", { type: "host:command", cmd: "next", step });
@@ -1103,7 +1112,7 @@ describe("the facilitator's remote (E3b)", () => {
 
   it("phones and remotes never receive the remote key or the TV's token", () => {
     const { t, key } = withRemote();
-    t.host("startBatch");
+    t.startWave();
     answerBoth(t);
     const token = t.last("tv", "host:created")!.token;
     for (const conn of ["a1", "b1", "r1"]) {
@@ -1124,7 +1133,7 @@ describe("the debug jump (TV key D)", () => {
     expect([s.phase, s.act, s.ceilingRevealed, s.toolUnlocked, s.clue]).toEqual(["tool", 3, true, true, 0]);
     t.host("startStrategy");
     expect(t.roomState("tv")).toMatchObject({ phase: "strategy", clue: 1 });
-    t.host("startBatch");
+    t.startWave();
     expect(t.roomState("tv").phase).toBe("round");
     expect(t.last("a1", "round:start")!.act).toBe(3);
   });
@@ -1138,7 +1147,7 @@ describe("the debug jump (TV key D)", () => {
     t.host("debugAct2");
     const s = t.roomState("tv");
     expect([s.phase, s.act, s.ceilingRevealed, s.toolUnlocked, s.clue]).toEqual(["strategy", 2, false, false, 0]);
-    t.host("startBatch");
+    t.startWave();
     expect(t.last("a1", "round:start")!.act).toBe(2);
   });
 
@@ -1155,9 +1164,149 @@ describe("the debug jump (TV key D)", () => {
     t.host("startStrategy");
     t.send("tv", { type: "host:command", cmd: "debugAct3", step });
     expect(t.last("tv", "error")!.code).toBe("stale");
-    t.host("startBatch");
+    t.startWave();
     t.host("debugAct3");
     expect(t.last("tv", "error")!.code).toBe("not-now");
     expect(t.roomState("tv").phase).toBe("round");
+  });
+});
+
+describe("the lull's ready step (R1)", () => {
+  /** Ada (A) with Bo (B) as pair 1; Cy (A) with CORA as pair 2; in the Act II lull. */
+  function lull() {
+    const t = setup(1, null);
+    t.join("a1", "Ada", "A");
+    t.join("b1", "Bo", "B");
+    t.join("a2", "Cy", "A");
+    t.host("startStrategy");
+    return t;
+  }
+  const ready = (t: ReturnType<typeof setup>, conn: string, value = true) => t.send(conn, { type: "player:ready", ready: value });
+  const pairsOf = (t: ReturnType<typeof setup>) => t.roomState("tv").pairs;
+
+  it("round-trips ready / not ready in the lull, and ignores it outside one", () => {
+    const t = setup(1, null);
+    t.join("a1", "Ada", "A");
+    t.join("b1", "Bo", "B");
+    ready(t, "a1"); // the lobby: nothing to be ready for
+    t.host("startStrategy");
+    expect(pairsOf(t)[0]!.ready).toEqual({ a: false, b: false });
+    ready(t, "a1");
+    expect(pairsOf(t)[0]!.ready).toEqual({ a: true, b: false });
+    expect(t.roomState("b1").pairs[0]!.ready.a).toBe(true); // the partner sees it
+    ready(t, "a1", false);
+    expect(pairsOf(t)[0]!.ready).toEqual({ a: false, b: false });
+  });
+
+  it("CORA's seat is always ready, and a pair is ready only when both partners are", () => {
+    const t = lull();
+    expect(pairsOf(t)[1]!.ready).toEqual({ a: false, b: true }); // Cy planning, CORA ready
+    ready(t, "a1");
+    expect(pairReady(pairsOf(t)[0]!)).toBe(false);
+    ready(t, "b1");
+    expect(pairReady(pairsOf(t)[0]!)).toBe(true);
+    ready(t, "a2");
+    expect(readyPairs(t.roomState("tv"))).toEqual({ ready: 2, total: 2, planning: 0 });
+  });
+
+  it("a player who's away counts as ready (CORA covers the seat); their own flag returns when they rejoin", () => {
+    const t = lull();
+    t.station.disconnect("b1");
+    expect(pairsOf(t)[0]!.ready.b).toBe(true);
+    t.join("b1x", "Bo", "B");
+    expect(pairsOf(t)[0]!.ready.b).toBe(false);
+  });
+
+  it("a plan change clears that player's readiness; re-sending the same plan (a reconnect) doesn't", () => {
+    const t = lull();
+    ready(t, "a1");
+    t.send("a1", { type: "player:strategy", act: 2, classical: DEFAULT_PLAN });
+    expect(pairsOf(t)[0]!.ready.a).toBe(true);
+    t.send("a1", { type: "player:strategy", act: 2, classical: { onGreen: 0, onRed: 1 } });
+    expect(pairsOf(t)[0]!.ready.a).toBe(false);
+    ready(t, "a1");
+    t.send("a1", { type: "player:strategy", act: 3, tuning: { greenDeg: 0, redDeg: 45 } });
+    expect(pairsOf(t)[0]!.ready.a).toBe(false);
+  });
+
+  it("readiness resets whenever a lull opens, and is all false outside a lull", () => {
+    const t = lull();
+    ready(t, "a1");
+    ready(t, "b1");
+    t.host("startStrategy"); // a lull (re)opens
+    expect(pairsOf(t)[0]!.ready).toEqual({ a: false, b: false });
+    ready(t, "a1");
+    ready(t, "b1");
+    ready(t, "a2");
+    t.host("startBatch");
+    expect(t.roomState("tv").phase).toBe("round");
+    expect(pairsOf(t).map((p) => p.ready)).toEqual([{ a: false, b: false }, { a: false, b: false }]);
+  });
+
+  it("with every pair ready, Start the wave starts at once", () => {
+    const t = lull();
+    for (const conn of ["a1", "b1", "a2"]) ready(t, conn);
+    t.send("tv", { type: "host:command", cmd: "startBatch", step: t.roomState("tv").step });
+    expect(t.roomState("tv")).toMatchObject({ phase: "round", batchNo: 1, startConfirm: false });
+  });
+
+  it("otherwise the first press asks; a double press or a second controller at that step can't confirm it; the next press starts one wave", () => {
+    const t = lull();
+    ready(t, "a1");
+    t.send("r1", { type: "remote:pair", room: t.room, key: t.last("tv", "host:created")!.remoteKey });
+    const step0 = t.roomState("tv").step;
+    t.send("tv", { type: "host:command", cmd: "startBatch", step: step0 });
+    t.send("r1", { type: "host:command", cmd: "startBatch", step: step0 }); // pressed at the same moment
+    t.send("tv", { type: "host:command", cmd: "startBatch", step: step0 }); // a double tap
+    const armed = t.roomState("tv");
+    expect(armed).toMatchObject({ phase: "strategy", startConfirm: true });
+    expect(armed.step).not.toBe(step0);
+    expect(t.last("r1", "error")!.code).toBe("stale");
+    // The confirmation: both controllers press at the armed step; one wave starts.
+    t.send("r1", { type: "host:command", cmd: "startBatch", step: armed.step });
+    t.send("tv", { type: "host:command", cmd: "startBatch", step: armed.step });
+    expect(t.roomState("tv")).toMatchObject({ phase: "round", batchNo: 1, roundNo: 1, startConfirm: false });
+    expect(t.last("tv", "error")!.code).toBe("stale");
+  });
+
+  it("the question lapses after START_CONFIRM_MS, or when readiness changes; a press at the lapsed step is ignored", () => {
+    const t = lull();
+    t.host("startBatch");
+    const armed = t.roomState("tv").step;
+    t.advance(START_CONFIRM_MS);
+    expect(t.roomState("tv")).toMatchObject({ phase: "strategy", startConfirm: false });
+    t.send("tv", { type: "host:command", cmd: "startBatch", step: armed });
+    expect(t.roomState("tv").phase).toBe("strategy");
+    t.host("startBatch");
+    expect(t.roomState("tv").startConfirm).toBe(true);
+    ready(t, "b1"); // the count changed: ask again
+    expect(t.roomState("tv").startConfirm).toBe(false);
+    t.host("startBatch");
+    t.send("a1", { type: "player:strategy", act: 2, classical: DEFAULT_PLAN }); // no change: still asking
+    expect(t.roomState("tv").startConfirm).toBe(true);
+  });
+
+  it("readiness and the question survive a TV and a remote reconnect", () => {
+    const t = lull();
+    ready(t, "a1");
+    t.host("startBatch");
+    const { token, remoteKey } = t.last("tv", "host:created")!;
+    t.station.disconnect("tv");
+    t.send("tv2", { type: "host:resume", room: t.room, token });
+    expect(t.roomState("tv2")).toMatchObject({ phase: "strategy", startConfirm: true });
+    expect(t.roomState("tv2").pairs[0]!.ready).toEqual({ a: true, b: false });
+    t.send("r2", { type: "remote:pair", room: t.room, key: remoteKey });
+    expect(t.roomState("r2").pairs[0]!.ready).toEqual({ a: true, b: false });
+    expect(t.roomState("r2").startConfirm).toBe(true);
+  });
+
+  it("a wave started outside a lull (wave done, the tool) doesn't ask", () => {
+    const t = setup(1, "brisk");
+    t.join("a1", "Ada", "A");
+    t.startWave(); // from the lobby: straight to Act II
+    t.advance(60_000 * 5);
+    expect(t.roomState("tv").phase).toBe("batchDone");
+    t.host("startBatch");
+    expect(t.roomState("tv")).toMatchObject({ phase: "round", batchNo: 2 });
   });
 });

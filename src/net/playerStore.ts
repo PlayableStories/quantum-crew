@@ -46,6 +46,8 @@ type PlayerStore = {
   followCrystal(): void;
   setPlan(plan: ClassicalStrategy): void;
   setTuning(tuning: TuningConfig): void;
+  /** The lull (R1): say this player is ready, or (false) planning again. The room holds the flag (pair.ready). */
+  setReady(ready: boolean): void;
   leave(): void;
 };
 
@@ -158,6 +160,10 @@ export const usePlayer = create<PlayerStore>()((set, get) => ({
   setPlan(plan) {
     set({ plan });
     station?.send({ type: "player:strategy", act: 2, classical: plan });
+  },
+
+  setReady(ready) {
+    station?.send({ type: "player:ready", ready });
   },
 
   leave() {

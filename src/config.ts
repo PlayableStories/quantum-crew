@@ -57,6 +57,9 @@ export const RELAXED_ACT1_ROUND_MS = 15_000;
 export const RELAXED_RESULT_MS = 8_000;
 /** Event: CORA (an empty or covered seat) acts after a natural delay in this range, in every pace. */
 export const CORA_DELAY_MS: readonly [number, number] = [1200, 2600];
+/** The lull (R1): after Start the wave is pressed with pairs still planning, how long "Start anyway?" waits for the
+ *  second press before it lapses. */
+export const START_CONFIRM_MS = 5000;
 /** No longer used by the room: the lull lasts until the facilitator starts the wave (the TV shows how long). */
 export const STRATEGY_MS = 45_000;
 /** Pooled stability on the TV is the win rate of the last this-many rounds across all pairs. */

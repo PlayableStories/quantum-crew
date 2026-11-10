@@ -376,6 +376,24 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   (mounted in `Solo.tsx`, sheets via `useKeySheet`), `soloStore.debugJump(2 | 3)` (act2Plan / toolReveal; refused in a
   wave and the debrief), a "?" button in `ScreenLayout`'s header (landscape ≥ 900 only). `DebugJumpPanel` is shared
   (the TV's `DebugJump` wraps it). Phones and the remote keep only their round keys. README "Keyboard shortcuts".
+- **R1 (2026-11-10, the lull's ready step; event mode only):** the facilitator couldn't tell when pairs had finished
+  talking. **Room:** `player:ready { ready }` (only in a lull); `Player.ready`; `PairInfo.ready` (all false outside a
+  lull) where a seat is ready when CORA plays it (empty or away) or its player said so; a real plan change clears it
+  (re-sending the same plan, as a reconnecting phone does, doesn't); a lull opening (`startStrategy`, `debugAct2`) and
+  Reset clear everyone's. **Start the wave in a lull:** at once when every pair is ready; else the first press arms
+  `RoomState.startConfirm` (`stepSig` gets `:confirm`, so a double press or a second controller can't confirm it) and
+  the next press starts; it lapses after `START_CONFIRM_MS` (config, 5 s), on any readiness change (incl. a join or
+  drop) or a phase change. Waves started outside a lull don't ask. `src/shared/ready.ts` (`pairReady`, `readyPairs`,
+  `lullState`) only counts the room's flags. **Phones:** `ReadyBar` (Play.tsx, the sticky `ActionBar` under the plan
+  in both lulls): "Ready" → "Ready ✓ · tap to change", the partner's state above (`S.event.ready`; never "locked").
+  **TV / remote:** `stepLabel` "Start the wave (n of m pairs ready)" / "k pairs still planning. Start anyway?"
+  (`stepWarn` = amber); `ReadyTag` / `lullText` on the TV's pair cards (`.pair--ready`), the Act III lull's hint rows
+  (`ClueList` `ready`) and the remote's room lines; the TV banner "Talking for m:ss · n of m pairs ready" (+
+  `S.tv.confirmNote` while armed; it shows when a remote hides the row); `S.remote.talk.ready` after the lull's first
+  point. **Scripts:** session (everyone ready, a plan change clears Cy, the remote starts with one pair planning via
+  the confirmation with a stale same-step press, the Act III lull all ready in one press); shots (`startWave()`, the
+  crowd says ready; captures `lull-mixed`, `lull-ready`, `start-anyway`). Tests: `server/room.test.ts` (R1 block,
+  `startWave()` helper), `src/screens/ready.test.tsx`.
 - **U1 (2026-11-10, one place for each fact; solo and event mode):** a screenshot review found graphics that look like
   controls, facts repeated on one screen, phones pointing at the TV and a crowded TV. Rule: the TV shows what the room
   shares; a phone only what's private to its player; solo both on one screen. No maths, scoring, flow or pacing change.

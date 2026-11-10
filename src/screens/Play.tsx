@@ -5,6 +5,7 @@
 // Act I (the night shift): the radio works, so the phone also shows the partner's reading and pump, and the pump can
 // change until the round ends. The storm breaks the radio up mid-line.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { ActionBar } from "../components/ActionBar.tsx";
 import { AiBadge } from "../components/AiBadge.tsx";
 import { Countdown } from "../components/Countdown.tsx";
 import { phoneCues } from "../audio/cues.ts";
@@ -141,7 +142,7 @@ function JoinForm({ error }: { error: string | null }) {
 
 function InRoom() {
   const p = usePlayer();
-  const { state, seat, playerId, round, flash, plan, tuning, status, answer, followCrystal, setPlan, setTuning, leave } = p;
+  const { state, seat, playerId, round, flash, plan, tuning, status, answer, followCrystal, setPlan, setTuning, setReady, leave } = p;
 
   // Keyboard: A / ← = ANTICLOCKWISE, C / → = CLOCKWISE. Act III: Enter follows the crystal (A / C go your own way).
   useEffect(() => {
@@ -399,7 +400,7 @@ function InRoom() {
       )}
 
       {!round && state.phase === "strategy" && (
-        <div className={`stack lull ${state.act === 3 ? "lull--act3" : ""}`}>
+        <div className={`stack lull ${state.act === 3 ? "lull--act3" : ""} ${state.act === 3 && state.clue >= 2 ? "lull--answer" : ""}`}>
           {/* The header's status names the lull; the heading stays for screen readers (U1). */}
           <h2 className="hide-on-phone">{S.phone.huddle}</h2>
           {state.act === 2 && <p>{S.phone.huddleBody}</p>}
@@ -462,6 +463,15 @@ function InRoom() {
 
       {idle && <PhoneIdle phase={phoneStatus(state, { seated: !!me?.pairId, round: null })} />}
       <div className="spacer" />
+      {/* The lull (R1): Ready under the plan, sticky at the bottom so it's always in reach; the room holds the flag. */}
+      {!round && state.phase === "strategy" && pair && partner && (
+        <ReadyBar
+          ready={pair.ready[mine]}
+          partner={partner.name}
+          partnerReady={pair.ready[theirs]}
+          onChange={setReady}
+        />
+      )}
     </main>,
   );
 }
@@ -516,6 +526,40 @@ function PhoneIdle({ phase }: { phase: string }) {
       <p className="phone-idle__station">{STATION_NAME}</p>
       <p className="muted phone-idle__phase">{phase}</p>
     </div>
+  );
+}
+
+/** The lull's Ready (R1): "Ready", then "Ready ✓ · tap to change" (which takes it back), with the partner's state
+ *  above it. The plan above stays editable; changing it makes the room clear this player's readiness. */
+function ReadyBar({
+  ready,
+  partner,
+  partnerReady,
+  onChange,
+}: {
+  ready: boolean;
+  partner: string;
+  partnerReady: boolean;
+  onChange: (ready: boolean) => void;
+}) {
+  const R = S.event.ready;
+  return (
+    <ActionBar>
+      {/* One row: the partner's state beside the button, so the bar stays short on small phones. */}
+      <div className="ready-row">
+        <p className={`ready-partner small ${partnerReady ? "ready-partner--on" : "muted"}`} role="status">
+          {partnerReady ? R.partnerReady(partner) : R.partnerPlanning(partner)}
+        </p>
+        <button
+          type="button"
+          className={`btn ready-btn ${ready ? "ready-btn--on" : "btn--primary"}`}
+          aria-pressed={ready}
+          onClick={() => onChange(!ready)}
+        >
+          {ready ? R.buttonOn : R.button}
+        </button>
+      </div>
+    </ActionBar>
   );
 }
 

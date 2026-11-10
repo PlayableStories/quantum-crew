@@ -36,7 +36,9 @@ import { ALL_CELLS, expectedBoard, planId, type Board } from "../shared/plans.ts
 import { FourCases } from "../components/FourCases.tsx";
 import { PlanBoard } from "../components/PlanBoard.tsx";
 import { useHost } from "../net/hostStore.ts";
-import { AutoToggle, enabledSteps, keyStep, stepLabel } from "./hostSteps.tsx";
+import { AutoToggle, enabledSteps, keyStep, stepLabel, stepWarn } from "./hostSteps.tsx";
+import { ReadyTag } from "../components/ReadyTag.tsx";
+import { pairReady, readyPairs } from "../shared/ready.ts";
 import { useElapsedMs, useRemainingMs } from "../net/useCountdown.ts";
 import { decisionMs, resultMs } from "../shared/pace.ts";
 import { Sheet } from "../components/Sheet.tsx";
@@ -269,7 +271,15 @@ function PhaseBanner({ state, localDeadline }: { state: RoomState; localDeadline
   return (
     <div className={`tv__banner tv__banner--${state.phase} ${act1 ? "tv__banner--act1" : ""}`}>
       <h1>{title}</h1>
-      {state.phase === "strategy" && talking !== null && <p className="tv__talking">{S.tv.talking(clock(talking))}</p>}
+      {state.phase === "strategy" && (
+        <p className="tv__talking">
+          {/* R1: how many pairs are ready, on the TV even when a paired remote hides the host row. */}
+          {[talking !== null ? S.tv.talking(clock(talking)) : null, S.tv.readyCount(readyPairs(state).ready, state.pairs.length)]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      )}
+      {state.phase === "strategy" && state.startConfirm && <p className="tv__confirm">{S.tv.confirmNote}</p>}
       {inBatch && (
         <>
           <p className="kicker">
@@ -504,7 +514,7 @@ export function CrystalLull({ state }: { state: RoomState }) {
         <div className="panel stack tv__clues">
           <ClueList
             clue={state.clue}
-            pairs={state.pairs.map((p) => ({ id: p.id, plans: p.dials, human: humanWithCora(p) }))}
+            pairs={state.pairs.map((p) => ({ id: p.id, plans: p.dials, human: humanWithCora(p), ready: p }))}
             className="clues--tv"
             titlesInline
             tv
@@ -784,7 +794,11 @@ function PairCard({ pair, state, result }: { pair: PairInfo; state: RoomState; r
     );
   };
   return (
-    <div className={`panel pair ${result ? (result.win ? "pair--win" : "pair--loss") : ""}`}>
+    <div
+      className={`panel pair ${result ? (result.win ? "pair--win" : "pair--loss") : ""} ${
+        state.phase === "strategy" && pairReady(pair) ? "pair--ready" : ""
+      }`}
+    >
       <div className="pair__head">
         <span className="kicker">
           {S.tv.pair(pair.id)}
@@ -802,7 +816,12 @@ function PairCard({ pair, state, result }: { pair: PairInfo; state: RoomState; r
       </div>
       {/* While a round is open: who is still choosing (never what anyone chose). Then what happened, as on the phones.
           Either takes the mini-meter's place (there's no meter before a round). */}
-      {state.phase === "round" && !result ? (
+      {state.phase === "strategy" ? (
+        // The lull (R1): planning, one partner ready, or both.
+        <p className="pair__ready">
+          <ReadyTag pair={pair} />
+        </p>
+      ) : state.phase === "round" && !result ? (
         <p className="pair__waiting">{waiting.length ? S.tv.stillChoosing(waiting.join(", ")) : S.tv.allChosen}</p>
       ) : result ? (
         <p className={`pair__cause ${result.win ? "pair__cause--win" : "pair__cause--loss"}`}>
@@ -899,7 +918,7 @@ function HostControls({
   return (
     <footer className="tv__controls" aria-label={S.tv.controls}>
       {steps.map((cmd, i) => (
-        <button key={cmd} className={`btn ${i === 0 ? "btn--primary" : ""}`} onClick={send(cmd)}>
+        <button key={cmd} className={`btn ${i === 0 ? "btn--primary" : ""} ${stepWarn(state, cmd) ? "btn--warn" : ""}`} onClick={send(cmd)}>
           {stepLabel(state, cmd)}
         </button>
       ))}

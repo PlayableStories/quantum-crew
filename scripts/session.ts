@@ -5,11 +5,12 @@
 // early with Next and double-presses Next once, which must advance once); later waves run in auto at Relaxed.
 //   four pairs join and a 9th player is turned away; the night shift (briefing, Act I by the rule over the radio, with
 //   one player changing their mind; every round held) and the storm; a player drops out mid-wave and rejoins their seat; the TV
-//   disconnects and resumes with its token; one Act II wave; the engineering report; the tool (the rule, no clue);
+//   disconnects and resumes with its token; the lull's ready step (R1: everyone ready, one plan change clears it,
+//   the remote starts with one pair planning through "Start anyway?", a same-step press ignored); one Act II wave; the engineering report; the tool (the rule, no clue);
 //   Act III (the room measures every crystal at round start, so no phone ever sends player:measure; each sets the
 //   pump its crystal suggests; E3e's rhythm): the first lull opens with clue 1 (each pair's live hint: both HOT at 0°;
 //   Ada's pair moves to the answer and gets "found it" before any wave; the answer is refused before a wave), wave 1
-//   (77.6%, not saved), the remote releases the answer (Next clue: 3 pairs not yet; a double press moves once), every
+//   (every pair ready first, so one press starts it; 77.6%, not saved), the remote releases the answer (Next clue: 3 pairs not yet; a double press moves once), every
 //   player uses their own row, and wave 2 averages 85.4%, which saves the
 //   station; the storm passes (saved) and the incident report. Then a reset and a short not-saved session (75%).
 import { ACT1_ROUNDS, MP_WAVE_SIZE, MP_RESULT_MS, MP_ROUND_MS, RELAXED_RESULT_MS, STORM_STATIC_MS } from "../src/config.ts";
@@ -20,6 +21,7 @@ import type { ClientMsg, HostCommand, RoomState, ServerMsg } from "../src/shared
 import { mulberry32 } from "../src/shared/rng.ts";
 import { createStation } from "../server/station.ts";
 import { crewReport } from "../src/shared/report.ts";
+import { readyPairs } from "../src/shared/ready.ts";
 
 const SEED = 20261030;
 
@@ -185,17 +187,29 @@ advance(STORM_STATIC_MS);
 // The lull, then Act II: one wave. Bo drops out in round 4 and rejoins (same name and table) in round 7.
 host("startStrategy");
 check(state().phase === "strategy" && state().act === 2, "the lull before the first wave");
-// In the lull, Ada (pair 1) picks "reverse when HOT" and Cy (pair 2) "reverse when COOL"; Bo sees Ada's at once.
+// In the lull, Ada (pair 1) picks "reverse when HOT"; Bo sees it at once.
 send("phone0", { type: "player:strategy", act: 2, classical: { onGreen: 0, onRed: 1 } });
-send("phone2", { type: "player:strategy", act: 2, classical: { onGreen: 1, onRed: 0 } });
 const boSees = last("phone1", "room:state")!.state.pairs[0]!.plans.a;
 check(boSees.onGreen === 0 && boSees.onRed === 1, "Bo sees Ada's plan live in the lull");
-// The facilitator's remote (E3b) pairs with the TV's key and starts the wave.
+// R1: everyone says they're ready; then Cy (pair 2) changes their plan to "reverse when COOL", which clears their
+// readiness (and only theirs): pair 2 is planning again.
+check(readyPairs(state()).ready === 0, "nobody is ready when the lull opens");
+for (const conn of phones.keys()) send(conn, { type: "player:ready", ready: true });
+check(readyPairs(state()).ready === 4, "every player said ready: 4 of 4 pairs");
+send("phone2", { type: "player:strategy", act: 2, classical: { onGreen: 1, onRed: 0 } });
+const pair2 = state().pairs[1]!;
+check(!pair2.ready.a && pair2.ready.b && readyPairs(state()).ready === 3, "Cy changed their plan: their readiness cleared, 3 of 4 pairs");
+// The facilitator's remote (E3b) pairs with the TV's key and starts the wave with pair 2 still planning: the first
+// press asks "Start anyway?" (the TV pressing at the same moment is stale), the confirmed press starts one wave.
 const remote = "remote";
 send(remote, { type: "remote:pair", room, key: last(tv, "host:created")!.remoteKey });
 check(last(remote, "remote:paired")?.room === room && state().remotes === 1, "the facilitator's remote paired with the TV's key");
-send(remote, { type: "host:command", cmd: "startBatch", step: state().step });
-check(state().phase === "round" && state().act === 2, "the remote started the wave");
+const lullStep = state().step;
+send(remote, { type: "host:command", cmd: "startBatch", step: lullStep });
+send(tv, { type: "host:command", cmd: "startBatch", step: lullStep });
+check(state().phase === "strategy" && state().startConfirm && last(tv, "error")?.code === "stale", "one pair planning: Start anyway? (a second press from the same step is ignored)");
+send(remote, { type: "host:command", cmd: "startBatch", step: last(remote, "room:state")!.state.step });
+check(state().phase === "round" && state().act === 2 && state().batchNo === 1, "the remote confirmed and started the wave");
 let dropped = false;
 let rejoined = false;
 const bo = "phone1";
@@ -294,8 +308,12 @@ check(pairsNotYet(state().pairs) === 3, `three pairs not yet at 80% (${pairsNotY
 send(remote, { type: "host:command", cmd: "nextClue", step: last(remote, "room:state")!.state.step });
 check(state().clue === 1 && last(remote, "error")?.code === "not-now", "the answer isn't released before an Act III wave");
 
-// Act III, wave 1: each pair's own attempt (Ada's pair at 85.4%, three at 75%): under 80%, not saved.
+// Act III, wave 1: each pair's own attempt (Ada's pair at 85.4%, three at 75%): under 80%, not saved. This time every
+// player says ready first (R1), so one press starts the wave.
+for (const [conn, phone] of phones) if (phone.online) send(conn, { type: "player:ready", ready: true });
+check(readyPairs(state()).ready === 4 && !state().startConfirm, "every pair ready in the Act III lull");
 host("startBatch");
+check(state().phase === "round" && state().act === 3, "with every pair ready, one press started the wave");
 check(playUntil("batchDone"), "Act III wave 1 (each pair's own attempt)");
 const wave1 = (QUANTUM_LIMIT + 3 * 0.75) / 4;
 check(

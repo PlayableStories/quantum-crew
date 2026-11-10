@@ -12,6 +12,7 @@ import {
   MAX_PAIRS,
   MP_WAVE_SIZE,
   ROLLING_WINDOW,
+  START_CONFIRM_MS,
   STORM_STATIC_MS,
 } from "../src/config.ts";
 import { act1Order, type SensorPair } from "../src/shared/act1.ts";
@@ -72,6 +73,8 @@ type Player = {
   joinOrder: number;
   classical: ClassicalStrategy;
   tuning: TuningConfig;
+  /** The lull (R1): this player has said they're ready. Cleared by a plan change and whenever a lull opens. */
+  ready: boolean;
 };
 
 type Pair = { id: number; a: Player | null; b: Player | null };
@@ -155,6 +158,9 @@ export function createRoom(code: string, deps: RoomDeps) {
   let toolUnlocked = false;
   /** Act III's clue ladder (0–CLUE_COUNT); only rises, until Reset. */
   let clue = 0;
+  /** The lull (R1): Start the wave was pressed with pairs still planning; the next press (at the new step) starts it.
+   *  Lapses after START_CONFIRM_MS, on any readiness change, or on a phase change. */
+  let startConfirm = false;
 
   // Stats
   let rolling: boolean[] = [];
@@ -205,6 +211,7 @@ export function createRoom(code: string, deps: RoomDeps) {
         lastWave: pairWave.get(pair.id) ?? null,
         dials: pairDials(pair),
         lockedDials: lockedDials.get(pair.id) ?? null,
+        ready: phase === "strategy" ? { a: seatReady(pair, "a"), b: seatReady(pair, "b") } : { a: false, b: false },
         followed: pairFollowed.get(pair.id) ?? null,
       };
     };
@@ -246,6 +253,7 @@ export function createRoom(code: string, deps: RoomDeps) {
       lullSince,
       remotes: remotes.size,
       clue,
+      startConfirm,
       step: stepSig(),
       ceilingRevealed,
       toolUnlocked,
@@ -310,10 +318,11 @@ export function createRoom(code: string, deps: RoomDeps) {
     timers.delete(key);
   }
 
-  /** Cancels every timer (a phase change). */
+  /** Cancels every timer (a phase change), and with it any pending "Start anyway?". */
   function clearTimer() {
     for (const cancelIt of timers.values()) cancelIt();
     timers.clear();
+    startConfirm = false;
   }
 
   /** Cancels a round's timers: its deadline, Act I's settle and CORA's pending moves. */
@@ -351,7 +360,27 @@ export function createRoom(code: string, deps: RoomDeps) {
   }
 
   /** The room's current step: changes with every phase, round, report step or clue (see RoomState.step). */
-  const stepSig = () => `${phase}:${act}:${batchNo}:${roundNo}:${debriefStep}:${clue}`;
+  const stepSig = () => `${phase}:${act}:${batchNo}:${roundNo}:${debriefStep}:${clue}${startConfirm ? ":confirm" : ""}`;
+
+  // --- The lull's readiness (R1) ----------------------------------------------------------------
+
+  /** A seat is ready when CORA plays it (empty, or its player is away) or its player has said so. */
+  const seatReady = (pair: Pair, side: Side) => coraSeat(pair, side) || pair[side]!.ready;
+  const allPairsReady = () => pairs.every((pair) => seatReady(pair, "a") && seatReady(pair, "b"));
+
+  /** Any readiness change (or a join or drop in the lull) lapses a pending "Start anyway?": the count it asked about
+   *  has changed, so the facilitator decides again. */
+  function disarmStart() {
+    if (!startConfirm) return;
+    cancel("confirm");
+    startConfirm = false;
+  }
+
+  /** A lull opens: nobody is ready yet. */
+  function openLull() {
+    for (const p of players) p.ready = false;
+    startConfirm = false;
+  }
 
   // --- Rounds -----------------------------------------------------------------------------------
 
@@ -693,10 +722,21 @@ export function createRoom(code: string, deps: RoomDeps) {
         // DECISION (pacing): the lull isn't timed; the facilitator starts the wave. The TV shows how long it's been.
         deadline = null;
         lullSince = deps.now();
+        openLull();
         return broadcast();
       case "startBatch":
         if (inBatch() || phase === "debrief" || players.length === 0) return notNow();
         if (phase === "ceiling" && !toolUnlocked) return notNow();
+        // The lull (R1): with every pair ready the wave starts at once. Otherwise the first press asks "Start anyway?"
+        // (the step changes, so a double press or a second controller can't also confirm it) and the next press starts.
+        if (phase === "strategy" && !allPairsReady() && !startConfirm) {
+          startConfirm = true;
+          later("confirm", START_CONFIRM_MS, () => {
+            startConfirm = false;
+            broadcast();
+          });
+          return broadcast();
+        }
         // A wave started straight from the tool reveal (no lull): clue 1 comes with it, so the answer can follow.
         if (act === 3 && clue === 0) clue = 1;
         return phase === "briefing" ? startAct1() : startBatch();
@@ -723,6 +763,7 @@ export function createRoom(code: string, deps: RoomDeps) {
         phase = "strategy";
         deadline = null;
         lullSince = deps.now();
+        openLull();
         ceilingRevealed = toolUnlocked = false;
         clue = 0;
         return broadcast();
@@ -796,6 +837,7 @@ export function createRoom(code: string, deps: RoomDeps) {
         for (const p of players) {
           p.classical = DEFAULT_PLAN;
           p.tuning = DEFAULT_TUNING;
+          p.ready = false;
         }
         repair();
         return broadcast();
@@ -821,6 +863,7 @@ export function createRoom(code: string, deps: RoomDeps) {
         }
         sendRoundStart(pair, existing);
       }
+      disarmStart(); // back from away: their seat counts as their own flag again
       broadcast();
       return;
     }
@@ -835,8 +878,10 @@ export function createRoom(code: string, deps: RoomDeps) {
       joinOrder: joinCounter++,
       classical: DEFAULT_PLAN,
       tuning: DEFAULT_TUNING,
+      ready: false,
     };
     players.push(player);
+    disarmStart(); // a new seat in the lull changes the count
     // DECISION: players who join mid-batch are seated when the batch ends.
     if (!inBatch()) repair();
     deps.send(conn, { type: "player:joined", room: code, playerId: player.id, name, table });
@@ -860,6 +905,7 @@ export function createRoom(code: string, deps: RoomDeps) {
           scheduleCora(pair, side);
         }
       }
+      disarmStart(); // away: CORA covers the seat, which counts as ready
       broadcast();
     }
   }
@@ -904,11 +950,26 @@ export function createRoom(code: string, deps: RoomDeps) {
           return disconnect(conn);
         case "player:join":
           return join(conn, msg.name, msg.table);
-        case "player:strategy":
+        case "player:strategy": {
           if (!player) return;
+          const before = JSON.stringify([player.classical, player.tuning]);
           if (msg.classical) player.classical = msg.classical;
           if (msg.tuning) player.tuning = { greenDeg: snapDial(msg.tuning.greenDeg), redDeg: snapDial(msg.tuning.redDeg) };
+          // A real change un-readies the player (a phone re-sends its plan on reconnect: that changes nothing).
+          if (JSON.stringify([player.classical, player.tuning]) !== before && player.ready) {
+            player.ready = false;
+            disarmStart();
+          }
           // The partner sees plans (and, from E2b, dials) change live.
+          return broadcast();
+        }
+        case "player:ready":
+          // Only in a lull; elsewhere there's nothing to be ready for.
+          if (!player || phase !== "strategy") return;
+          if (player.ready !== msg.ready) {
+            player.ready = msg.ready;
+            disarmStart();
+          }
           return broadcast();
         case "player:valve":
           if (!player) return;

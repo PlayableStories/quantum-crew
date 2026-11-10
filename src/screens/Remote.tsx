@@ -13,7 +13,9 @@ import { DEFAULT_TUNING } from "../config.ts";
 import { formatDeg } from "../lib/formatDeg.ts";
 import { rateText } from "../components/CrystalPlan.tsx";
 import { S, type ClueTalk } from "../strings.ts";
-import { AutoToggle, enabledSteps, keyStep, stepLabel } from "./hostSteps.tsx";
+import { AutoToggle, enabledSteps, keyStep, stepLabel, stepWarn } from "./hostSteps.tsx";
+import { lullText } from "../components/ReadyTag.tsx";
+import { pairReady, readyPairs } from "../shared/ready.ts";
 
 export function Remote() {
   const { status, link, state, localDeadline, results, error, start, command } = useRemote();
@@ -91,7 +93,11 @@ export function RemotePanel({
 
       <section className="remote__controls" aria-label={S.tv.controls}>
         {primary ? (
-          <button type="button" className="btn btn--primary remote__primary" onClick={() => onCommand(primary)}>
+          <button
+            type="button"
+            className={stepWarn(state, primary) ? "btn btn--primary remote__primary btn--warn" : "btn btn--primary remote__primary"}
+            onClick={() => onCommand(primary)}
+          >
             {remoteLabel(state, primary)}
           </button>
         ) : (
@@ -184,6 +190,14 @@ const remoteLabel = (state: RoomState, cmd: HostCommand) =>
  *  Act III with clue 1: the hints and the nudge in a lull, releasing the answer after a wave; with clue 2: the answer.
  *  The phase's first point comes first (the remote fits one screen). */
 export function talkingPoints(state: RoomState): readonly string[] {
+  const points = lullPoints(state);
+  // The lull (R1): the ready count, after the phase's first point.
+  if (state.phase !== "strategy") return points;
+  const { ready, total } = readyPairs(state);
+  return [points[0]!, S.remote.talk.ready(ready, total), ...points.slice(1)];
+}
+
+function lullPoints(state: RoomState): readonly string[] {
   const base = phasePoints(state);
   const t = S.remote.talk;
   // The tool reveal: engineering's note, the crystals as entangled coins, then the rule.
@@ -247,8 +261,24 @@ function RoomList({ state, lastResults }: { state: RoomState; lastResults: Round
   const lines: { key: string; text: string; tone?: "win" | "loss" }[] = [];
   if (state.phase === "lobby" || state.phase === "briefing") {
     lines.push({ key: "aboard", text: S.remote.aboard(state.players.length, state.pairs.length) });
-  } else if (state.phase === "strategy" && talking !== null) {
-    lines.push({ key: "talking", text: S.tv.talking(clock(talking)) });
+  } else if (state.phase === "strategy") {
+    // R1: the talking clock beside the heading, then each pair's state (planning, one ready, both) as wrapping chips,
+    // so four pairs fit on a phone.
+    return (
+      <section className="panel remote__room" aria-live="polite">
+        <div className="remote__room-head">
+          <p className="kicker">{S.remote.roomHead}</p>
+          {talking !== null && <span className="muted small">{S.tv.talking(clock(talking))}</span>}
+        </div>
+        <ul className="remote__ready">
+          {state.pairs.map((pair) => (
+            <li key={pair.id} className={pairReady(pair) ? "remote__line--win" : undefined}>
+              {S.remote.pairLine(pair.id, lullText(pair))}
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
   } else if (state.phase === "round") {
     for (const pair of state.pairs) {
       const waiting = (["a", "b"] as const).filter((side) => !pair.answered[side]).map((side) => pair[side].name);

@@ -4786,3 +4786,121 @@ kbd {
   white-space: nowrap;
   flex: none;
 }
+
+/* R1: the lull's Ready, sticky at the bottom of a phone; the partner's state above it. Ready reads as done (green), not
+   as locked: it can be undone. */
+.ready-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ready-partner {
+  flex: 1 1 0;
+  margin: 0;
+}
+
+.ready-row .ready-btn {
+  flex: 1.4 1 0;
+}
+
+/* Short phones: a slimmer bar, so the lull's plan keeps the screen. */
+@media (max-height: 700px) {
+  .action-bar:has(.ready-row) {
+    padding-block: 8px max(8px, env(safe-area-inset-bottom));
+  }
+
+  .ready-row .ready-btn {
+    min-height: 48px;
+    padding-block: 6px;
+  }
+}
+
+/* The remote's lull: each pair's state as wrapping chips. */
+.remote__room .remote__ready {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.ready-partner--on {
+  color: var(--green);
+}
+
+.ready-btn--on {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+/* R1: a pair's state in the lull (TV pair cards, the Act III hint rows); Ready is green with a ✓, never colour alone. */
+.ready-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  color: var(--ink-muted);
+  font-size: 0.8em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ready-tag--one {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.ready-tag--both {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.pair__ready {
+  margin: 0;
+}
+
+.pair--ready {
+  border-color: var(--green);
+  box-shadow: 0 0 0 1px var(--green) inset;
+}
+
+/* "Start anyway?": the start control (TV row, remote) and the banner note look like a question, not a go. */
+.btn--warn,
+.btn--primary.btn--warn {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: #1a1206;
+}
+
+.tv__confirm {
+  margin: 0;
+  color: var(--amber);
+  font-weight: 700;
+}
+
+/* R1, short phones: in the answer lull (your row, the hint and Ready), the inline fan steps aside; the same fan is in
+   "See both" just above. */
+@media (max-height: 700px) {
+  .lull--answer > .fan {
+    display: none;
+  }
+}
+
+/* The remote's lull panel: a touch tighter, so the answer lull fits 390x844. */
+.remote__room:has(.remote__ready) {
+  padding-block: 8px;
+}
+
+.remote__room .remote__ready {
+  margin-top: 4px;
+}
+
+.remote__room-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.remote__room-head .kicker {
+  margin: 0;
+}
