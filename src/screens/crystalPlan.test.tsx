@@ -208,8 +208,12 @@ describe("rounds: the chain and Plan locked", () => {
     const markup = html();
     expect(markup).toContain(S.event.chain.sensor);
     const text = markup.replace(/<!-- -->/g, "");
-    expect(text).toContain(`${S.event.chain.plan} <strong>45°</strong>`);
-    expect(text).toContain(`${S.event.chain.crystal} <strong>${S.pump[1]}</strong> <span class="muted small chain__flip">${esc(S.event.chain.flip)}</span>`);
+    // One line: HOT → your plan: 45° → the crystal says ANTICLOCKWISE (this time; …), and no dial (U1).
+    const line = /<p class="chain__line">(.*?)<\/p>/.exec(text)?.[1] ?? "";
+    const words = line.replace(/<[^>]+>/g, "");
+    expect(words).toBe(`${S.light[1]} → ${S.event.chain.plan} 45° → ${S.event.chain.crystal} ${S.pump[1]} ${S.event.chain.flip}`);
+    expect(markup).not.toMatch(/class="dial/);
+    expect(markup).not.toMatch(/aria-label="45°"/);
     expect(markup).not.toContain(`>${S.batch.measure}<`);
     expect(markup).toContain(S.event.locked.stamp);
     expect(markup).toContain(S.event.locked.act3("0°", "45°"));

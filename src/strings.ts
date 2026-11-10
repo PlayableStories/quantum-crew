@@ -400,8 +400,6 @@ export const S = {
     coraHead: `${CREW_NAME}'s crystal plan`,
   },
 
-  /** The Dial component's own controls (no screen turns a dial since S3; kept for the component). */
-  dial: { prev: "Turn dial left", next: "Turn dial right" },
 
   debrief: {
     kicker: "Debrief",
@@ -640,7 +638,8 @@ export const S = {
     /** An Act III round on a phone: what the station did with the plan. */
     chain: {
       sensor: "Your sensor",
-      plan: "your plan",
+      /** The one line: "HOT → your plan: 45° → the crystal says CLOCKWISE (this time; it could have been either)". */
+      plan: "your plan:",
       crystal: "the crystal says",
       /** After the direction: it was a coin flip. */
       flip: "(this time; it could have been either)",

@@ -7,7 +7,7 @@ import { HOT } from "../shared/fiction.ts";
 import { settingGap, weakestCase } from "../shared/crystalPlan.ts";
 import { S } from "../strings.ts";
 import { CrewName } from "./AiBadge.tsx";
-import { formatDeg } from "./Dial.tsx";
+import { formatDeg } from "../lib/formatDeg.ts";
 import { LightIcon } from "./SensorLight.tsx";
 
 const whole = (p: number) => `${Math.round(p * 100)}%`;

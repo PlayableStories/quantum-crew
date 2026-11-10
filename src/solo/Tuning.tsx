@@ -15,7 +15,7 @@ import {
   planLine,
   rateText,
 } from "../components/CrystalPlan.tsx";
-import { formatDeg } from "../components/Dial.tsx";
+import { formatDeg } from "../lib/formatDeg.ts";
 import { Rule } from "../components/Rule.tsx";
 import { ScreenLayout } from "../components/ScreenLayout.tsx";
 import { Sheet } from "../components/Sheet.tsx";

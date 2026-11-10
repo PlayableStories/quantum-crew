@@ -145,7 +145,7 @@ export function Batch() {
           <div className={act === 3 ? "round-reading round-reading--chain" : "stack"}>
             <SensorLight light={round.x} label={S.batch.yourLight} />
             {act === 3 && round.crystal !== null && (
-              <CrystalChain dialDeg={dialFor(tuning, round.x)} crystal={round.crystal} />
+              <CrystalChain light={round.x} dialDeg={dialFor(tuning, round.x)} crystal={round.crystal} />
             )}
           </div>
           {act === 3 && <p className="muted small follow-line">{S.batch.followLine}</p>}

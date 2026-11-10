@@ -31,7 +31,7 @@ import {
 import { CrystalCases } from "../components/CrystalCases.tsx";
 import { NoSignalling, PlanVsCrystals, ThreeNumbers } from "../components/ReportParts.tsx";
 import { crewReport } from "../shared/report.ts";
-import { formatDeg } from "../components/Dial.tsx";
+import { formatDeg } from "../lib/formatDeg.ts";
 import { ALL_CELLS, expectedBoard, planId, type Board } from "../shared/plans.ts";
 import { FourCases } from "../components/FourCases.tsx";
 import { PlanBoard } from "../components/PlanBoard.tsx";

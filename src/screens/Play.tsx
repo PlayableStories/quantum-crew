@@ -231,7 +231,7 @@ function InRoom() {
         {round.act === 3 && pair?.lockedDials && <LockedPlan>{planLine(pair.lockedDials[mine])}</LockedPlan>}
         {/* Act III: what the station did with the plan: sensor → setting → the crystal's direction. */}
         {round.act === 3 && round.dialDeg !== null && round.crystal !== null && (
-          <CrystalChain dialDeg={round.dialDeg} crystal={round.crystal} />
+          <CrystalChain light={round.light} dialDeg={round.dialDeg} crystal={round.crystal} />
         )}
         <div className="spacer" />
         {(
@@ -313,7 +313,7 @@ function InRoom() {
   return wrap(
     <main className="screen">
       <div className="screen-top">
-        <span className="dial__label">
+        <span className="seat-label">
           <CrewIcon table={seat.table} />
           <span className="kicker">{S.phone.seat(seat.table, seat.name)}</span>
         </span>
