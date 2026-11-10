@@ -676,6 +676,18 @@ export const S = {
       },
       labels: { now: "Now", can: "You can", question: "The question" },
     },
+    /** The lull (R1): each player says when they've finished planning; it can be undone, and a plan change undoes it.
+     *  Never "locked": that word is the wave's (the plans lock when it starts). */
+    ready: {
+      button: "Ready",
+      buttonOn: "Ready ✓ · tap to change",
+      partnerReady: (name: string) => `${name} is ready`,
+      partnerPlanning: (name: string) => `${name} is still planning`,
+      /** A pair's state on the TV and the remote. */
+      planning: "Planning",
+      one: (name: string) => `${name} ready`,
+      both: "Ready",
+    },
     /** When a wave starts, the TV stamps the plans (Acts II and III); phones and solo have the plan badge. */
     locked: {
       tvStamp: "Plans locked",

@@ -4786,3 +4786,19 @@ kbd {
   white-space: nowrap;
   flex: none;
 }
+
+/* R1: the lull's Ready, sticky at the bottom of a phone; the partner's state above it. Ready reads as done (green), not
+   as locked: it can be undone. */
+.ready-partner {
+  margin: 0;
+  text-align: center;
+}
+
+.ready-partner--on {
+  color: var(--green);
+}
+
+.ready-btn--on {
+  border-color: var(--green);
+  color: var(--green);
+}
