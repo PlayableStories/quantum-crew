@@ -104,3 +104,20 @@ describe("solo screen frame", () => {
     expect(body).not.toMatch(/<dialog[^>]*open/);
   });
 });
+
+describe("an Act II round (U1)", () => {
+  beforeEach(() => s().reset());
+
+  it("shows the plan once as the badge in the header and once as the PLAN tag; no Agreed sentence", () => {
+    toHuddle(s);
+    s().beginBatch();
+    s().advance(0);
+    const { html } = render();
+    const head = html.slice(html.indexOf('class="layout__head"'), html.indexOf('class="layout__main"'));
+    expect(head).toContain(`>🔒 ${S.planBadge.stamp}<`);
+    expect(html.split(`>🔒 ${S.planBadge.stamp}<`).length - 1).toBe(1);
+    expect(html.split(`>${S.batch.planTag}</span>`).length - 1).toBe(1);
+    expect(html).not.toContain("Agreed");
+    expect(html).not.toContain('class="agreed"');
+  });
+});

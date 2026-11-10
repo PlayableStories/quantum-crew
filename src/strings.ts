@@ -53,6 +53,15 @@ export const S = {
     explain: "Explain",
   },
   sheet: { close: "Close" },
+  /** An Act II wave (solo and event phones): a small badge in the round's header; a tap shows both plans, agreed
+   *  openly in the lull. The PLAN tag on the pump button is the only other reminder. */
+  planBadge: {
+    stamp: "Plan locked",
+    open: "Plan locked: show the plans you agreed",
+    head: "The plans you agreed in the lull",
+    you: "You",
+    row: (who: string, plan: ClassicalStrategy) => `${who}: ${planSays(plan)}`,
+  },
   light: { 0: "COOL", 1: "HOT" } as const,
   pump: { 0: "CLOCKWISE", 1: "ANTICLOCKWISE" } as const,
   pumpShort: { 0: "CW", 1: "ACW" } as const,
@@ -291,9 +300,6 @@ export const S = {
     slow: "Too slow",
     you: "You",
     crewmate: "Crewmate",
-    /** The plan both sides locked in, as a reminder during each round. */
-    agreed: (plan: ClassicalStrategy, crewPlan: ClassicalStrategy) =>
-      `Agreed: you ${planSays(plan)} · ${CREW_NAME} ${planSays(crewPlan)}`,
     next: "Next round",
     nextSub: "Space / Enter",
   },
@@ -511,9 +517,6 @@ export const S = {
     },
     /** Act II on a phone: the partner's plan, live in the lull (`name` is the partner's, or CORA's). */
     partnerPlan: (name: string) => `${name}'s plan`,
-    /** During a wave: both locked plans. */
-    agreed: (plan: ClassicalStrategy, partner: string, partnerPlan: ClassicalStrategy) =>
-      `Agreed: you ${planSays(plan)} · ${partner} ${planSays(partnerPlan)}`,
     /** A round's telemetry line. Only "too slow" names anyone: whose pump wasn't set. */
     why: (r: RoundResult, mine: "a" | "b", partner: string) => {
       if (roundCause(r) !== "slow") return S.telemetry.why(r);
@@ -671,11 +674,9 @@ export const S = {
       },
       labels: { now: "Now", can: "You can", question: "The question" },
     },
-    /** When a wave starts, the plans are stamped (phones and TV), in Acts II and III. */
+    /** When a wave starts, the TV stamps the plans (Acts II and III); phones and solo have the plan badge. */
     locked: {
-      stamp: "Plan locked",
       tvStamp: "Plans locked",
-      act3: (cool: string, hot: string) => `COOL ${cool} · HOT ${hot}`,
     },
     /** The TV after an Act III wave: each pair's crystal plans case by case (gap, chance), who followed, which pairs
      *  found 80%, and the crew's saved-or-not. */

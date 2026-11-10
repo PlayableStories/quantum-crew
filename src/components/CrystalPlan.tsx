@@ -233,16 +233,6 @@ export function CrystalChain({ light, dialDeg, crystal }: { light: Light; dialDe
   );
 }
 
-/** The stamp on a plan once the wave has started. */
-export function LockedPlan({ children }: { children: ReactNode }) {
-  return (
-    <div className="locked-plan" role="status">
-      <span className="locked-plan__stamp">🔒 {S.event.locked.stamp}</span>
-      <span className="locked-plan__body">{children}</span>
-    </div>
-  );
-}
-
 /** The clue 4 numbers, from the maths: the spacing, the match gaps, the differ gap and the rate. */
 export function answerText() {
   const k = clueAnswer();

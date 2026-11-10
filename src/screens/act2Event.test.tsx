@@ -35,10 +35,15 @@ describe("Act II on a phone", () => {
     expect(html()).toContain(esc(S.event.partnerPlan(S.crew.name)));
   });
 
-  it("a wave: both locked plans as a reminder", () => {
+  it("a wave: the plan once as the badge and once as the PLAN tag; no Agreed sentence (U1)", () => {
     seat(act2("round"));
     put({ round: { roundId: "1-1", act: 2, light: 1, ms: 3500, dialDeg: null, answered: null, partner: null, crystal: null } });
-    expect(html()).toContain(S.event.agreed(always, "Bo", revHot));
+    const markup = html();
+    expect(markup.split(`>🔒 ${S.planBadge.stamp}<`).length - 1).toBe(1);
+    expect(markup.split(`>${S.batch.planTag}</span>`).length - 1).toBe(1);
+    expect(markup).not.toContain("Agreed");
+    // The plans themselves are only in the badge's sheet, mounted when it opens.
+    expect(markup).not.toContain(esc(S.planBadge.row("Bo", revHot)));
   });
 
   it("a result: the cause and a line of telemetry; too slow names whose pump", () => {

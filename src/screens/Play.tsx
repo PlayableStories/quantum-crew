@@ -17,6 +17,7 @@ import { SensorLight } from "../components/SensorLight.tsx";
 import { PumpIcon } from "../components/PumpIcon.tsx";
 import { RadioLine } from "../components/RadioLine.tsx";
 import { RingDiagram } from "../components/RingDiagram.tsx";
+import { PlanBadge } from "../components/PlanBadge.tsx";
 import { PlanBox } from "../components/PlanBox.tsx";
 import { RuleChip } from "../components/RuleChip.tsx";
 import { Rule } from "../components/Rule.tsx";
@@ -29,7 +30,6 @@ import {
   CrystalFan,
   CrystalPlanCard,
   CrystalRuleTable,
-  LockedPlan,
   planLine,
 } from "../components/CrystalPlan.tsx";
 import { navigate } from "../lib/router.ts";
@@ -222,13 +222,15 @@ function InRoom() {
             paused={false}
           />
         )}
+        {/* Act II: the plans went into the wave locked. The badge is the one reminder besides the PLAN tag; a tap
+            shows both plans. */}
+        {round.act === 2 && locked && partner && (
+          <div className="round-head">
+            <PlanBadge mine={locked[mine]} partner={partner.name} theirs={locked[theirs]} />
+          </div>
+        )}
         <SensorLight light={round.light} label={round.act === 3 ? S.event.chain.sensor : S.batch.yourLight} />
         {round.act === 1 && round.partner && partner && <PartnerRadio seat={partner} call={round.partner} />}
-        {/* The plans went into the wave locked: the last chance to talk has passed. */}
-        {round.act === 2 && locked && partner && (
-          <LockedPlan>{S.event.agreed(locked[mine], partner.name, locked[theirs])}</LockedPlan>
-        )}
-        {round.act === 3 && pair?.lockedDials && <LockedPlan>{planLine(pair.lockedDials[mine])}</LockedPlan>}
         {/* Act III: what the station did with the plan: sensor → setting → the crystal's direction. */}
         {round.act === 3 && round.dialDeg !== null && round.crystal !== null && (
           <CrystalChain light={round.light} dialDeg={round.dialDeg} crystal={round.crystal} />

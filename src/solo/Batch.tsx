@@ -10,6 +10,7 @@ import { roundCue } from "../audio/cues.ts";
 import { playSfx } from "../audio/sfx.ts";
 import { Countdown } from "../components/Countdown.tsx";
 import { CrystalChain } from "../components/CrystalPlan.tsx";
+import { PlanBadge } from "../components/PlanBadge.tsx";
 import { PumpIcon } from "../components/PumpIcon.tsx";
 import { RingDiagram } from "../components/RingDiagram.tsx";
 import { ScreenLayout } from "../components/ScreenLayout.tsx";
@@ -19,7 +20,7 @@ import { StabilityMeter } from "../components/StabilityMeter.tsx";
 import { BATCH_SIZE, LEAD_MS, RESULT_AUTO_MS } from "../config.ts";
 import { dialFor, type RoundResult, type Valve } from "../shared/chsh.ts";
 import { ANTICLOCKWISE, CLOCKWISE, roundCause } from "../shared/fiction.ts";
-import { S } from "../strings.ts";
+import { CREW_NAME, S } from "../strings.ts";
 import { CrewRadio } from "./CrewRadio.tsx";
 import { actOf, displayedStability, nextWave, roundMs, useSolo } from "./soloStore.ts";
 
@@ -108,6 +109,8 @@ export function Batch() {
       header={
         <div className="meter__head">
           <span className="kicker">{act === 1 ? S.act1.label : S.batch.label(batchNo)}</span>
+          {/* Act II: the one plan reminder besides the PLAN tag (a tap shows both plans). */}
+          {act === 2 && <PlanBadge mine={plan} partner={CREW_NAME} theirs={crewPlan} />}
           <span className="kicker">{round ? (act === 1 ? S.act1.round(round.n) : S.batch.round(round.n, BATCH_SIZE)) : ""}</span>
         </div>
       }
@@ -126,7 +129,6 @@ export function Batch() {
       <Countdown id={round ? round.n : "lead"} ms={round ? roundMs(act) : LEAD_MS} paused={!live} />
       {/* Act I: the radio works, so CORA calls her reading. Later acts: comms dark. */}
       {act === 1 ? <CrewRadio /> : <CommsDark />}
-      {act === 2 && !round?.result && <p className="agreed">{S.batch.agreed(plan, crewPlan)}</p>}
 
       {!round && (
         <div className="stack screen--center spacer">
