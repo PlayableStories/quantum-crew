@@ -23,6 +23,7 @@ import { COOL, HOT } from "../shared/fiction.ts";
 import type { PairInfo } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 import { AiBadge } from "./AiBadge.tsx";
+import { ReadyTag } from "./ReadyTag.tsx";
 import { formatDeg } from "../lib/formatDeg.ts";
 import { LightIcon } from "./SensorLight.tsx";
 
@@ -337,7 +338,8 @@ export function ClueList({
   onUse,
 }: {
   clue: number;
-  pairs: { id: number; plans: LockedPlans; human?: HumanWithCora }[];
+  /** `ready`: the TV in a lull (R1): the pair's ready state beside its hint. */
+  pairs: { id: number; plans: LockedPlans; human?: HumanWithCora; ready?: Pick<PairInfo, "ready" | "a" | "b"> }[];
   className?: string;
   /** The TV: every clue's title on one line (the latest marked), then the latest clue in full. */
   titlesInline?: boolean;
@@ -360,7 +362,14 @@ export function ClueList({
                 if (h.kind === "none") return null;
                 return (
                   <li key={p.id} className={h.kind === "found" ? "clues__pair--found" : undefined}>
-                    <strong>{C.pairRate(p.id, rateText(h.rate))}: </strong>
+                    <strong>{C.pairRate(p.id, rateText(h.rate))}</strong>
+                    {p.ready && (
+                      <>
+                        {" "}
+                        <ReadyTag pair={p.ready} />
+                      </>
+                    )}
+                    <strong>: </strong>
                     {h.kind === "found" && "✓ "}
                     {hintText(p.plans, true, p.human ?? null)}
                   </li>

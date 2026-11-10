@@ -905,6 +905,12 @@ export const S = {
     keys: "Space / → next · P play / pause · ? all keys",
     /** The lull: how long the room has been talking (a guide, not a countdown). */
     talking: (time: string) => `Talking for ${time}`,
+    /** The lull (R1): how many pairs have said they're ready; the start control and the banner use it. */
+    readyCount: (ready: number, total: number) => `${ready} of ${total} ${total === 1 ? "pair" : "pairs"} ready`,
+    startWave: (ready: number, total: number) => `Start the wave (${ready} of ${total} ${total === 1 ? "pair" : "pairs"} ready)`,
+    /** The first press with pairs still planning; the next press starts the wave. */
+    startAnyway: (planning: number) => `${planning} ${planning === 1 ? "pair" : "pairs"} still planning. Start anyway?`,
+    confirmNote: "Start anyway? Press again to start the wave.",
     /** A round, on a pair card: who hasn't chosen yet (never what anyone chose). */
     stillChoosing: (names: string) => `Still choosing: ${names}`,
     allChosen: "Both have chosen",
@@ -972,8 +978,12 @@ export const S = {
       storm: ["Read the storm log aloud: the waves will kill the radio.", "Then use the lull."],
       strategy: [
         "Last chance to talk: each player picks one of four plans and sees their partner's choice.",
-        "Start the wave when the room is ready (2–3 minutes is plenty).",
       ],
+      /** The lull (R1): the ready count, after the phase's first point (Acts II and III). */
+      ready: (ready: number, total: number) =>
+        ready === total
+          ? `All ${total === 1 ? "pairs are" : `${total} pairs are`} ready: start the wave.`
+          : `${ready} of ${total} ${total === 1 ? "pair" : "pairs"} ready. Wait for the rest, or start early: the button asks you to confirm.`,
       act3Strategy: [
         "Each player picks a crystal plan: a setting for COOL and one for HOT. Partners see each other's live.",
         "Each pair's live hint and the nudge are on the TV and their phones.",

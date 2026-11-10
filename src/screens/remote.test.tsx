@@ -27,7 +27,7 @@ describe("the phone remote (/host)", () => {
     expect(primary(remote(room("briefing")))).toBe(S.tv.startRounds);
     expect(primary(remote(room("round", false, 2)))).toBe(S.tv.closeRound);
     expect(primary(remote(room("roundResult", false, 2)))).toBe(S.tv.nextRound);
-    expect(primary(remote(room("strategy", false, 2)))).toBe(S.tv.cmd.startBatch);
+    expect(primary(remote(room("strategy", false, 2)))).toBe(S.tv.startWave(0, 1)); // R1: with the ready count
     expect(primary(remote({ ...room("debrief", false, 3), debriefStep: 0 }))).toBe(S.tv.cmd.reportNext);
   });
 
@@ -54,7 +54,12 @@ describe("the phone remote (/host)", () => {
   it("talking points follow the phase (Act I's rounds and the Act III lull have their own)", () => {
     expect(talkingPoints(room("round", false, 1))).toBe(S.remote.talk.act1Round);
     expect(talkingPoints(room("round", false, 2))).toBe(S.remote.talk.round);
-    expect(talkingPoints(room("strategy", false, 3))).toBe(S.remote.talk.act3Strategy);
+    // R1: the lull's ready count follows the phase's first point.
+    expect(talkingPoints(room("strategy", false, 3))).toEqual([
+      S.remote.talk.act3Strategy[0],
+      S.remote.talk.ready(0, 1),
+      ...S.remote.talk.act3Strategy.slice(1),
+    ]);
     expect(remote(room("ceiling", false, 2))).toContain(S.remote.talk.ceiling[0]);
   });
 

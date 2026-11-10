@@ -48,11 +48,11 @@ describe("the TV's host row (paced)", () => {
     expect(markup).not.toContain("tv__auto-menu");
   });
 
-  it("the lull: Start the wave and the talking clock; no countdown", () => {
+  it("the lull: Start the wave with the ready count, and the talking clock with it; no countdown", () => {
     const s = { ...room("strategy", false, 2), lullSince: 0, serverNow: 83_000 };
     const markup = tv(s);
-    expect(markup).toContain(`>${S.tv.cmd.startBatch}</button>`);
-    expect(markup).toContain(S.tv.talking("1:23"));
+    expect(markup).toContain(`>${S.tv.startWave(0, 1)}</button>`);
+    expect(markup).toContain(`${S.tv.talking("1:23")} · ${S.tv.readyCount(0, 1)}`);
     expect(markup).not.toContain(`>${S.tv.cmd.revealCeiling}</button>`); // not this step's
   });
 });

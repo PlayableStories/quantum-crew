@@ -4802,3 +4802,46 @@ kbd {
   border-color: var(--green);
   color: var(--green);
 }
+
+/* R1: a pair's state in the lull (TV pair cards, the Act III hint rows); Ready is green with a ✓, never colour alone. */
+.ready-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  color: var(--ink-muted);
+  font-size: 0.8em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ready-tag--one {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.ready-tag--both {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.pair__ready {
+  margin: 0;
+}
+
+.pair--ready {
+  border-color: var(--green);
+  box-shadow: 0 0 0 1px var(--green) inset;
+}
+
+/* "Start anyway?": the start control (TV row, remote) and the banner note look like a question, not a go. */
+.btn--warn,
+.btn--primary.btn--warn {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: #1a1206;
+}
+
+.tv__confirm {
+  color: var(--amber);
+}

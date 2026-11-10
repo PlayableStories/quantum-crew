@@ -7,6 +7,7 @@ import { decisionMs, resultMs, secs } from "../shared/pace.ts";
 import { CLUE_COUNT, pairsNotYet } from "../shared/crystalPlan.ts";
 import { SURVIVAL_THRESHOLD } from "../shared/chsh.ts";
 import { SPEEDS, type HostCommand, type RoomState, type Speed } from "../shared/protocol.ts";
+import { readyPairs } from "../shared/ready.ts";
 import { S } from "../strings.ts";
 
 /** What the facilitator can do now, in the order they'd usually do it (the TV's row shows only these, plus Play /
@@ -72,10 +73,18 @@ export function enabledSteps(state: RoomState): HostCommand[] {
 /** A step's button label: Start the rounds in the briefing, Close the round / Next round for Next. */
 export function stepLabel(state: RoomState, cmd: HostCommand): string {
   if (cmd === "startBatch" && state.phase === "briefing") return S.tv.startRounds;
+  // The lull (R1): the ready count, then (first press with pairs still planning) the room's "Start anyway?".
+  if (cmd === "startBatch" && state.phase === "strategy") {
+    const { ready, total, planning } = readyPairs(state);
+    return state.startConfirm ? S.tv.startAnyway(planning) : S.tv.startWave(ready, total);
+  }
   if (cmd === "next") return state.phase === "round" ? S.tv.closeRound : S.tv.nextRound;
   if (cmd === "nextClue") return S.tv.nextClue(pairsNotYet(state.pairs), `${Math.round(SURVIVAL_THRESHOLD * 100)}%`);
   return S.tv.cmd[cmd];
 }
+
+/** The start control asks "Start anyway?" (the room's state, so the TV and the remote agree): style it as a warning. */
+export const stepWarn = (state: RoomState, cmd: HostCommand) => cmd === "startBatch" && state.phase === "strategy" && state.startConfirm;
 
 /** Play / Pause (auto / manual, at once) with the seconds left while auto counts down, and a small ▾ beside it that
  *  opens the speeds (each with its times; picking one also plays). Closed by default. */
