@@ -1,5 +1,7 @@
-// A phone in event mode: join a room at a table, then show only what the round needs (own sensor, pump buttons,
-// countdown; Act III: the setting the plan chose and what the crystal said). Everything else is on the TV.
+// A phone in event mode: join a room at a table, then show only what is private to this player: their sensor, their
+// plan, their pump and their own pair's result. What the room shares (the story, the rules, every pair's results,
+// the crew's stability) is the TV's. The header always names the phase (src/screens/phoneStatus.ts); with nothing
+// to do, the body is a calm idle state with no instructions.
 // Act I (the night shift): the radio works, so the phone also shows the partner's reading and pump, and the pump can
 // change until the round ends. The storm breaks the radio up mid-line.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -34,7 +36,6 @@ import {
 } from "../components/CrystalPlan.tsx";
 import { navigate } from "../lib/router.ts";
 import { usePlayer } from "../net/playerStore.ts";
-import { useRemainingMs } from "../net/useCountdown.ts";
 import type { Light, Table, TuningConfig, Valve } from "../shared/chsh.ts";
 import { ANTICLOCKWISE, CLOCKWISE, COOL, HOT } from "../shared/fiction.ts";
 import { decisionMs } from "../shared/pace.ts";
@@ -42,7 +43,8 @@ import { planId } from "../shared/plans.ts";
 import { NAME_MAX, ROOM_CODE, type PairInfo, type PartnerCall, type Seat as RoomSeat } from "../shared/protocol.ts";
 import { pairReport } from "../shared/report.ts";
 import { pct } from "../components/StabilityMeter.tsx";
-import { S } from "../strings.ts";
+import { STATION_NAME, S } from "../strings.ts";
+import { phoneStatus } from "./phoneStatus.ts";
 
 export function Play() {
   const p = usePlayer();
@@ -139,9 +141,7 @@ function JoinForm({ error }: { error: string | null }) {
 
 function InRoom() {
   const p = usePlayer();
-  const { state, seat, playerId, round, flash, plan, tuning, status, localDeadline, answer, followCrystal, setPlan, setTuning, leave } =
-    p;
-  const left = useRemainingMs(localDeadline);
+  const { state, seat, playerId, round, flash, plan, tuning, status, answer, followCrystal, setPlan, setTuning, leave } = p;
 
   // Keyboard: A / ← = ANTICLOCKWISE, C / → = CLOCKWISE. Act III: Enter follows the crystal (A / C go your own way).
   useEffect(() => {
@@ -182,22 +182,31 @@ function InRoom() {
   const mine = seat.table === "A" ? "a" : "b";
   // The partner is a player who's away: CORA covers their seat until they rejoin.
   const partnerAway = !!partner?.playerId && !state.players.find((pl) => pl.id === partner.playerId)?.connected;
-  const S_ = S.phone.status;
-  const status_ = round
-    ? null
-    : // The lull and the tool reveal already say what to do (and need the room on a small phone).
-      state.phase === "strategy" || state.phase === "tool"
-      ? null
-      : state.phase === "roundResult" || (state.phase === "round" && flash)
-        ? state.auto
-          ? S_.autoResult
-          : S_.manualResult
-        : state.phase === "lobby"
-          ? null
-          : S_.watch;
   const theirs = mine === "a" ? "b" : "a";
-  // Act II: the plans locked for this wave (the reminder and the plan tag), and the partner's choice in the lull.
+  // Act II: the plans locked for this wave (the badge and the plan tag), and the partner's choice in the lull.
   const locked = pair?.locked ?? null;
+  const inWave = state.phase === "round" || state.phase === "roundResult";
+  const header = (
+    <PhoneHeader
+      seat={S.phone.seat(seat.table, seat.name)}
+      table={seat.table}
+      reconnecting={status !== "open"}
+      status={phoneStatus(state, {
+        seated: !!me?.pairId,
+        round: round ? { act: round.act, answered: round.answered !== null } : null,
+      })}
+      badge={
+        state.act === 2 && inWave && locked && partner ? (
+          <PlanBadge mine={locked[mine]} partner={partner.name} theirs={locked[theirs]} />
+        ) : null
+      }
+      partner={partner && { name: partner.name, cora: partner.playerId === null }}
+      onLeave={() => {
+        leave();
+        navigate("/");
+      }}
+    />
+  );
   const otherTable = seat.table === "A" ? "B" : "A";
   const quantum = state.act === 3 && state.phase !== "debrief";
   const wrap = (children: ReactNode) => (
@@ -212,6 +221,7 @@ function InRoom() {
   if (round && (round.act === 1 || round.answered === null)) {
     return wrap(
       <main className="screen">
+        {header}
         {/* The countdown follows the room's deadline, so switching to manual (none) or auto, or a new speed, shows at
             once. */}
         {state.phase === "round" && state.deadline !== null && (
@@ -221,13 +231,6 @@ function InRoom() {
             left={state.deadline - state.serverNow}
             paused={false}
           />
-        )}
-        {/* Act II: the plans went into the wave locked. The badge is the one reminder besides the PLAN tag; a tap
-            shows both plans. */}
-        {round.act === 2 && locked && partner && (
-          <div className="round-head">
-            <PlanBadge mine={locked[mine]} partner={partner.name} theirs={locked[theirs]} />
-          </div>
         )}
         <SensorLight light={round.light} label={round.act === 3 ? S.event.chain.sensor : S.batch.yourLight} />
         {round.act === 1 && round.partner && partner && <PartnerRadio seat={partner} call={round.partner} />}
@@ -269,6 +272,16 @@ function InRoom() {
       </main>,
     );
   }
+
+  // Nothing for this player to do or read: the body is the calm idle state (the header already names the phase).
+  const showsResult = !!flash && inWave;
+  const idle =
+    !round &&
+    !showsResult &&
+    !["briefing", "storm", "tool", "strategy"].includes(state.phase) &&
+    !(state.phase === "batchDone" && state.act === 3) &&
+    !(["ceiling", "resolution"].includes(state.phase) && partner) &&
+    !(state.phase === "debrief" && pair && partner);
 
   // Act III: the pair's crystal plans (the player's own as set here; the partner's live from the room).
   const partnerPlan = pair ? pair.dials[theirs] : null;
@@ -314,23 +327,7 @@ function InRoom() {
 
   return wrap(
     <main className="screen">
-      <div className="screen-top">
-        <span className="seat-label">
-          <CrewIcon table={seat.table} />
-          <span className="kicker">{S.phone.seat(seat.table, seat.name)}</span>
-        </span>
-        {status !== "open" && <span className="kicker">{S.event.reconnecting}</span>}
-        <span className="row phone-top__tools">
-          <MuteToggle where="phone" />
-          <PhoneMenu
-            partner={partner && { name: partner.name, cora: partner.playerId === null }}
-            onLeave={() => {
-              leave();
-              navigate("/");
-            }}
-          />
-        </span>
-      </div>
+      {header}
       {/* (The Act III lull names the partner on their crystal plan, so the line steps aside there.) */}
       {partner && !(state.phase === "strategy" && state.act === 3 && !round) && (
         <p className="muted">
@@ -351,7 +348,7 @@ function InRoom() {
         </div>
       )}
 
-      {!round && flash && (state.phase === "roundResult" || state.phase === "round") && (
+      {!round && showsResult && (
         <div className={`result spacer ${flash.win ? "result--win" : "result--loss"}`} role="status">
           <div className="result__verdict">
             {flash.win ? "✓ " : "✗ "}
@@ -405,7 +402,6 @@ function InRoom() {
         <div className={`stack lull ${state.act === 3 ? "lull--act3" : ""}`}>
           <div className="lull__head">
             <h2>{S.phone.huddle}</h2>
-            {left !== null && <div className="tv__clock">{Math.ceil(left / 1000)}</div>}
           </div>
           {state.act === 2 && <p>{S.phone.huddleBody}</p>}
           {state.act === 2 ? <RuleChip /> : act3Chips}
@@ -437,7 +433,6 @@ function InRoom() {
       )}
 
       {!round && !me?.pairId && state.phase !== "lobby" && <p className="muted">{S.phone.waitingSeat}</p>}
-      {!round && state.phase === "lobby" && <p className="spacer">{S.phone.lobby}</p>}
       {/* The engineering report: CORA's own line, or (a human partner) a prompt to talk about it. */}
       {!round && state.phase === "ceiling" && partner && (
         <PartnerBeat partner={partner} cora={S.crew.ceiling} head={S.event.beats.head} prompt={S.event.beats.ceiling(partner.name)} />
@@ -466,14 +461,62 @@ function InRoom() {
         </>
       )}
 
+      {idle && <PhoneIdle phase={phoneStatus(state, { seated: !!me?.pairId, round: null })} />}
       <div className="spacer" />
-      {/* Where the Leave button used to be: what's happening, while there's nothing to press. */}
-      {status_ && (
-        <p className="phone-status" role="status">
-          {status_}
-        </p>
-      )}
     </main>,
+  );
+}
+
+/** The phone's header on every screen: the seat, mute and the ⋯ menu, then the phase status (with the plan badge in
+ *  an Act II wave). The status is the one place a phone says what's happening; it never points at the TV. */
+function PhoneHeader({
+  seat,
+  table,
+  reconnecting,
+  status,
+  badge,
+  partner,
+  onLeave,
+}: {
+  seat: string;
+  table: Table;
+  reconnecting: boolean;
+  status: string;
+  badge: ReactNode;
+  partner: { name: string; cora: boolean } | null;
+  onLeave: () => void;
+}) {
+  return (
+    <header className="phone-head">
+      <div className="screen-top">
+        <span className="seat-label">
+          <CrewIcon table={table} />
+          <span className="kicker">{seat}</span>
+        </span>
+        {reconnecting && <span className="kicker">{S.event.reconnecting}</span>}
+        <span className="row phone-top__tools">
+          <MuteToggle where="phone" />
+          <PhoneMenu partner={partner} onLeave={onLeave} />
+        </span>
+      </div>
+      <div className="phone-head__status">
+        <p className="kicker" role="status">
+          {status}
+        </p>
+        {badge}
+      </div>
+    </header>
+  );
+}
+
+/** Nothing to do: the station's name and the phase, calm, with no instruction (the header's status is the live
+ *  region, so this copy is hidden from screen readers). */
+function PhoneIdle({ phase }: { phase: string }) {
+  return (
+    <div className="phone-idle spacer" aria-hidden="true">
+      <p className="phone-idle__station">{STATION_NAME}</p>
+      <p className="muted phone-idle__phase">{phase}</p>
+    </div>
   );
 }
 

@@ -1022,13 +1022,12 @@ export const S = {
     join: "Board the station",
     seat: (table: string, name: string) => `Table ${table} · ${name}`,
     partner: (name: string, table: string) => `Partner: ${name} (Table ${table})`,
-    lobby: "You're aboard. Eyes on the big screen.",
     waitingSeat: "You'll get a partner after this wave.",
     huddle: "The lull: last chance to talk",
-    huddleBody: "Agree on your plans. When the clock runs out the wave hits, and the radio goes dark.",
-    /** The briefing on a phone: the big screen tells the story. */
+    huddleBody: "Agree on your plans. The facilitator starts the wave, and then the radio goes dark.",
+    /** The briefing on a phone (the story itself is the TV's). */
     briefing: "The night shift",
-    briefingBody: "The radio works tonight: each round you'll hear your partner's reading and pump. Eyes on the big screen.",
+    briefingBody: "The radio works tonight: each round you'll hear your partner's reading and pump.",
     /** Act I: the pump can change until the round ends. */
     act1Change: "You can change it until the round ends.",
     plan: "Your plan",
@@ -1043,11 +1042,24 @@ export const S = {
       stay: "Stay",
       leaveNow: "Leave",
     },
-    /** Where the Leave button used to be: what's happening while there's nothing to press. */
-    status: {
-      watch: "Look at the big screen. The facilitator will move things on.",
-      manualResult: "Result on the big screen. The facilitator starts the next round.",
-      autoResult: "Result on the big screen. The next round starts by itself.",
+    /** The header's status (U1, src/screens/phoneStatus.ts): the room's phase for this player, on every screen. */
+    phase: {
+      lobby: "Lobby",
+      waitingSeat: "Waiting for a partner",
+      briefing: "The night shift",
+      storm: "Static",
+      lull: "The lull · talk",
+      act1Round: (n: number) => `Night shift · round ${n}`,
+      act1Next: "Night shift · waiting for the next round",
+      act1Done: "Night shift · done",
+      waveRound: (wave: number, n: number, answered: boolean) =>
+        `Wave ${wave} · round ${n} · ${answered ? "pump set" : "your turn"}`,
+      waveNext: (wave: number) => `Wave ${wave} · waiting for the next round`,
+      wavePassed: (wave: number) => `Wave ${wave} · the wave has passed`,
+      ceiling: "Engineering report",
+      tool: "The Entanglement Tool",
+      resolution: "The storm passes",
+      debrief: "Incident report",
     },
     /** After setting your pump: whether your partner has (never what they chose). */
     partnerChosen: (name: string) => `${name} has chosen.`,

@@ -600,7 +600,7 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     await v.page.getByRole("radio", { name: S.event.table(table) }).click();
     if (v === a) await shot("joining", [[a, "", ".btn--primary"]], true);
     await v.page.getByRole("button", { name: S.phone.join }).click();
-    await v.page.getByText(S.phone.lobby).waitFor();
+    await v.page.locator(".phone-head__status").getByText(S.phone.phase.lobby).waitFor();
   }
   // Six more players over plain WebSockets, so the TV shows a full room of four pairs. They answer every round at
   // once (Acts I and II: clockwise; Act III: measure) and are never screenshotted.

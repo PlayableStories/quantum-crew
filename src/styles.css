@@ -3506,12 +3506,41 @@ button.board__cell:focus-visible {
   line-height: 1;
 }
 
-.phone-status {
+/* U1: the phone's header on every screen: the seat row, then the phase status (and the plan badge in an Act II wave). */
+.phone-head {
+  display: grid;
+  gap: 2px;
+}
+
+.phone-head__status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.phone-head__status .kicker {
   margin: 0;
-  padding: 10px 12px;
-  border-left: 3px solid var(--amber);
-  color: var(--ink-muted);
-  text-align: left;
+  color: var(--amber);
+}
+
+/* Nothing to do: the station's name and the phase, calm. */
+.phone-idle {
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.phone-idle p {
+  margin: 0;
+}
+
+.phone-idle__station {
+  font-size: var(--fs-l);
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 /* Event TV report: the numbers panel stays compact, and the body clips so Back / Next are never covered. */
@@ -3927,11 +3956,6 @@ button.board__cell:focus-visible {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.round-head {
-  display: flex;
-  justify-content: flex-end;
 }
 
 .plan-badge__rows {
