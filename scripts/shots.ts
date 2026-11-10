@@ -585,6 +585,15 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
       () => (console.warn(`  skipped: ${what} (${tvSize.name})`), false),
     );
   // Manual results (each act's first wave) wait for the facilitator: press Next round when the TV offers it.
+  /** Start the wave (R1): in a lull the label counts ready pairs; with pairs still planning the first press asks "Start
+   *  anyway?" (captured once as `confirm`), and the second starts it. Outside a lull it's the plain label. */
+  const startWave = async (confirm: string | null = null) => {
+    await controls().getByRole("button", { name: /^Start the wave/ }).first().click({ timeout: 5000 });
+    const anyway = controls().getByRole("button", { name: /Start anyway\?$/ }).first();
+    if (!(await anyway.waitFor({ timeout: 1500 }).then(() => true, () => false))) return;
+    if (confirm) await shot(confirm, remote ? [[tv, "", null], [remote, "-remote", ".remote__primary"]] : [[tv, "", null]], true);
+    await anyway.click({ timeout: 5000 });
+  };
   const moveOn = async () => {
     const nextRoundBtn = controls().getByRole("button", { name: S.tv.nextRound, exact: true }).first();
     if (await nextRoundBtn.count()) await nextRoundBtn.click({ timeout: 2000 }).catch(() => {});
@@ -687,8 +696,22 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     await revHot.click();
     await b.page.locator(".partner-plan").filter({ hasText: S.plans.name[1]! }).waitFor();
   }
-  await shot("huddle", all(), true);
-  await host(S.tv.cmd.startBatch);
+  await shot("huddle", all(".ready-btn"), true);
+  // R1, the lull's ready step: the crowd's Cy, Di and Ed are ready (pair 2 ready, pair 3 one ready, pair 4 planning)
+  // and Ada and Bo still plan: the TV, both phones and the remote with mixed readiness. Then Ada taps Ready.
+  const readyBtn = (v: View) => v.page.locator(".ready-btn");
+  if (await readyBtn(a).count()) {
+    await tv.page.locator(".ready-tag--both").first().waitFor({ timeout: 5000 }).catch(() => {});
+    await shot("lull-mixed", all(".ready-btn"), true);
+    await readyBtn(a).click();
+    // Ada's own button turns (the room's flag comes back), and Bo sees it.
+    if (!(await ready("Ada's Ready ✓", a.page.locator(".ready-btn--on").waitFor({ timeout: 5000 }))))
+      console.warn(`  Ada's button reads: ${await readyBtn(a).textContent()}`);
+    await b.page.locator(".ready-partner--on").waitFor({ timeout: 5000 }).catch(() => {});
+    await shot("lull-ready", all(".ready-btn"), true);
+  }
+  // Bo still plans, so the remote's first press asks "Start anyway?"; the second starts the wave.
+  await startWave("start-anyway");
   await playWave("act2");
   await shot("wave-done", all(), true);
   // The worst case for fit: every pair's wave beat 80% by luck, so every pair has the luck line.
@@ -719,13 +742,13 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
   // found it) and the rest stay at 0°, so the crew's average stays under 80% after wave 1.
   await host(S.tv.cmd.startStrategy);
   await banner("strategy").waitFor();
-  await shot("act3-huddle-start", all(), true);
+  await shot("act3-huddle-start", all(".ready-btn"), true);
   const setting = (v: View, sensor: "COOL" | "HOT") => v.page.getByLabel(S.event.crystalPlan.row(sensor));
   await setting(a, "HOT").selectOption("45");
   await setting(b, "COOL").selectOption("22.5");
   await setting(b, "HOT").selectOption("22.5");
   await b.page.locator(".partner-plan").filter({ hasText: "45°" }).waitFor({ timeout: 3000 }).catch(() => {});
-  await shot("act3-huddle", all(), true);
+  await shot("act3-huddle", all(".ready-btn"), true);
   // The phone's sheets: the crystals' rule, and the clues so far (the hint and the nudge).
   for (const [chip, name] of [
     [S.event.crystalRule.chip, "crystal-rule-sheet"],
@@ -737,7 +760,10 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     if (await ready(name, a.page.locator("dialog[open]").waitFor({ timeout: 5000 }))) await shot(name, [[a, "", null]]);
     await a.page.keyboard.press("Escape");
   }
-  await host(S.tv.cmd.startBatch);
+  // R1: Ada and Bo say they're ready (the crowd already is), so one press starts the wave.
+  for (const v of [a, b]) if (await readyBtn(v).count()) await readyBtn(v).click();
+  await tv.page.locator(".ready-tag--planning").first().waitFor({ state: "detached", timeout: 5000 }).catch(() => {});
+  await startWave();
   await playWave("act3");
   await shot("act3-wave-done", all(), true);
 
@@ -748,7 +774,7 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     if (await ready("answer", tv.page.locator(".tv__answer-out").waitFor({ timeout: 5000 }))) await shot("answer", all(), true);
     await host(S.tv.cmd.startStrategy);
     await banner("strategy").waitFor();
-    await shot("act3-lull-answer", all(), true);
+    await shot("act3-lull-answer", all(".ready-btn"), true);
     const sheet = a.page.getByRole("button", { name: S.event.clues.chip(2), exact: true });
     if (await sheet.count()) {
       await sheet.click();
@@ -757,10 +783,10 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     }
     for (const v of [a, b]) await ready("use these", v.page.getByRole("button", { name: S.event.clues.useThese }).click({ timeout: 5000 }));
     await a.page.locator(".clue-hint--found").waitFor({ timeout: 5000 }).catch(() => {});
-    await shot("use-these", all(), true);
+    await shot("use-these", all(".ready-btn"), true);
   }
   // A last wave (Next closes each round and result at once), so the ending can follow.
-  await host(S.tv.cmd.startBatch);
+  await startWave();
   for (let i = 0; i < 60 && !(await banner("batchDone").isVisible()); i++) {
     await controls().locator(".btn--primary").first().click({ timeout: 2000 }).catch(() => {});
     await tv.page.waitForTimeout(150);
@@ -934,6 +960,8 @@ function joinCrowd(url: string, room: string) {
   return seats.map(([name, table]) => {
     const ws = new WebSocket(url);
     let planned = false;
+    /** R1: the lull this player has said ready in (by when it opened). */
+    let readyIn: number | null = null;
     ws.on("open", () => ws.send(JSON.stringify({ type: "player:join", room, name, table })));
     ws.on("message", (data) => {
       const msg = JSON.parse(String(data)) as {
@@ -947,6 +975,15 @@ function joinCrowd(url: string, room: string) {
       if (msg.type === "room:state" && (name === "Cy" || name === "Di") && msg.state?.act === 3 && msg.state.phase === "strategy" && !planned) {
         planned = true;
         ws.send(JSON.stringify({ type: "player:strategy", act: 3, tuning: OPTIMAL_TUNING[table] }));
+      }
+      // R1: in Act II's lull Cy, Di and Ed say ready (a mixed room); in Act III's lulls everyone does (after any plan).
+      const st = msg.state as { phase?: string; act?: number; lullSince?: number | null } | undefined;
+      if (msg.type === "room:state" && st?.phase === "strategy" && st.lullSince != null && readyIn !== st.lullSince) {
+        const says = st.act === 3 ? (name !== "Cy" && name !== "Di") || planned : name === "Cy" || name === "Di" || name === "Ed";
+        if (says) {
+          readyIn = st.lullSince;
+          ws.send(JSON.stringify({ type: "player:ready", ready: true }));
+        }
       }
       if (msg.type !== "round:start") return;
       // Act III (since E3c): the room measured the crystal at round start; follow it. Acts I and II: clockwise.

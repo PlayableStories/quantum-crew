@@ -400,7 +400,7 @@ function InRoom() {
       )}
 
       {!round && state.phase === "strategy" && (
-        <div className={`stack lull ${state.act === 3 ? "lull--act3" : ""}`}>
+        <div className={`stack lull ${state.act === 3 ? "lull--act3" : ""} ${state.act === 3 && state.clue >= 2 ? "lull--answer" : ""}`}>
           {/* The header's status names the lull; the heading stays for screen readers (U1). */}
           <h2 className="hide-on-phone">{S.phone.huddle}</h2>
           {state.act === 2 && <p>{S.phone.huddleBody}</p>}
@@ -545,17 +545,20 @@ function ReadyBar({
   const R = S.event.ready;
   return (
     <ActionBar>
-      <p className={`ready-partner small ${partnerReady ? "ready-partner--on" : "muted"}`} role="status">
-        {partnerReady ? R.partnerReady(partner) : R.partnerPlanning(partner)}
-      </p>
-      <button
-        type="button"
-        className={`btn ready-btn ${ready ? "ready-btn--on" : "btn--primary"}`}
-        aria-pressed={ready}
-        onClick={() => onChange(!ready)}
-      >
-        {ready ? R.buttonOn : R.button}
-      </button>
+      {/* One row: the partner's state beside the button, so the bar stays short on small phones. */}
+      <div className="ready-row">
+        <p className={`ready-partner small ${partnerReady ? "ready-partner--on" : "muted"}`} role="status">
+          {partnerReady ? R.partnerReady(partner) : R.partnerPlanning(partner)}
+        </p>
+        <button
+          type="button"
+          className={`btn ready-btn ${ready ? "ready-btn--on" : "btn--primary"}`}
+          aria-pressed={ready}
+          onClick={() => onChange(!ready)}
+        >
+          {ready ? R.buttonOn : R.button}
+        </button>
+      </div>
     </ActionBar>
   );
 }

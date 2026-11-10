@@ -278,6 +278,15 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    reverse when HOT, reverse when COOL, always anticlockwise), and the partner's choice shows live on their phone.
    The lull isn't timed (the TV shows how long the room has been talking); **Start the wave** ends it, the storm wave
    hits, the radio goes dark and the plans lock.
+   **Ready (every lull, Acts II and III):** under the plan each phone has **Ready**; after a tap it reads **Ready ✓ ·
+   tap to change** and the phone shows whether the partner is ready or still planning. Changing the plan undoes it,
+   every lull starts with nobody ready, and CORA's seat (empty, or covering a player who's away) is always ready. The
+   server holds it, so a reconnecting TV or remote keeps it. The TV's pair cards (and the Act III lull's hint rows)
+   read **Planning**, **Ada ready** or **✓ Ready**; the banner and the start control count the ready pairs
+   (**Start the wave (3 of 4 pairs ready)**), and the remote lists each pair. With every pair ready the wave starts at
+   once; otherwise the first press asks **"1 pair still planning. Start anyway?"** (on the TV and the remote alike;
+   it lapses after 5 s or when anyone's readiness changes) and the next press starts it. A double press can't
+   confirm it: asking changes the room's step. Players who weren't ready play the plan they have selected.
 7. Each round of a wave (8 rounds), every phone shows only its own sensor, a small **Plan locked** badge in its
    header (a tap shows both locked plans; the TV's banner says **Plans locked**) and two pump buttons, the plan's
    tagged "Plan" (either can be tapped). After setting a pump a phone says whether the partner has chosen (never

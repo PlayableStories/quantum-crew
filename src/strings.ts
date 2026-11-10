@@ -983,7 +983,7 @@ export const S = {
       ready: (ready: number, total: number) =>
         ready === total
           ? `All ${total === 1 ? "pairs are" : `${total} pairs are`} ready: start the wave.`
-          : `${ready} of ${total} ${total === 1 ? "pair" : "pairs"} ready. Wait for the rest, or start early: the button asks you to confirm.`,
+          : `${ready} of ${total} ${total === 1 ? "pair" : "pairs"} ready: wait, or start early.`,
       act3Strategy: [
         "Each player picks a crystal plan: a setting for COOL and one for HOT. Partners see each other's live.",
         "Each pair's live hint and the nudge are on the TV and their phones.",

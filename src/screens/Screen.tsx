@@ -277,9 +277,9 @@ function PhaseBanner({ state, localDeadline }: { state: RoomState; localDeadline
           {[talking !== null ? S.tv.talking(clock(talking)) : null, S.tv.readyCount(readyPairs(state).ready, state.pairs.length)]
             .filter(Boolean)
             .join(" · ")}
-          {state.startConfirm && <strong className="tv__confirm"> {S.tv.confirmNote}</strong>}
         </p>
       )}
+      {state.phase === "strategy" && state.startConfirm && <p className="tv__confirm">{S.tv.confirmNote}</p>}
       {inBatch && (
         <>
           <p className="kicker">

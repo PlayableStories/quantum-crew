@@ -262,10 +262,23 @@ function RoomList({ state, lastResults }: { state: RoomState; lastResults: Round
   if (state.phase === "lobby" || state.phase === "briefing") {
     lines.push({ key: "aboard", text: S.remote.aboard(state.players.length, state.pairs.length) });
   } else if (state.phase === "strategy") {
-    if (talking !== null) lines.push({ key: "talking", text: S.tv.talking(clock(talking)) });
-    // R1: each pair's state (planning, one ready, both), as on the TV.
-    for (const pair of state.pairs)
-      lines.push({ key: `p${pair.id}`, text: S.remote.pairLine(pair.id, lullText(pair)), tone: pairReady(pair) ? "win" : undefined });
+    // R1: the talking clock beside the heading, then each pair's state (planning, one ready, both) as wrapping chips,
+    // so four pairs fit on a phone.
+    return (
+      <section className="panel remote__room" aria-live="polite">
+        <div className="remote__room-head">
+          <p className="kicker">{S.remote.roomHead}</p>
+          {talking !== null && <span className="muted small">{S.tv.talking(clock(talking))}</span>}
+        </div>
+        <ul className="remote__ready">
+          {state.pairs.map((pair) => (
+            <li key={pair.id} className={pairReady(pair) ? "remote__line--win" : undefined}>
+              {S.remote.pairLine(pair.id, lullText(pair))}
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
   } else if (state.phase === "round") {
     for (const pair of state.pairs) {
       const waiting = (["a", "b"] as const).filter((side) => !pair.answered[side]).map((side) => pair[side].name);
