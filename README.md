@@ -59,8 +59,9 @@ with three states:
   CORA talks on the radio. In Act I she calls her reading every round; the huddle is the last chance to talk before
   a batch.
 - **Comms dark** (during a storm wave): the radio is down, shown as static, and CORA says nothing.
-- **Station telemetry** (after each round): one impersonal sentence on why the round held or failed, e.g. *"The
-  pumps fought, but the vent stays locked unless both sections are HOT."* The ring shows both sensors and pumps.
+- **The why line** (after each round): under the cause, one plain line on why the round held or failed, e.g. *"The
+  pumps fought, and the vent stays locked unless both sections are HOT."* It gives only the reason: the ring is the
+  one place for both sensors, both pumps and the vent (and screen readers get them as the ring's label).
 
 ```mermaid
 flowchart TD
@@ -71,7 +72,7 @@ flowchart TD
   act1 --> storm["The storm: CORA's voice breaks into static;<br/>station log: a solar storm, in waves"]
   storm -- "Use the lull" --> plan
   subgraph act2 ["Act II: plans"]
-    plan["Huddle: last chance to talk<br/>pick both plans, Lock in the plan"] --> batch2["Batch: 12 live rounds<br/>comms dark, telemetry"]
+    plan["Huddle: last chance to talk<br/>pick both plans, Lock in the plan"] --> batch2["Batch: 12 live rounds<br/>comms dark, a why line per result"]
     batch2 --> read2["Readout: CORA reacts<br/>+ the plan's four cases (exact)"]
     read2 -- "Back to the huddle" --> plan
   end
@@ -112,12 +113,11 @@ flowchart TD
    | **Reverse when COOL** | 25% | 75% | 25% | 75% |
    | **Always anticlockwise** | 25% | 25% | 75% | 75% |
 
-2. **Play a batch.** Twelve live rounds with **comms dark**. A reminder shows the agreed plan, e.g. *"Agreed: you
-   COOL → clockwise, HOT → anticlockwise · CORA always clockwise"*. CORA plays the plan you set for her. Your plan's
-   direction is tagged "Plan", but you set the pump yourself and can go against it (5 seconds; running out of time
-   is a loss). Each result shows the cause (Circulating, Heat carried off, Purge, Pressure spike, Overheat or Too
-   slow), one sentence of station telemetry on why, and the **coolant ring**, with both sensors and both pumps
-   labelled. The result stays until you tap **Next round** (or press Space / Enter); after 6 seconds it moves on by
+2. **Play a batch.** Twelve live rounds with **comms dark**. A small **Plan locked** badge in the round's header is
+   the reminder (a tap shows both plans); CORA plays the plan you set for her. Your plan's direction is tagged
+   "Plan", but you set the pump yourself and can go against it (5 seconds; running out of time is a loss). Each
+   result shows the cause (Circulating, Heat carried off, Purge, Pressure spike, Overheat or Too slow), one plain
+   line on why, and the **coolant ring**, the one place where both sensors and both pumps are labelled. The result stays until you tap **Next round** (or press Space / Enter); after 6 seconds it moves on by
    itself. The ring plays the round back:
    - each half lights up COOL or HOT;
    - each pump spins the way it ran;
@@ -227,7 +227,7 @@ iPad the type, plan board, crystal plan and ring scale up with the screen, and e
    Turning anticlockwise."; it varies at random), so the
    rule with both readings wins every round (8 seconds each). Then the storm knocks the radio out.
 3. **Act II: plans.** In the huddle (the last chance to talk), pick your plan *and* CORA's, then **Lock in the
-   plan**. Then play batches of 12 rounds (comms dark; the station's telemetry reports each round). Between
+   plan**. Then play batches of 12 rounds (comms dark; each result gives its cause, a why line and the ring). Between
    batches CORA reacts on the radio, and the readout shows your plan's exact rate case by case. Whatever you try, no
    pair beats 75%.
 4. **Engineering report.** After the first batch you can call engineering (or try more plans first): they fill in
@@ -246,6 +246,8 @@ CLOCKWISE, and in Act III **Enter** follows the crystal. **?** lists every key; 
 Two tables of players, one phone each, and a TV or projector. A facilitator runs the session from the TV.
 
 1. Open **/screen** on the TV (landing page → **Host on TV**). It creates a station with a 4-letter code and a QR code.
+   The large join panel shows in the lobby only; from the briefing on it's a small **Join: CODE** in the TV's header,
+   and a click (or **J**) shows the QR for late joiners.
    The QR code and the printed link both point at the join address (see
    [Run event mode at a venue](#run-event-mode-at-a-venue)).
 2. Players scan the QR (or open **/play** and type the code), enter a name and pick **Table A** or **Table B**.
@@ -253,11 +255,16 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    and on her partner's phone), fills any empty seat.
    **Optional, the facilitator's phone remote:** press **Remote** at the top right of the TV and scan its QR code
    with your own phone. It opens **/host**, which runs the session from anywhere in the room (the next step as one
-   big button, Play / Pause, what to say, who is still choosing). The remote's link carries its own key (not the TV's),
-   and **Unpair remotes** in the same dialog makes a new one. See
+   big button, Play / Pause, what to say, who is still choosing). While a remote is paired, the TV hides its host row
+   and key hint so the room sees only the game (the keys still work, a small **?** stays, and the row comes back
+   when no remote is paired). The remote's link carries its own key (not the TV's), and **Unpair remotes** in the
+   same dialog makes a new one. See
    [Using the remote](docs/facilitator.md#using-the-remote).
 3. **Start the night shift:** the TV shows the briefing (Kestrel Station, the star, the two tables, the coolant ring
-   and its rule); phones show the quick rule.
+   and its rule); phones show the quick rule. Every phone's header names the phase ("Lobby", "Night shift · round
+   3", "The lull · talk", "Wave 1 · round 4 · your turn", "Wave 1 · waiting for the next round", "Incident report"…);
+   with nothing to do, a phone shows only the station's name and the phase. Phones never point at the TV: the TV
+   shows what the room shares, each phone only what's private to its player.
 4. **Start the rounds:** Act I, six rounds with the radio working. Each phone shows its own sensor and, on the radio,
    the partner's reading, then their pump as soon as they set it (CORA calls hers at the start of the round). Players
    may talk out loud too. A pump can be changed until the round ends; a round ends once both pumps are set and
@@ -271,9 +278,10 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    reverse when HOT, reverse when COOL, always anticlockwise), and the partner's choice shows live on their phone.
    The lull isn't timed (the TV shows how long the room has been talking); **Start the wave** ends it, the storm wave
    hits, the radio goes dark and the plans lock.
-7. Each round of a wave (8 rounds), every phone shows only its own sensor, both locked plans (stamped **Plan
-   locked**; the TV's banner says **Plans locked**) and two pump buttons (either can be tapped). After setting a pump a phone says whether the partner has chosen (never
-   what). A result shows the cause, a small ring with both sensors and pumps, and a line of station telemetry. The TV shows the round timer, who has answered and each pair's cause. The station's
+7. Each round of a wave (8 rounds), every phone shows only its own sensor, a small **Plan locked** badge in its
+   header (a tap shows both locked plans; the TV's banner says **Plans locked**) and two pump buttons, the plan's
+   tagged "Plan" (either can be tapped). After setting a pump a phone says whether the partner has chosen (never
+   what). A result shows the cause, one line on why, and a small ring with both sensors and pumps. The TV shows the round timer, who has answered and each pair's cause. The station's
    stability is pooled over the last 48 wave rounds across all pairs (Act I has its own rate), and each pair also has
    its own mini-meter (three or four pairs sit two to a row).
 8. After each wave the TV shows every pair's locked plans case by case (the four sensor combinations, each with
@@ -303,7 +311,7 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
 12. **Act III rounds.** There is no MEASURE: at round start the room measures both crystals, each at its player's
    planned setting for their sensor reading (Table A's is a fair coin, Table B's matches it with cos² of the gap),
    and each phone gets only its own result. The phone shows the chain *"Your sensor: HOT → your plan: 45° → the
-   crystal says ANTICLOCKWISE (this time; it could have been either)"* with a small read-only dial; the player's only action is the pump (the suggestion is
+   crystal says ANTICLOCKWISE (this time; it could have been either)"* on one line (no dial, no separate locked banner); the player's only action is the pump (the suggestion is
    highlighted, Enter follows it; they may go against it). Decision time is Act II's (`decisionMs`). Scoring uses
    the pump actually set, and the room records who followed. CORA in an empty seat always follows.
 13. After each Act III wave the TV shows every pair's locked crystal plans case by case (each case's gap and exact
@@ -346,8 +354,8 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
 At the engineering report, human pairs get a prompt instead of CORA's personal line ("Did you blame each other? No
 plan beats 75%: it was never either of you."); pairs with CORA hear her line.
 
-**Pacing.** The facilitator paces the room from the TV. The host row shows only what applies now, plus Play / Pause
-with a small **▾** for the speed, and Reset. Space or → presses Next; P switches between play and pause (all the TV's
+**Pacing.** The facilitator paces the room from the TV (or the remote; with one paired, the TV's host row hides). The
+host row shows only what applies now, plus Play / Pause with a small **▾** for the speed, and Reset. Space or → presses Next; P switches between play and pause (all the TV's
 keys: [Keyboard shortcuts](#keyboard-shortcuts)). Every change
 takes effect at once, on the running round or result too.
 - **Manual (Pause;** the default for each act's first wave, the night shift included): no countdown. A round closes
@@ -381,16 +389,17 @@ Phones (`/play`) and the remote (`/host`) are touch-first and keep only their ro
 | **A / ←**, **C / →** | the pumps, in a round | (→ = next) | the pumps, in a round |
 | **Enter** (Act III round) | follow your crystal | – | follow your crystal |
 | **P** | – | play / pause | – |
+| **J** | – | the join QR code (after the lobby) | – |
 | **M** | sound on / off | sound on / off | – |
 | **F** | full screen on / off | full screen on / off | – |
 | **D** | debug: jump to Act II or Act III | debug: jump to Act II or Act III | – |
 | **?** | the list of keys | the list of keys | – |
 | **Esc** | close a sheet | close a sheet or menu | close a sheet |
 
-D, F, M and ? work even with a button focused (they press nothing); Space and Enter leave a focused button to
+D, F, M, ? and J work even with a button focused (they press nothing); Space and Enter leave a focused button to
 itself. None of them act while you type in a field or inside an open sheet. **D** is for testing: it skips the story
 and keeps what has been played; it's refused during a wave and in the report. In solo there's also a **?** button
-beside mute on keyboard-sized screens.
+beside mute on keyboard-sized screens; the TV always has one in its header.
 
 ## The physics
 This is the **CHSH game**, a Bell test. Two players who can't talk each get a random bit (the sensor: COOL = 0,

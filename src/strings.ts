@@ -53,6 +53,15 @@ export const S = {
     explain: "Explain",
   },
   sheet: { close: "Close" },
+  /** An Act II wave (solo and event phones): a small badge in the round's header; a tap shows both plans, agreed
+   *  openly in the lull. The PLAN tag on the pump button is the only other reminder. */
+  planBadge: {
+    stamp: "Plan locked",
+    open: "Plan locked: show the plans you agreed",
+    head: "The plans you agreed in the lull",
+    you: "You",
+    row: (who: string, plan: ClassicalStrategy) => `${who}: ${planSays(plan)}`,
+  },
   light: { 0: "COOL", 1: "HOT" } as const,
   pump: { 0: "CLOCKWISE", 1: "ANTICLOCKWISE" } as const,
   pumpShort: { 0: "CW", 1: "ACW" } as const,
@@ -67,6 +76,9 @@ export const S = {
     ventOpen: "Vent unlocked",
     ventLocked: "Vent locked",
     notSet: "NOT SET",
+    /** A result ring for screen readers: the facts it draws (the text beside it gives only the reason). */
+    result: (a: string, aLight: string, aPump: string, b: string, bLight: string, bPump: string, vent: string) =>
+      `${a}: ${aLight}, pump ${aPump}. ${b}: ${bLight}, pump ${bPump}. ${vent}.`,
   },
 
   landing: {
@@ -142,17 +154,16 @@ export const S = {
     darkSub: "It may come back when the wave passes.",
   },
 
-  /** The station's automatic log after each round: one impersonal sentence on why it held or failed. The ring shows
-   *  both sensors and both pumps. */
+  /** After each round, under the headline: one plain line on why it held or failed. Only the reason: the ring is
+   *  where both sensors, both pumps and the vent are shown, so these lines don't repeat them. */
   telemetry: {
-    head: "Station telemetry",
     why: (r: RoundResult) =>
       ({
-        circulate: "Both sections COOL and the pumps matched, so the coolant circulated.",
-        carry: "One section HOT and the pumps matched, so the heat was carried to the cool side.",
-        purge: "Both sections HOT and the pumps fought, so the vent opened and purged the heat.",
-        spike: "The pumps fought, but the vent stays locked unless both sections are HOT.",
-        overheat: "Both sections HOT and the pumps matched, so nothing pushed the heat out of the open vent.",
+        circulate: "Nothing was hot, so the coolant just went round.",
+        carry: "The flow carried the heat round to the cool side.",
+        purge: "The pumps pushed against each other and forced the heat out of the unlocked vent.",
+        spike: "The pumps fought, and the vent stays locked unless both sections are HOT.",
+        overheat: "The vent was unlocked, but matched pumps only push heat round the ring, and there was no cool side to take it.",
         slow: r.a === null ? "Your pump wasn't set in time." : `${CREW_NAME}'s pump wasn't set in time.`,
       })[roundCause(r)],
   },
@@ -291,9 +302,6 @@ export const S = {
     slow: "Too slow",
     you: "You",
     crewmate: "Crewmate",
-    /** The plan both sides locked in, as a reminder during each round. */
-    agreed: (plan: ClassicalStrategy, crewPlan: ClassicalStrategy) =>
-      `Agreed: you ${planSays(plan)} · ${CREW_NAME} ${planSays(crewPlan)}`,
     next: "Next round",
     nextSub: "Space / Enter",
   },
@@ -400,8 +408,6 @@ export const S = {
     coraHead: `${CREW_NAME}'s crystal plan`,
   },
 
-  /** The Dial component's own controls (no screen turns a dial since S3; kept for the component). */
-  dial: { prev: "Turn dial left", next: "Turn dial right" },
 
   debrief: {
     kicker: "Debrief",
@@ -513,10 +519,7 @@ export const S = {
     },
     /** Act II on a phone: the partner's plan, live in the lull (`name` is the partner's, or CORA's). */
     partnerPlan: (name: string) => `${name}'s plan`,
-    /** During a wave: both locked plans. */
-    agreed: (plan: ClassicalStrategy, partner: string, partnerPlan: ClassicalStrategy) =>
-      `Agreed: you ${planSays(plan)} · ${partner} ${planSays(partnerPlan)}`,
-    /** A round's telemetry line. Only "too slow" names anyone: whose pump wasn't set. */
+    /** A result's why line. Only "too slow" names anyone: whose pump wasn't set. */
     why: (r: RoundResult, mine: "a" | "b", partner: string) => {
       if (roundCause(r) !== "slow") return S.telemetry.why(r);
       const theirs = mine === "a" ? r.b : r.a;
@@ -640,7 +643,8 @@ export const S = {
     /** An Act III round on a phone: what the station did with the plan. */
     chain: {
       sensor: "Your sensor",
-      plan: "your plan",
+      /** The one line: "HOT → your plan: 45° → the crystal says CLOCKWISE (this time; it could have been either)". */
+      plan: "your plan:",
       crystal: "the crystal says",
       /** After the direction: it was a coin flip. */
       flip: "(this time; it could have been either)",
@@ -672,11 +676,9 @@ export const S = {
       },
       labels: { now: "Now", can: "You can", question: "The question" },
     },
-    /** When a wave starts, the plans are stamped (phones and TV), in Acts II and III. */
+    /** When a wave starts, the TV stamps the plans (Acts II and III); phones and solo have the plan badge. */
     locked: {
-      stamp: "Plan locked",
       tvStamp: "Plans locked",
-      act3: (cool: string, hot: string) => `COOL ${cool} · HOT ${hot}`,
     },
     /** The TV after an Act III wave: each pair's crystal plans case by case (gap, chance), who followed, which pairs
      *  found 80%, and the crew's saved-or-not. */
@@ -797,6 +799,7 @@ export const S = {
     tv: [
       ["Space / →", "The next step (Close the round, Next round, Start the wave, Next in the report)"],
       ["P", "Play / pause"],
+      ["J", "The join QR code, for late joiners (after the lobby)"],
       ["M", "Sound on / off"],
       ["F", "Full screen on / off"],
       ["D", "Debug: jump to Act II or Act III (for testing)"],
@@ -808,6 +811,9 @@ export const S = {
   tv: {
     station: (code: string) => `Station ${code}`,
     join: "Join on your phone",
+    /** After the lobby: the join code, small in the header; a click (or J) shows the QR for late joiners. */
+    joinChip: (code: string) => `Join: ${code}`,
+    joinChipLabel: (code: string) => `Join: code ${code}. Show the QR code (J)`,
     joinAt: (url: string) => `or open ${url}`,
     /** The laptop has other network addresses; one of them may be the one phones can reach. */
     tryOther: "Not working? Try:",
@@ -1020,13 +1026,12 @@ export const S = {
     join: "Board the station",
     seat: (table: string, name: string) => `Table ${table} · ${name}`,
     partner: (name: string, table: string) => `Partner: ${name} (Table ${table})`,
-    lobby: "You're aboard. Eyes on the big screen.",
     waitingSeat: "You'll get a partner after this wave.",
     huddle: "The lull: last chance to talk",
-    huddleBody: "Agree on your plans. When the clock runs out the wave hits, and the radio goes dark.",
-    /** The briefing on a phone: the big screen tells the story. */
+    huddleBody: "Agree on your plans. The facilitator starts the wave, and then the radio goes dark.",
+    /** The briefing on a phone (the story itself is the TV's). */
     briefing: "The night shift",
-    briefingBody: "The radio works tonight: each round you'll hear your partner's reading and pump. Eyes on the big screen.",
+    briefingBody: "The radio works tonight: each round you'll hear your partner's reading and pump.",
     /** Act I: the pump can change until the round ends. */
     act1Change: "You can change it until the round ends.",
     plan: "Your plan",
@@ -1041,11 +1046,24 @@ export const S = {
       stay: "Stay",
       leaveNow: "Leave",
     },
-    /** Where the Leave button used to be: what's happening while there's nothing to press. */
-    status: {
-      watch: "Look at the big screen. The facilitator will move things on.",
-      manualResult: "Result on the big screen. The facilitator starts the next round.",
-      autoResult: "Result on the big screen. The next round starts by itself.",
+    /** The header's status (U1, src/screens/phoneStatus.ts): the room's phase for this player, on every screen. */
+    phase: {
+      lobby: "Lobby",
+      waitingSeat: "Waiting for a partner",
+      briefing: "The night shift",
+      storm: "Static",
+      lull: "The lull · talk",
+      act1Round: (n: number) => `Night shift · round ${n}`,
+      act1Next: "Night shift · waiting for the next round",
+      act1Done: "Night shift · done",
+      waveRound: (wave: number, n: number, answered: boolean) =>
+        `Wave ${wave} · round ${n} · ${answered ? "pump set" : "your turn"}`,
+      waveNext: (wave: number) => `Wave ${wave} · waiting for the next round`,
+      wavePassed: (wave: number) => `Wave ${wave} · the wave has passed`,
+      ceiling: "Engineering report",
+      tool: "The Entanglement Tool",
+      resolution: "The storm passes",
+      debrief: "Incident report",
     },
     /** After setting your pump: whether your partner has (never what they chose). */
     partnerChosen: (name: string) => `${name} has chosen.`,

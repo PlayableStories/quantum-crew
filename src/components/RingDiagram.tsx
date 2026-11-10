@@ -7,11 +7,12 @@ import { S } from "../strings.ts";
 // relief vent at the junction that unlocks only when both sides are HOT.
 // - No props: the station rule's diagram (intro, rule sheet).
 // - `idle`: a live round is under way. Neutral: it shows nothing about either sensor (comms are dark).
-// - `result`: what the round did. Each half takes its sensor's colour and a COOL/HOT label, each impeller spins
-//   the way its pump ran (with an arrow), the vent opens on a double HOT, and the cause plays out: flow round the
-//   ring, heat carried to the cool side, a purge out of the vent, a pressure spike where the flows meet, an
-//   overheat, or a stopped pump. Decorative here: the station telemetry says the same in words. With reduced
-//   motion everything stays put and the arrows, labels and marks carry the meaning.
+// - `result`: what the round did, and the one place its facts live (U1): the result's text gives only the cause and
+//   why. Each half takes its sensor's colour and a COOL/HOT label, each pump's direction is in words (with an arrow
+//   and a spinning impeller), the vent reads locked or unlocked, and the cause plays out: flow round the ring, heat
+//   carried to the cool side, a purge out of the vent, a pressure spike where the flows meet, an overheat, or a
+//   stopped pump. Screen readers get the same facts as the image's label. With reduced motion everything stays put
+//   and the arrows, labels and marks carry the meaning.
 
 const CX = 160;
 const CY = 120;
@@ -50,7 +51,23 @@ export function RingDiagram({ result, idle = false, small = false, labels }: Pro
     <svg
       className={cls.filter(Boolean).join(" ")}
       viewBox={wide ? "-42 0 404 190" : "0 0 320 190"}
-      {...(live || idle ? { "aria-hidden": true } : { role: "img", "aria-label": R_.label })}
+      // Idle: hidden (it shows nothing). A result: an image labelled with both sections' sensor and pump and the vent.
+      {...(idle && !live
+        ? { "aria-hidden": true }
+        : {
+            role: "img",
+            "aria-label": result
+              ? R_.result(
+                  labels?.a ?? R_.a,
+                  S.light[result.x],
+                  result.a === null ? R_.notSet : S.pump[result.a],
+                  labels?.b ?? R_.b,
+                  S.light[result.y],
+                  result.b === null ? R_.notSet : S.pump[result.b],
+                  ventOpen ? R_.ventOpen : R_.ventLocked,
+                )
+              : R_.label,
+          })}
     >
       <defs>
         <marker id={`${id}-head`} viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto">

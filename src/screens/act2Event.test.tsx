@@ -35,13 +35,18 @@ describe("Act II on a phone", () => {
     expect(html()).toContain(esc(S.event.partnerPlan(S.crew.name)));
   });
 
-  it("a wave: both locked plans as a reminder", () => {
+  it("a wave: the plan once as the badge and once as the PLAN tag; no Agreed sentence (U1)", () => {
     seat(act2("round"));
     put({ round: { roundId: "1-1", act: 2, light: 1, ms: 3500, dialDeg: null, answered: null, partner: null, crystal: null } });
-    expect(html()).toContain(S.event.agreed(always, "Bo", revHot));
+    const markup = html();
+    expect(markup.split(`>🔒 ${S.planBadge.stamp}<`).length - 1).toBe(1);
+    expect(markup.split(`>${S.batch.planTag}</span>`).length - 1).toBe(1);
+    expect(markup).not.toContain("Agreed");
+    // The plans themselves are only in the badge's sheet, mounted when it opens.
+    expect(markup).not.toContain(esc(S.planBadge.row("Bo", revHot)));
   });
 
-  it("a result: the cause and a line of telemetry; too slow names whose pump", () => {
+  it("a result: the headline, one why line and the ring; no telemetry box; too slow names whose pump", () => {
     seat(act2("roundResult"));
     const flash = (a: 0 | 1 | null, b: 0 | 1 | null): { roundId: string } & RoundOutcome => ({
       roundId: "1-1",
@@ -55,8 +60,12 @@ describe("Act II on a phone", () => {
       cause: a === null || b === null ? "slow" : a === b ? "overheat" : "purge",
     });
     put({ flash: flash(0, 0) });
-    expect(html()).toContain(S.outcome.overheat.title);
-    expect(html()).toContain(S.telemetry.head);
+    const markup = html();
+    expect(markup).toContain(S.outcome.overheat.title);
+    expect(markup.match(/class="why"/g)).toHaveLength(1);
+    expect(markup).toContain(esc(S.telemetry.why(flash(0, 0))));
+    expect(markup).not.toContain("Station telemetry");
+    expect(markup).toMatch(/class="ring [^"]*ring--live[^"]*"[^>]*role="img"/);
     put({ flash: flash(0, null) });
     expect(html()).toContain(esc("Bo's pump wasn't set in time."));
     put({ flash: flash(null, 0) });

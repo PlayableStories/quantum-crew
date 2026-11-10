@@ -2,7 +2,7 @@
 // take their numbers and labels as props: solo passes the player's, the TV the crew's. Exact maths from chsh.ts.
 import type { ReactNode } from "react";
 import { Bars } from "./DebriefParts.tsx";
-import { formatDeg } from "./Dial.tsx";
+import { formatDeg } from "../lib/formatDeg.ts";
 import { LightIcon } from "./SensorLight.tsx";
 import { pct } from "./StabilityMeter.tsx";
 import { DEFAULT_CREW_PLAN } from "../config.ts";

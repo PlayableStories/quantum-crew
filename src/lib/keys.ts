@@ -3,11 +3,11 @@
 // Phones (/play) and the remote (/host) are touch-first and keep only their round keys (pumps, Enter follows).
 //   Both:  D debug jump · F full screen · M mute · ? the shortcut sheet
 //   Solo:  Space / Enter = the main (highlighted) button, outside a wave (rounds keep their own keys in Batch.tsx)
-//   TV:    Space / → = the natural next step · P = play / pause
+//   TV:    Space / → = the natural next step · P = play / pause · J = the join QR (after the lobby)
 import { create } from "zustand";
 
 export type KeyMode = "solo" | "tv";
-export type KeyAction = "debug" | "fullscreen" | "mute" | "help" | "primary" | "next" | "playPause";
+export type KeyAction = "debug" | "fullscreen" | "mute" | "help" | "primary" | "next" | "playPause" | "join";
 
 /** Where the key was pressed: typing in a field (or inside an open sheet), or on a control that Space / Enter would
  *  press anyway. */
@@ -33,6 +33,7 @@ export function keyAction(e: KeyPress, mode: KeyMode, where: KeyTarget, inWave =
   if (k === "f") return "fullscreen";
   if (k === "m") return "mute";
   if (k === "?") return "help";
+  if (k === "j" && mode === "tv") return "join"; // presses nothing either
   if (where.onControl) return null; // Space / Enter on a focused button press that button
   if (mode === "solo") return (k === " " || k === "Enter") && !inWave ? "primary" : null;
   if (k === "p") return "playPause";

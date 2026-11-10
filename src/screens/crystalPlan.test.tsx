@@ -199,8 +199,8 @@ describe("clue 1 and 2 on a phone", () => {
   });
 });
 
-describe("rounds: the chain and Plan locked", () => {
-  it("Act III: sensor → your plan's setting → the crystal's direction, no MEASURE, and the plan locked", () => {
+describe("rounds: the chain and the plan badge", () => {
+  it("Act III: sensor → your plan's setting → the crystal's direction, no MEASURE, no locked banner", () => {
     const s = act3("round");
     s.pairs[0] = { ...s.pairs[0]!, lockedDials: { a: OPTIMAL_TUNING.A, b: OPTIMAL_TUNING.B } };
     seat(s);
@@ -208,18 +208,24 @@ describe("rounds: the chain and Plan locked", () => {
     const markup = html();
     expect(markup).toContain(S.event.chain.sensor);
     const text = markup.replace(/<!-- -->/g, "");
-    expect(text).toContain(`${S.event.chain.plan} <strong>45°</strong>`);
-    expect(text).toContain(`${S.event.chain.crystal} <strong>${S.pump[1]}</strong> <span class="muted small chain__flip">${esc(S.event.chain.flip)}</span>`);
+    // One line: HOT → your plan: 45° → the crystal says ANTICLOCKWISE (this time; …), and no dial (U1).
+    const line = /<p class="chain__line">(.*?)<\/p>/.exec(text)?.[1] ?? "";
+    const words = line.replace(/<[^>]+>/g, "");
+    expect(words).toBe(`${S.light[1]} → ${S.event.chain.plan} 45° → ${S.event.chain.crystal} ${S.pump[1]} ${S.event.chain.flip}`);
+    expect(markup).not.toMatch(/class="dial/);
+    expect(markup).not.toMatch(/aria-label="45°"/);
     expect(markup).not.toContain(`>${S.batch.measure}<`);
-    expect(markup).toContain(S.event.locked.stamp);
-    expect(markup).toContain(S.event.locked.act3("0°", "45°"));
+    // U1: no separate locked banner in Act III (the chain names the setting in use); the CRYSTAL tag stays.
+    expect(markup).not.toContain(S.planBadge.stamp);
+    expect(markup).not.toContain("locked-plan");
+    expect(markup).toContain(`>${S.batch.crystalTag}</span>`);
   });
 
-  it("Act II: the locked plans carry the stamp", () => {
+  it("Act II: the locked plans carry the badge", () => {
     const s = room("round", false, 2);
     s.pairs[0] = { ...s.pairs[0]!, locked: { a: { onGreen: 0, onRed: 1 }, b: { onGreen: 0, onRed: 0 } } };
     seat(s);
     put({ round: { roundId: "1-1", act: 2, light: 0, ms: 3500, dialDeg: null, answered: null, partner: null, crystal: null } });
-    expect(html()).toContain(S.event.locked.stamp);
+    expect(html()).toContain(S.planBadge.stamp);
   });
 });

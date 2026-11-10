@@ -4,7 +4,7 @@
 // this returns nothing; the station's telemetry reports rounds.
 import { SURVIVAL_THRESHOLD, winRate, type RoundResult } from "../shared/chsh.ts";
 import { COOL, HOT, roundCause } from "../shared/fiction.ts";
-import { formatDeg } from "../components/Dial.tsx";
+import { formatDeg } from "../lib/formatDeg.ts";
 import { coraPlan } from "../shared/crystalPlan.ts";
 import { S } from "../strings.ts";
 import { PLAN_IDS, cellKey, planId, planOf, type PlanId } from "./plans.ts";

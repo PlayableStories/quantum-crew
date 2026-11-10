@@ -10,7 +10,7 @@ import { REPORT_STEPS, roundIdOf, type HostCommand, type RoomState, type RoundOu
 import { SURVIVAL_THRESHOLD } from "../shared/chsh.ts";
 import { CLUE_SETTINGS, RULE_GAPS, clueAnswer, planRate } from "../shared/crystalPlan.ts";
 import { DEFAULT_TUNING } from "../config.ts";
-import { formatDeg } from "../components/Dial.tsx";
+import { formatDeg } from "../lib/formatDeg.ts";
 import { rateText } from "../components/CrystalPlan.tsx";
 import { S, type ClueTalk } from "../strings.ts";
 import { AutoToggle, enabledSteps, keyStep, stepLabel } from "./hostSteps.tsx";

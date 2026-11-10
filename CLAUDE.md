@@ -48,7 +48,7 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   (`by: "engineering"`, count in `engineeringRan`). Act II never samples: `runSimulation` is Act III only. **Comms rule:** the crewmate speaks only while comms are open
   (huddle, readout, ceiling, tool reveal, tuning). Every line is picked in `src/solo/crew.ts` `crewLines()`, which
   returns nothing in `act2Batch` / `act3Batch`; screens render it through `CrewRadio` → `RadioLine`. Batches show
-  `CommsDark` and per-round **station telemetry** (`S.telemetry.line`), never crewmate text (`crew.test.ts`,
+  `CommsDark` and, per result, one **why line** (`S.telemetry.why`, since U1), never crewmate text (`crew.test.ts`,
   `comms.test.tsx` enforce this). The store only records `crewCue`; readout reactions are derived from the batch.
   The crewmate is **CORA** (Coolant Ring Assistant, "she"): `CREW_NAME` in `strings.ts`, shown with `AiBadge`
   (`components/AiBadge.tsx`: `CrewName`, `SeatName`) on the radio, the huddle, tuning and the round result. Event
@@ -156,8 +156,8 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - **Room:** `PairInfo.plans` (live; a `player:strategy` now broadcasts), `locked` (frozen at each Act II wave start),
     `lastWave` (the pair's rounds in the current or latest wave); `RoomState.triedPlans` (cell keys, Table A plan ×
     Table B plan). `MP_RESULT_MS` is 3.5 s.
-  - **Phones:** the lull shows the partner's choice (`S.event.partnerPlan`); a wave shows `S.event.agreed`; Results
-    show the cause, `S.event.why` (telemetry; "too slow" names whose pump) and the ring.
+  - **Phones:** the lull shows the partner's choice (`S.event.partnerPlan`); a wave shows the plan badge (U1;
+    `S.event.agreed` is gone); Results show the cause, `S.event.why` (the why line; "too slow" names whose pump) and the ring.
   - **TV:** pair cards show the cause in every act (in place of the mini-meter while it shows; no meter before a
     round); three or four pairs are compact, two to a row (`.pairs--crowded`). Wave done (Act II) is `WaveCases`:
     full width (`.tv--cases` hides the side), each pair's `FourCases` in one row, the total and wave score on one
@@ -241,7 +241,7 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     for m:ss". An away seat reads "CORA for …". Report step 3 has
     no per-seat table any more (it didn't fit); the crew's real line stays.
   - **Phones:** no full-width Leave: `components/PhoneMenu.tsx` ("⋯" beside mute, one Sheet that moves from the menu
-    to the confirmation, Stay primary). A status line (`S.phone.status.*`) where Leave was; after setting a pump,
+    to the confirmation, Stay primary). (U1: the bottom status line is gone; the header's phase status replaced it.) After setting a pump,
     `partnerChosen` / `waitingFor`; an away partner reads `partnerCovered`. Manual rounds have no countdown.
   - **Scripts:** `pnpm session` plays manual first waves (Next closes a round once, a double Next advances once), an
     auto later wave, and (after the reset) Play / Pause on a waiting result; `pnpm smoke` sets Brisk. `pnpm shots
@@ -285,7 +285,7 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     wave (then in the Crystal rule sheet), the starting line (`S.event.crystalPlan.startHumans` while both are at
     0°; `startCora` with the pair's live rate, `rateText` = "75%" / "67.7%"), `CrystalFan` (read-only SVG + four
     gaps), chips (`SheetChip`: Station rule, Crystal rule, Clues (n)) from the tool reveal on, `ClueList`. Rounds:
-    the chain (sensor → "your plan" + small `Dial` → "the crystal says"), `LockedPlan` stamps in Acts II and III.
+    the chain (one line since U1: sensor → "your plan: 45°" → "the crystal says"; `Dial` and `LockedPlan` are gone).
     `.lull--act3` is tighter under 700px tall; every Act III phone screen fits 375×667.
   - **TV:** `Explainer` (now / you can / the question; compact one-paragraph form except on the tool reveal),
     `ToolPanel` with clue 1, `CrystalLull` (the rule full width, then `ClueList titlesInline`), "Plans locked" in the
@@ -376,6 +376,28 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   (mounted in `Solo.tsx`, sheets via `useKeySheet`), `soloStore.debugJump(2 | 3)` (act2Plan / toolReveal; refused in a
   wave and the debrief), a "?" button in `ScreenLayout`'s header (landscape ≥ 900 only). `DebugJumpPanel` is shared
   (the TV's `DebugJump` wraps it). Phones and the remote keep only their round keys. README "Keyboard shortcuts".
+- **U1 (2026-11-10, one place for each fact; solo and event mode):** a screenshot review found graphics that look like
+  controls, facts repeated on one screen, phones pointing at the TV and a crowded TV. Rule: the TV shows what the room
+  shares; a phone only what's private to its player; solo both on one screen. No maths, scoring, flow or pacing change.
+  - **Act III round:** `CrystalChain` is one line, "HOT → your plan: 45° → the crystal says CLOCKWISE (this time; it
+    could have been either)" (the sensor with its icon). `Dial.tsx`, `S.dial` and the `.dial*` CSS are deleted;
+    `formatDeg` lives in `src/lib/formatDeg.ts`.
+  - **Plan reminder:** `components/PlanBadge.tsx` ("🔒 Plan locked", `S.planBadge`) in an Act II round's header (solo's
+    `meter__head`, the phone's header); a tap opens a Sheet with both plans, mounted only while open. With the PLAN tag
+    it's the only reminder. Act III: the CRYSTAL tag and the chain only (no locked banner). The TV keeps "Plans locked".
+  - **Result:** the cause, one `.why` line (`S.telemetry.why`, the reason only, never a sensor or pump), then the ring,
+    the one place for sensors, pumps and the vent (`role="img"`, `S.ring.result`). `S.telemetry.head` is gone.
+  - **Phones:** `PhoneHeader` on every screen, live rounds too: seat, mute, ⋯, then the phase status
+    (`src/screens/phoneStatus.ts`, `S.phone.phase`; the plan badge beside it in an Act II wave). `PhoneIdle` (the
+    station's name and the phase, `aria-hidden`) when there's nothing to do. No phone string says "big screen"
+    (`pacedPhone.test.tsx`); the lull says the facilitator starts the wave.
+  - **TV:** the large `JoinPanel` in the lobby only; after it, a header button "Join: CODE" (`S.tv.joinChip`) opens it
+    in a Sheet, as does **J** (`keyAction` "join", TV only). `TvKeys` (always mounted) owns the keyboard, the ? and
+    debug sheets (via `useKeySheet`); `HostControls` (the row and `S.tv.keys`) renders only when `remotes === 0`, with
+    `.tv--remote` dropping the grid's controls row. A "?" button is always in the header; a host error shows there
+    while the row is hidden.
+  - **Shots:** once the remote pairs, `shots.ts` presses the remote's buttons (`controls()`); the speed menu is captured
+    on the remote; new `join-sheet` capture.
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.
@@ -428,8 +450,8 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
       - `result`: the round's result.
     - In `result` mode the halves are coloured by sensor and labelled COOL/HOT, the impellers spin with arrows, the
       vent opens on a double HOT, and each cause has its own mark: flow dashes, a burst where opposing flows meet, puffs
-      out of the vent, a glow for overheat, a stopped pump. It is `aria-hidden`, because the telemetry text says the
-      same.
+      out of the vent, a glow for overheat, a stopped pump. Since U1 it is `role="img"` with `S.ring.result` as its label (the
+      result's text gives only why); the idle ring stays `aria-hidden`.
     - Motion is pure CSS and the global reduced-motion rule stills it.
     - Batch is `ScreenLayout className="batch" actionsUnder="main"`, with the ring as its `side`. That side shows only
       on landscape (`.batch .layout__side` is hidden when stacked).
@@ -444,8 +466,8 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
 - **CORA Phase 2 (2026-10-29, Act II flow):**
   - Huddle (`Plan.tsx`): "Last chance to talk". Two dialogue boxes (`PlanBox`, a radio group each, arrow keys) for
     You and CORA; **Lock in the plan** starts the batch. No test, no board.
-  - Rounds (`Batch.tsx`): an agreed-plan reminder (`S.batch.agreed`). The result is the cause, one
-    `S.telemetry.why` sentence and the ring; there is no You/Crewmate panel. It waits for **Next round** (or
+  - Rounds (`Batch.tsx`): the plan badge (U1; `S.batch.agreed` is gone). The result is the cause, one
+    `S.telemetry.why` line and the ring; there is no You/Crewmate panel. It waits for **Next round** (or
     Space / Enter) and auto-advances after `RESULT_AUTO_MS` (6 s; `RESULT_MS` is gone). This covers both acts.
   - The live and idle ring use a wider viewBox with sensor and pump words beside each side, at 15 units, so no ring
     text renders below 12px. `pnpm shots` fails if any does.

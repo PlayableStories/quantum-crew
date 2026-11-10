@@ -58,8 +58,11 @@ describe("live ring", () => {
     expect(ring(HOT, HOT, CLOCKWISE, CLOCKWISE)).toContain("ring__glow");
   });
 
-  it("is decorative when live (the telemetry says it in words); the rule diagram keeps its label", () => {
-    expect(ring(COOL, COOL, CLOCKWISE, CLOCKWISE)).toContain('aria-hidden="true"');
+  it("a result is an image labelled with both sensors, both pumps and the vent (the text gives only why); the rule diagram keeps its label", () => {
+    const live = ring(HOT, HOT, ANTICLOCKWISE, CLOCKWISE);
+    expect(live).not.toContain('aria-hidden="true"');
+    expect(live).toContain(`aria-label="${S.ring.result(S.ring.a, "HOT", S.pump[ANTICLOCKWISE], S.ring.b, "HOT", S.pump[CLOCKWISE], S.ring.ventOpen)}"`);
+    expect(renderToString(<RingDiagram idle />)).toContain('aria-hidden="true"');
     const rule = renderToString(<RingDiagram />);
     expect(rule).toContain(`aria-label="${S.ring.label}"`);
     expect(rule).toContain(S.ring.ventNote);

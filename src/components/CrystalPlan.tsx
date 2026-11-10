@@ -3,7 +3,7 @@
 // crystals' rule, the "Plan locked" stamp, the clue ladder and clue 2's hint. The numbers
 // all come from src/shared/crystalPlan.ts (built on chsh.ts).
 import type { ReactNode } from "react";
-import { type Table, type TuningConfig, type Valve } from "../shared/chsh.ts";
+import { type Light, type Table, type TuningConfig, type Valve } from "../shared/chsh.ts";
 import { SURVIVAL_THRESHOLD } from "../shared/chsh.ts";
 import {
   CLUE_SETTINGS,
@@ -23,7 +23,7 @@ import { COOL, HOT } from "../shared/fiction.ts";
 import type { PairInfo } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
 import { AiBadge } from "./AiBadge.tsx";
-import { Dial, formatDeg } from "./Dial.tsx";
+import { formatDeg } from "../lib/formatDeg.ts";
 import { LightIcon } from "./SensorLight.tsx";
 
 const whole = (p: number) => `${Math.round(p * 100)}%`;
@@ -209,30 +209,26 @@ export function CrystalRuleTable({
   );
 }
 
-/** An Act III round (event phones and solo): what the station did with the plan: your plan's setting for this
- *  reading → the crystal's direction (a coin flip), and the keys. */
-export function CrystalChain({ dialDeg, crystal }: { dialDeg: number; crystal: Valve }) {
+/** An Act III round (event phones and solo), in one line: your sensor → your plan's setting for it → the crystal's
+ *  direction (a coin flip this time), then the keys. */
+export function CrystalChain({ light, dialDeg, crystal }: { light: Light; dialDeg: number; crystal: Valve }) {
+  const C = S.event.chain;
   return (
     <div className="chain" role="status">
-      <span className="chain__step">
-        {S.event.chain.plan} <strong>{formatDeg(dialDeg)}</strong>
-      </span>
-      <Dial value={dialDeg} small />
-      <span className="chain__step chain__crystal">
-        {S.event.chain.crystal} <strong>{S.pump[crystal]}</strong>{" "}
-        <span className="muted small chain__flip">{S.event.chain.flip}</span>
-      </span>
+      <p className="chain__line">
+        <span className={`chain__sensor chain__sensor--${light === HOT ? "hot" : "cool"}`}>
+          <LightIcon light={light} />
+          <strong>{S.light[light]}</strong>
+        </span>
+        {" → "}
+        {C.plan} <strong>{formatDeg(dialDeg)}</strong>
+        {" → "}
+        <span className="chain__crystal">
+          {C.crystal} <strong>{S.pump[crystal]}</strong>
+        </span>{" "}
+        <span className="muted small chain__flip">{C.flip}</span>
+      </p>
       <span className="muted small crystal-keys">{S.batch.follow}</span>
-    </div>
-  );
-}
-
-/** The stamp on a plan once the wave has started. */
-export function LockedPlan({ children }: { children: ReactNode }) {
-  return (
-    <div className="locked-plan" role="status">
-      <span className="locked-plan__stamp">🔒 {S.event.locked.stamp}</span>
-      <span className="locked-plan__body">{children}</span>
     </div>
   );
 }

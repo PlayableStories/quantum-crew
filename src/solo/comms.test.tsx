@@ -38,7 +38,8 @@ describe("comms in the rendered screens", () => {
     s().advance(0);
     s().answer(CLOCKWISE, 0);
     const markup = html();
-    expect(markup).toContain("telemetry");
+    expect(markup).toContain('class="why"');
+    expect(markup).not.toContain("Station telemetry");
     expect(markup).not.toContain("radio-line");
   });
 

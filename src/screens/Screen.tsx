@@ -31,7 +31,7 @@ import {
 import { CrystalCases } from "../components/CrystalCases.tsx";
 import { NoSignalling, PlanVsCrystals, ThreeNumbers } from "../components/ReportParts.tsx";
 import { crewReport } from "../shared/report.ts";
-import { formatDeg } from "../components/Dial.tsx";
+import { formatDeg } from "../lib/formatDeg.ts";
 import { ALL_CELLS, expectedBoard, planId, type Board } from "../shared/plans.ts";
 import { FourCases } from "../components/FourCases.tsx";
 import { PlanBoard } from "../components/PlanBoard.tsx";
@@ -41,7 +41,7 @@ import { useElapsedMs, useRemainingMs } from "../net/useCountdown.ts";
 import { decisionMs, resultMs } from "../shared/pace.ts";
 import { Sheet } from "../components/Sheet.tsx";
 import { toggleFullscreen } from "../lib/fullscreen.ts";
-import { keyAction, keyTarget } from "../lib/keys.ts";
+import { keyAction, keyTarget, useKeySheet } from "../lib/keys.ts";
 import { DebugJumpPanel } from "../components/DebugJumpPanel.tsx";
 import { KeysSheet } from "../components/KeysSheet.tsx";
 import { ClueList, CrystalRuleTable, answerOutText, humanWithCora, rateText } from "../components/CrystalPlan.tsx";
@@ -57,6 +57,10 @@ export function Screen() {
   const { status, state, localDeadline, results, remoteKey, error, start, command } = useHost();
   const [remoteOpen, setRemoteOpen] = useState(false);
   const closeRemote = useCallback(() => setRemoteOpen(false), []);
+  // After the lobby the join panel is a small code in the header; the QR opens on demand (a click or J).
+  const [joinOpen, setJoinOpen] = useState(false);
+  const closeJoin = useCallback(() => setJoinOpen(false), []);
+  const openKeys = useKeySheet((st) => st.set);
   useEffect(() => start(), [start]);
   useTvSounds(state, results);
   // Where phones join: asked from the server once (see net/joinOrigin.ts for the order).
@@ -84,21 +88,53 @@ export function Screen() {
   const lobby = state.phase === "lobby";
 
   const quantum = state.act === 3 && state.phase !== "debrief";
+  // A paired remote runs the room: the host row and its key hint hide, so the room sees only the game (the keys still
+  // work, and the row comes back when no remote is paired).
+  const remoteOn = state.remotes > 0;
+  const joinPanel = (
+    <JoinPanel
+      url={url}
+      code={state.room}
+      big={lobby || joinOpen}
+      warning={join.warning}
+      alternatives={join.alternatives}
+      onChoose={(address) => {
+        saveChosenAddress(address);
+        setChosen(address);
+      }}
+    />
+  );
   return (
     // After a wave the pairs' four cases take the whole width (the join panel and pair list step aside); so do the
     // report, the tool reveal and the Act III lull (the crystals' rule and the clues need it; since E3d).
     <main
       className={`tv ${quantum ? "quantum" : ""} ${state.phase === "batchDone" && state.act !== 1 ? "tv--cases" : ""} ${
         state.phase === "debrief" || state.phase === "tool" || (state.act === 3 && state.phase === "strategy") ? "tv--wide" : ""
-      }`}
+      } ${remoteOn ? "tv--remote" : ""}`}
     >
       {quantum && <QuantumBackdrop />}
       <header className="tv__head">
         <p className="kicker">{S.title}</p>
         <div className="screen-top">
-          <p className="kicker">
-            {S.tv.station(state.room)} {status !== "open" && `· ${S.event.reconnecting}`}
-          </p>
+          {lobby ? (
+            <p className="kicker">
+              {S.tv.station(state.room)} {status !== "open" && `· ${S.event.reconnecting}`}
+            </p>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="btn btn--ghost tv__join-chip"
+                aria-haspopup="dialog"
+                aria-label={S.tv.joinChipLabel(state.room)}
+                onClick={() => setJoinOpen(true)}
+              >
+                {S.tv.joinChip(state.room)}
+              </button>
+              {status !== "open" && <p className="kicker">{S.event.reconnecting}</p>}
+            </>
+          )}
+          {remoteOn && error && <span className="tv__error">{error}</span>}
           <button
             type="button"
             className={`btn btn--ghost tv__remote ${state.remotes > 0 ? "tv__remote--on" : ""}`}
@@ -107,9 +143,21 @@ export function Screen() {
           >
             {state.remotes > 0 ? S.tv.remote.connected(state.remotes) : S.tv.remote.button}
           </button>
+          <button
+            type="button"
+            className="btn btn--ghost keys-btn"
+            aria-label={S.keys.open}
+            title={S.keys.open}
+            onClick={() => openKeys("help")}
+          >
+            ?
+          </button>
           <MuteToggle where="tv" />
         </div>
       </header>
+      <Sheet open={joinOpen} onClose={closeJoin} label={S.tv.join}>
+        {joinOpen && joinPanel}
+      </Sheet>
       <Sheet open={remoteOpen} onClose={closeRemote} label={S.tv.remote.title}>
         {remoteKey && (
           <RemotePairing
@@ -171,17 +219,7 @@ export function Screen() {
       </section>
 
       <aside className="tv__side">
-        <JoinPanel
-          url={url}
-          code={state.room}
-          big={lobby}
-          warning={join.warning}
-          alternatives={join.alternatives}
-          onChoose={(address) => {
-            saveChosenAddress(address);
-            setChosen(address);
-          }}
-        />
+        {lobby && joinPanel}
         <Pairs
           state={state}
           lastResults={
@@ -192,7 +230,8 @@ export function Screen() {
         />
       </aside>
 
-      <HostControls state={state} localDeadline={localDeadline} onCommand={command} error={error} />
+      <TvKeys state={state} onCommand={command} onJoin={lobby ? null : () => setJoinOpen((o) => !o)} />
+      {!remoteOn && <HostControls state={state} localDeadline={localDeadline} onCommand={command} error={error} />}
     </main>
   );
 }
@@ -782,6 +821,66 @@ function PairCard({ pair, state, result }: { pair: PairInfo; state: RoomState; r
   );
 }
 
+/** The TV's keyboard (the shared map in src/lib/keys.ts) and the sheets it opens: Space or → for the natural next step,
+ *  P play / pause, M mute, F full screen, J the join QR (after the lobby), D the debug jump, ? the shortcut sheet. Not
+ *  while typing or inside a sheet; Space / → / P not on a focused button (Space would press it too). Always mounted,
+ *  so the keys work while a paired remote hides the host row. */
+function TvKeys({
+  state,
+  onCommand,
+  onJoin,
+}: {
+  state: RoomState;
+  onCommand: (c: HostCommand, speed?: Speed) => void;
+  onJoin: (() => void) | null;
+}) {
+  const sheet = useKeySheet((st) => st.open);
+  const setSheet = useKeySheet((st) => st.set);
+  const close = useCallback(() => setSheet(null), [setSheet]);
+  const toggleMute = useSound((st) => st.toggle);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const action = keyAction(e, "tv", keyTarget(e.target));
+      if (!action) return;
+      if (action === "next") {
+        const cmd = keyStep(state);
+        if (!cmd) return;
+        e.preventDefault();
+        return onCommand(cmd);
+      }
+      if (action === "join" && !onJoin) return;
+      e.preventDefault();
+      const toggle = (which: "help" | "debug") => setSheet(useKeySheet.getState().open === which ? null : which);
+      if (action === "playPause") onCommand(state.auto ? "manual" : "auto");
+      else if (action === "debug") toggle("debug");
+      else if (action === "fullscreen") toggleFullscreen();
+      else if (action === "mute") toggleMute("tv");
+      else if (action === "help") toggle("help");
+      else if (action === "join") onJoin?.();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [state, onCommand, onJoin, toggleMute, setSheet]);
+
+  return (
+    <>
+      <KeysSheet mode="tv" open={sheet === "help"} onClose={close} />
+      <Sheet open={sheet === "debug"} onClose={close} label={S.tv.debug.title}>
+        <DebugJump
+          state={state}
+          onJump={(cmd) => {
+            onCommand(cmd);
+            close();
+          }}
+        />
+      </Sheet>
+    </>
+  );
+}
+
+/** The facilitator's row: the next steps, Play / Pause with the speed menu, Reset and the key hint. Hidden while a
+ *  remote is paired (the remote has the same steps). */
 function HostControls({
   state,
   localDeadline,
@@ -793,40 +892,9 @@ function HostControls({
   onCommand: (c: HostCommand, speed?: Speed) => void;
   error: string | null;
 }) {
-  const inBatch = state.phase === "round" || state.phase === "roundResult";
   const steps = enabledSteps(state);
   const send = (cmd: HostCommand) => () => (cmd !== "reset" || confirm(S.tv.resetConfirm)) && onCommand(cmd);
   const toggle = () => onCommand(state.auto ? "manual" : "auto");
-  const [debugOpen, setDebugOpen] = useState(false);
-  const closeDebug = useCallback(() => setDebugOpen(false), []);
-
-  const [keysOpen, setKeysOpen] = useState(false);
-  const closeKeys = useCallback(() => setKeysOpen(false), []);
-  const toggleMute = useSound((st) => st.toggle);
-
-  // Keyboard for a facilitator at a laptop (the shared map in src/lib/keys.ts): Space or → for the natural next step,
-  // P play / pause, M mute, F full screen, D the debug jump, ? the shortcut sheet. Not while typing or inside a sheet;
-  // Space / → / P not on a focused button (Space would press it too).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const action = keyAction(e, "tv", keyTarget(e.target));
-      if (!action) return;
-      if (action === "next") {
-        const cmd = keyStep(state);
-        if (!cmd) return;
-        e.preventDefault();
-        return onCommand(cmd);
-      }
-      e.preventDefault();
-      if (action === "playPause") onCommand(state.auto ? "manual" : "auto");
-      else if (action === "debug") setDebugOpen((o) => !o);
-      else if (action === "fullscreen") toggleFullscreen();
-      else if (action === "mute") toggleMute("tv");
-      else if (action === "help") setKeysOpen((o) => !o);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [state, onCommand, toggleMute]);
 
   return (
     <footer className="tv__controls" aria-label={S.tv.controls}>
@@ -842,16 +910,6 @@ function HostControls({
       {/* The shortcuts, when Space has a step to take (not in the lobby, where nothing waits on it). */}
       {keyStep(state) && <span className="muted small tv__keys">{S.tv.keys}</span>}
       {error && <span className="tv__error">{error}</span>}
-      <KeysSheet mode="tv" open={keysOpen} onClose={closeKeys} />
-      <Sheet open={debugOpen} onClose={closeDebug} label={S.tv.debug.title}>
-        <DebugJump
-          state={state}
-          onJump={(cmd) => {
-            onCommand(cmd);
-            closeDebug();
-          }}
-        />
-      </Sheet>
     </footer>
   );
 }

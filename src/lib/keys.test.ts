@@ -34,6 +34,13 @@ describe("keyAction (K1: the shortcuts shared by solo and the TV)", () => {
     expect(keyAction({ key: " " }, "tv", onButton)).toBeNull();
   });
 
+  it("TV: J opens the join QR (also with a button focused); solo has no J", () => {
+    expect(keyAction({ key: "j" }, "tv", free)).toBe("join");
+    expect(keyAction({ key: "J" }, "tv", onButton)).toBe("join");
+    expect(keyAction({ key: "j" }, "tv", typing)).toBeNull();
+    expect(keyAction({ key: "j" }, "solo", free)).toBeNull();
+  });
+
   it("keyTarget reads fields, sheets and controls", () => {
     const at = (match: string) => ({ closest: (sel: string) => (sel.split(", ").includes(match) ? {} : null) });
     expect(keyTarget(at("input") as unknown as EventTarget)).toEqual({ typing: true, onControl: false });

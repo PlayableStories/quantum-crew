@@ -175,6 +175,9 @@ describe("Act III screens", () => {
     expect(text).toContain(`${S.event.chain.crystal} <strong>${S.pump[s().round!.crystal!]}</strong>`);
     expect(text).toContain(esc(S.event.chain.flip));
     expect(markup).toContain(esc(S.batch.followLine));
+    // U1: the chain is one line that starts with the sensor, and no dial is drawn.
+    expect(text).toContain(`<strong>${S.light[s().round!.x]}</strong></span> → ${S.event.chain.plan} <strong>`);
+    expect(markup).not.toMatch(/class="dial/);
   });
 
   it("the readout: followed N of 12, the crystal cases, and the luck line when an unlucky batch had good dials", () => {
