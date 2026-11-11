@@ -243,7 +243,10 @@ Keyboard: **Space / Enter** presses the highlighted button; in a round **A / ←
 CLOCKWISE, and in Act III **Enter** follows the crystal. **?** lists every key; see [Keyboard shortcuts](#keyboard-shortcuts).
 
 ## How to play (event)
-Two tables of players, one phone each, and a TV or projector. A facilitator runs the session from the TV.
+Two tables of players, one phone each, and a TV or projector: up to 12 players (6 pairs). A facilitator runs the
+session from the TV. A session takes about 50 minutes for up to 8 players and, as an estimate still to confirm in a
+playtest, about 60 for a full room of 12: larger groups talk longer in the lulls, and the ready count on the TV tells
+the facilitator when to start (see [docs/facilitator.md](docs/facilitator.md)).
 
 1. Open **/screen** on the TV (landing page → **Host on TV**). It creates a station with a 4-letter code and a QR code.
    The large join panel shows in the lobby only; from the briefing on it's a small **Join: CODE** in the TV's header,
@@ -251,7 +254,7 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    The QR code and the printed link both point at the join address (see
    [Run event mode at a venue](#run-event-mode-at-a-venue)).
 2. Players scan the QR (or open **/play** and type the code), enter a name and pick **Table A** or **Table B**.
-   The server pairs A₁↔B₁, A₂↔B₂… (up to 4 pairs). **CORA**, the AI crewmate (shown with an **AI** badge on the TV
+   The server pairs A₁↔B₁, A₂↔B₂… (up to 6 pairs, 12 players; a 7th player at a table is told it's full). **CORA**, the AI crewmate (shown with an **AI** badge on the TV
    and on her partner's phone), fills any empty seat.
    **Optional, the facilitator's phone remote:** press **Remote** at the top right of the TV and scan its QR code
    with your own phone. It opens **/host**, which runs the session from anywhere in the room (the next step as one
@@ -291,11 +294,13 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    header (a tap shows both locked plans; the TV's banner says **Plans locked**) and two pump buttons, the plan's
    tagged "Plan" (either can be tapped). After setting a pump a phone says whether the partner has chosen (never
    what). A result shows the cause, one line on why, and a small ring with both sensors and pumps. The TV shows the round timer, who has answered and each pair's cause. The station's
-   stability is pooled over the last 48 wave rounds across all pairs (Act I has its own rate), and each pair also has
-   its own mini-meter (three or four pairs sit two to a row).
+   stability is pooled over the last 8 rounds of every pair (pairs × the wave size, so the label means the same at
+   any pair count; Act I has its own rate), and each pair also has its own mini-meter (from three pairs the cards sit
+   two to a row; from five they're tighter, three rows).
 8. After each wave the TV shows every pair's locked plans case by case (the four sensor combinations, each with
    the pumps, ✓ or ✗ and the cause), the plan's true rate, the wave's score, and a luck line when the wave beat 80%
-   but the plan can't.
+   but the plan can't. Each phone shows its own pair's four cases. With five or six pairs the TV shows one row per
+   pair instead (the true rate, the case(s) the plan loses, the wave and the luck line); the cases are on the phones.
 9. Play a few waves, then **Reveal ceiling**: the engineering report shows the 4×4 plan board at exact rates (75% or
    25%), every pairing the crew played marked as tried and the rest run by engineering. No plan beats 75%.
 10. **Unlock tool**: a supply pod from engineering brings two linked crystals for every pair, one at each table;
@@ -324,7 +329,7 @@ Two tables of players, one phone each, and a TV or projector. A facilitator runs
    highlighted, Enter follows it; they may go against it). Decision time is Act II's (`decisionMs`). Scoring uses
    the pump actually set, and the room records who followed. CORA in an empty seat always follows.
 13. After each Act III wave the TV shows every pair's locked crystal plans case by case (each case's gap and exact
-   chance of holding), their true rate, **found it: 80%+** on pairs that reached 80%, a luck line when the wave and
+   chance of holding; with five or six pairs one row per pair, and each phone shows its pair's cases), their true rate, **found it: 80%+** on pairs that reached 80%, a luck line when the wave and
    the true rate disagree about 80%, the wave's score, plus the crew's followed count and its crystal plans'
    average. **Saved or not:** once a wave ends with that average at 80% or more, the station counts as saved (it
    stays saved).
@@ -518,7 +523,7 @@ tool leave it (no clue yet). It works in every build. **F** toggles full screen 
 shows; F or Esc leaves it). All the keys: [Keyboard shortcuts](#keyboard-shortcuts).
 
 `pnpm session` (`scripts/session.ts`) runs the station in-process with a fake clock and a seeded RNG, so it takes
-about a second and is the same every run. It plays a whole session: 4 pairs join and a 9th player is turned away;
+about a second and is the same every run. It plays a whole session: 6 pairs (a full room) join and a 13th player is turned away;
 the night shift (the briefing, then Act I played by the rule over the radio, with one player changing their mind and
 every round held) and the storm; a player drops out mid-wave and rejoins their seat; the TV disconnects and resumes; one Act II wave; the engineering
 report; the tool (clue 1); Act III, where the room measures the crystals (no phone ever sends `player:measure`): one
@@ -553,7 +558,7 @@ timers with Playwright's clock. Output goes to the git-ignored `shots/<out>/<siz
 - `NN-name.full.png` is the whole page, with a dashed line at the fold.
 
 **Event mode:** `pnpm shots --event` puts the real station on the preview server and plays a session with a TV and
-two phones (Table A and Table B, one pair), plus six more players over plain WebSockets so the TV shows four pairs
+two phones (Table A and Table B, one pair), plus ten more players over plain WebSockets so the TV shows a full room of six pairs
 (they answer every round at once and aren't screenshotted): the lobby (empty and seated), joining, the briefing, an Act I round (and
 Table B's radio once Table A has set a pump), an Act I result, the storm's static and its log, the lull, a live round, a result,
 wave done, the engineering report, the tool (and the TV's debug jump and ? sheets), the first Act III lull with clue 1, the
@@ -565,8 +570,9 @@ goes to `shots/<out>/event/<device>-<size>/`, with the same `report.md`; `--comp
 contact sheets. `--quick` runs only the tight pass (TV 1280×720 with phones 375×667), for fit work. In Act III,
 the phones' pair moves to a 67.5% plan (so their phones show a hint) and the crowd's Cy and Di play the answer (so the
 TV shows a pair that found it). The TV never scrolls, so for TV screens the report also flags any region whose content is cut off
-(`⚠ cut off: briefing 13px`). After a wave it also checks the worst case, every pair with a luck line, and fails if
-that would be cut off.
+(`⚠ cut off: briefing 13px`; the incident report's body counts too). After a wave it also checks the worst case, every
+pair with a luck line (on the full case panels or, with five or six pairs, the compact rows), and fails if that would
+be cut off.
 
 The run fails if any text in a coolant ring renders below 12px, or if any stability-gauge labels overlap. `report.md` lists, for each screen and size, the page height in screen-heights, whether the main button is visible
 without scrolling, and any horizontal overflow. The run also checks that the rule sheet keeps focus inside it,
