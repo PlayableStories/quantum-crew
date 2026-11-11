@@ -368,6 +368,14 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   in the TV's Act II wave-done head (`define={false}` on its cards); `caseTotal` reads "True rate 75%: 3 of 4 cases"; with
   the definition `FourCases` drops its "Equally likely" kicker. Fit: `.debrief__foot` / `.tv__debrief-foot` sizes,
   and on short phones the Act III lull's fan keeps "15% different" on one line. Tests: `src/screens/copyReview.test.tsx`.
+- **R2 (2026-11-11, the report one idea per page; solo and event):** pages 1–3 are ≤ 80 words on screen
+  (`reportPages.test.tsx`). Shared copy lives in `strings.ts`' `REPORT` (computed `LIMIT`, `BEST`): page 1 = the
+  panel's summary (`story` / `storyNotSaved`) + the Bell and Clauser lines + a short CHSH `foot`; page 2 = three lines,
+  caption `REPORT.why2`; page 3's title is "Did the crystals let you talk through the storm?". The cut lines are
+  `S.debrief.more[step]` (solo's closed **More detail** `<details className="debrief__more">`) and
+  `S.event.report.more[step]` (the remote's talking points at that step; `talk.noSignal` and `S.tv.wobble` are gone).
+  Panel captions are short ("the crew: 75.0%", "at best"). docs/facilitator.md has "The incident report: if someone
+  asks". `pnpm shots` captures solo's saved debrief pages too, and `--event` a not-saved ending after the saved one.
 - **Debug jump (2026-11-08, user request; testing):** **D** on the TV opens `DebugJump` (a Sheet in `HostControls`):
   host commands `debugAct2` (Act II lull; clears ceiling, tool and clue) and `debugAct3` (Act III tool reveal, as
   Reveal ceiling + Unlock tool: clue 0). TV only (a remote gets `not-host`), refused in a wave or the debrief,

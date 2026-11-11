@@ -103,32 +103,29 @@ describe("the incident report", () => {
   it("step 1 opens with the Bell inequality in both modes; the CHSH mapping is the small print, last", () => {
     for (const step of [S.debrief.steps[0]!, S.event.report.steps[0]!]) {
       expect(step.body[0]).toContain("Bell inequality");
-      expect(step.body.join(" ")).not.toContain("CHSH game");
-      expect("foot" in step && step.foot).toContain("Under the station is the CHSH game");
+      expect(step.body.join(" ")).not.toContain("The game is CHSH");
+      expect("foot" in step && step.foot).toContain("The game is CHSH");
     }
     const s: RoomState = { ...room("debrief", false, 3), debriefStep: 0 };
     const tv = renderToString(<TvDebrief state={s} onCommand={() => {}} />);
     const bell = tv.indexOf("Bell inequality");
-    const chsh = tv.indexOf("Under the station is the CHSH game");
     expect(bell).toBeGreaterThan(-1);
-    expect(chsh).toBeGreaterThan(tv.lastIndexOf("Mixing plans at random"));
+    expect(tv.indexOf("The game is CHSH")).toBeGreaterThan(tv.indexOf("John Clauser"));
     expect(tv).toContain("tv__debrief-foot");
 
     soloStore.setState({ phase: "debrief", debriefStep: 0 } as never);
     const solo = renderToString(<Debrief />);
-    expect(solo.indexOf("Under the station is the CHSH game")).toBeGreaterThan(solo.lastIndexOf("Mixing plans at random"));
+    expect(solo.indexOf("The game is CHSH")).toBeGreaterThan(solo.indexOf("John Clauser"));
     expect(solo).toContain("debrief__foot");
   });
 
   it("step 2 talks about the gap, not θ; step 3 says what changed", () => {
     for (const steps of [S.debrief.steps, S.event.report.steps]) {
       expect(steps[1]!.body[0]).toBe(
-        "The two crystals were a pair of entangled qubits. When the gap between their settings is g, they give the same direction cos²(g) of the time: that's the gap table you played with.",
+        "The crystals were entangled qubits: with a gap g between settings, they give the same direction cos²(g) of the time.",
       );
       expect(steps[1]!.body.join(" ")).toContain("85.4%");
-      expect(steps[2]!.body).toContain(
-        "What the crystals changed is only how often your two results matched. That is what no-signalling means.",
-      );
+      expect(steps[2]!.body.join(" ")).toContain("That's no-signalling: a shared pattern, not a message.");
     }
   });
 

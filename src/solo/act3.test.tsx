@@ -140,7 +140,7 @@ describe("debrief", () => {
     expect(html()).toContain(esc(clauser!));
     s().setDebriefStep(2);
     expect(html()).toContain(esc(S.debrief.steps[2]!.body[2]!));
-    expect(S.debrief.steps[2]!.body[2]).toMatch(/quantum key distribution/);
+    expect(S.debrief.steps[2]!.body[2]).toMatch(/Quantum key distribution/);
   });
 
   it("the final step and /credits: short credits, the asset list behind a button", () => {
@@ -158,14 +158,13 @@ describe("debrief", () => {
 describe("the incident report's physics lines (S4)", () => {
   it("step 1 names local hidden variables; step 2 says the crystals (not the pumps) follow cos², and same settings score the classical limit", () => {
     const one = S.debrief.steps[0]!.body;
-    const bell = one.findIndex((l) => l.startsWith("The wall you hit in Act II is a Bell inequality"));
-    expect(one[bell + 1]).toBe("Physicists call a plan agreed in advance a local hidden-variable theory.");
+    expect(one[0]).toContain("Bell inequality. Physicists call a plan agreed in advance a local hidden-variable theory.");
     const two = S.debrief.steps[1]!.body.join(" ");
     expect(two).toContain("they give the same direction cos²(g) of the time");
     expect(two).not.toMatch(/pumps agree/);
     expect(two).not.toMatch(/Nobel/); // step 1 covers it
-    const same = S.debrief.steps[1]!.body.find((l) => l.startsWith("Crystals measured at the same setting"))!;
-    expect(same).toContain(`exactly ${CLASSICAL_LIMIT * 100}%`);
+    const same = S.debrief.steps[1]!.body.find((l) => l.startsWith("At the same setting"))!;
+    expect(same).toContain(`only ${CLASSICAL_LIMIT * 100}%`);
     for (const d of [0, 45, 157.5]) expect(planRate({ greenDeg: d, redDeg: d }, { greenDeg: d, redDeg: d })).toBeCloseTo(CLASSICAL_LIMIT, 12);
     const tsirelson = S.debrief.steps[1]!.body.findIndex((l) => l.includes("Tsirelson"));
     expect(S.debrief.steps[1]!.body[tsirelson - 1]).toBe(same);

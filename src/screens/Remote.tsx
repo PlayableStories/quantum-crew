@@ -204,8 +204,9 @@ function lullPoints(state: RoomState): readonly string[] {
   const t = S.remote.talk;
   // The tool reveal: engineering's note, the crystals as entangled coins, then the rule.
   if (state.phase === "tool") return [base[0]!, t.toolCoins, ...t.rule(clueTalk())];
-  // The incident report's no-signalling step: randomness, not messages (quantum key distribution).
-  if (state.phase === "debrief" && state.debriefStep === NO_SIGNAL_STEP) return [t.noSignal];
+  // The incident report's pages 1–3: the lines cut from the screen, for the facilitator to add if asked.
+  const more = state.phase === "debrief" ? S.event.report.more[state.debriefStep] : undefined;
+  if (more) return more;
   // The first Act III lull (no wave yet): why perfect agreement only scores what a plan does, then clue 1.
   if (state.phase === "strategy" && state.act === 3 && state.stability.act3.rounds === 0 && state.clue === 1)
     return [t.firstLull(clueTalk().sameRate), ...t.clue(1, clueTalk())];
@@ -229,9 +230,6 @@ function phasePoints(state: RoomState): readonly string[] {
 }
 
 /** The numbers in the clue talking points, from the maths. */
-/** The incident report's step that explains no-signalling ("But no messages"). */
-const NO_SIGNAL_STEP = 2;
-
 export function clueTalk(): ClueTalk {
   const k = clueAnswer();
   const whole = (p: number) => `${Math.round(p * 100)}%`;

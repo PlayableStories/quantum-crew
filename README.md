@@ -192,21 +192,22 @@ flowchart TD
    **Read the incident report** opens the debrief.
 8. **The incident report (debrief).** The physics words appear only here, in four steps. The first opens with the
    three numbers side by side: Act I with the radio (100% possible, and your own Act I score), Act II's best plan
-   (75%) and Act III's crystals. If you saved the station, that's your crystal plan's exact rate, with *"Talking made every
-   round winnable. No plan could replace talking. The crystals beat every plan without carrying a single
-   message."* If not, the report doesn't pretend: the card leads with the best crystal plan (85.4%) and shows
-   yours underneath (e.g. "your crystal plan, 67.7%"), and the summary says the best crystal settings beat every plan, while
+   (75%) and Act III's crystals. If you saved the station, that's your crystal plan's exact rate, with *"With the radio, every
+   round was winnable. Without it, no plan beat 75%. The crystals did, without sending a message."* If not, the report doesn't pretend: the card leads with the best crystal plan (85.4%) and shows
+   yours underneath (e.g. "yours: 67.7%"), and the summary says the best crystal settings beat it, while
    yours didn't get there this time. Step 2's side-by-side views also show the best crystal plan unless yours saved
    the station.
-   - **No plan beats 75%:** the wall was a Bell inequality, with your Act II rate. Mixing plans at random only
-     averages cells on the plan board, so it can never beat the best cell. Last, in small print: the fiction mapped back
-     to the game (sensors = input bits, pumps = output bits, "match unless both HOT" = the CHSH rule).
+   Each page carries one idea in about 60–80 words; solo's **More detail** (closed by default) and event mode's
+     remote talking points hold the lines cut from it.
+   - **No plan beats 75%:** the three numbers' summary, the wall as a Bell inequality, the Nobel line, and in small
+     print the CHSH rule (sensors = inputs, pumps = outputs, a ⊕ b = x ∧ y).
    - **Entanglement broke through:** with a gap g between their settings the crystals give the same direction cos²(g) of the time (the gap table), up to 85.4% (the Tsirelson
      bound), with your crystal plan's true rate. Two four-case views sit side by side: the best plan (three cases
      always held, one always lost: 75%) and your crystal plan (or the best one, if yours didn't pass), where every case holds
-     about 85%. *A plan has to give up one case completely; the crystals spread a small loss across all four.*
-   - **But no messages:** each pump runs clockwise exactly 50% of the time whatever the partner's sensor read
-     (computed exactly), so no message gets through (no-signalling). Your own 12-round numbers sit underneath, and
+     about 85%. *A plan gives up one case completely. Crystals spread a small loss across all four.*
+   - **Did the crystals let you talk through the storm?** No: each pump runs clockwise exactly 50% of the time
+     whatever the partner's sensor read (computed exactly), so no message gets through (no-signalling: a shared
+     pattern, not a message; quantum key distribution uses exactly this). Your own 12-round numbers sit underneath, and
      the report adds: *"That's why the storm couldn't jam them: there was no signal to jam."*
    - **Credits** (the Atlas asset list is behind **How the art was made**), then *Play again* or *Home*.
 

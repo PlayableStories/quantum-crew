@@ -1,7 +1,7 @@
 // All player-facing text in one place. Edit freely.
 // In-world copy only, up to the debrief: physics words (qubit, Bell, CHSH…) appear only in `debrief`.
 import { ACT1_ROUND_MS, ACT1_ROUNDS, MP_WAVE_SIZE } from "./config.ts";
-import type { ClassicalStrategy, RoundResult } from "./shared/chsh.ts";
+import { CLASSICAL_LIMIT, type ClassicalStrategy, type RoundResult } from "./shared/chsh.ts";
 import { HOT, roundCause } from "./shared/fiction.ts";
 import { CLUE_SETTINGS, answerPlanFor, clueAnswer, planRate } from "./shared/crystalPlan.ts";
 import { formatDeg } from "./lib/formatDeg.ts";
@@ -14,14 +14,49 @@ const SAME_SETTING_RATE = `${Math.round(planRate(DEFAULT_TUNING, DEFAULT_TUNING)
 /** A table's best crystal plan (the answer's row), as "0° / 45°" (computed). Used by event mode's report. */
 const BEST_PLAN = (t: "A" | "B") => `${answerPlanFor(t).greenDeg}° / ${answerPlanFor(t).redDeg}°`;
 
-/** The report's step 2: the best four settings and their rate (computed from the answer, like clue 2). */
-const BEST_SPREAD = (() => {
+/** The incident report's numbers, computed: the best plan (75%), the best crystal plan's spacing and rate. */
+const LIMIT = `${Math.round(CLASSICAL_LIMIT * 100)}%`;
+const BEST = (() => {
   const k = clueAnswer();
   const shown = (d: number) => (d > 90 ? `${formatDeg(d - 180)}, shown as ${formatDeg(d)}` : formatDeg(d));
   const row = (t: "A" | "B") => `${t}: ${shown(CLUE_SETTINGS[t].greenDeg)} and ${shown(CLUE_SETTINGS[t].redDeg)}`;
-  const rate = `${Math.round(k.rate * 1000) / 10}%`;
-  return `With the four settings spread evenly, ${formatDeg(k.spacing)} apart (${row("A")}; ${row("B")}), a crystal plan wins cos²(${formatDeg(k.matchGap)}) ≈ ${rate} of rounds. No quantum strategy does better: this is the Tsirelson bound.`;
+  return { spacing: formatDeg(k.spacing), rate: `${Math.round(k.rate * 1000) / 10}%`, example: `${row("A")}; ${row("B")}` };
 })();
+
+/** The report's pages in both modes: one idea each on screen; the rest under More detail (solo) or the remote's
+ *  talking points (event). */
+const REPORT = {
+  title1: `No plan beats ${LIMIT}`,
+  bell: `That ${LIMIT} wall is a Bell inequality. Physicists call a plan agreed in advance a local hidden-variable theory.`,
+  clauser:
+    "John Clauser, the C in CHSH, shared the 2022 Nobel Prize in Physics with Aspect and Zeilinger for experiments that broke it.",
+  foot: "The game is CHSH: sensors are inputs x, y; pumps are outputs a, b; the rule is a ⊕ b = x ∧ y.",
+  title2: "Entanglement broke through",
+  body2: [
+    "The crystals were entangled qubits: with a gap g between settings, they give the same direction cos²(g) of the time.",
+    `At the same setting they always agree, but that alone scores only ${SAME_SETTING_RATE}.`,
+    `Spread ${BEST.spacing} apart, every case holds ${BEST.rate}. No quantum strategy does better: the Tsirelson bound.`,
+  ],
+  why2: "A plan gives up one case completely. Crystals spread a small loss across all four.",
+  title3: "Did the crystals let you talk through the storm?",
+  body3: [
+    "No. Each pump ran clockwise about half the time, whatever the other table's sensor said, so nobody could read the other side.",
+    "The crystals only changed how often the two sides matched, and you can only see that by comparing results afterwards. That's no-signalling: a shared pattern, not a message.",
+    "Quantum key distribution uses exactly this: two stations get the same secret key, but the message still travels the ordinary way.",
+  ],
+  /** Moved off the screen, page by page (the same facts in both modes; page 3 has each mode's own lines). */
+  more1: [
+    `Two players who can't talk win at most ${LIMIT} of rounds with any plan agreed in advance, even a random one.`,
+    "Mixing plans at random doesn't help: a random mix only averages cells on the plan board, so it can never beat the best cell.",
+    "The full mapping: CHSH is Clauser, Horne, Shimony and Holt (1969). The sensors are the random inputs x, y (COOL = 0, HOT = 1), the pumps the outputs a, b (CLOCKWISE = 0, ANTICLOCKWISE = 1), and “match unless both HOT” is a ⊕ b = x ∧ y. The vent is the story for the flipped case.",
+  ],
+  more2: [
+    `The best settings, for example: ${BEST.example}.`,
+    "At the same setting the crystals are like perfectly correlated coins: each lands at random, but the pair always lands the same way.",
+  ],
+  faster:
+    "That's why entanglement can't send anything faster than light, despite Einstein's “spooky action at a distance”.",
+};
 
 /** The AI crewmate's name: CORA, the Coolant Ring Assistant. Solo radio lines, and event mode's bot seats (server). */
 export const CREW_NAME = "CORA";
@@ -205,20 +240,18 @@ export const S = {
     kicker: `Incident report · ${STATION_NAME}`,
     act1: "Act I · radio",
     act1Possible: "every round winnable",
-    act1Yours: (pct: string) => `possible · you held ${pct}`,
+    act1Yours: (pct: string) => `you: ${pct}`,
     act2: "Act II · best plan",
-    act2Note: "exactly, at best",
+    act2Note: "at best",
     act3: "Act III · crystals",
-    act3Note: "your crystal plan, exactly",
+    act3Note: "your crystal plan",
     /** Not saved: the Act III card leads with the best crystal plan, the player's below. */
     act3Best: "best crystal plan",
-    act3Yours: (pct: string) => `your crystal plan, ${pct}`,
+    act3Yours: (pct: string) => `yours: ${pct}`,
     /** Saved: the player's crystals beat every plan. */
-    story:
-      "Talking made every round winnable. No plan could replace talking. The crystals beat every plan without carrying a single message.",
+    story: `With the radio, every round was winnable. Without it, no plan beat ${LIMIT}. The crystals did, without sending a message.`,
     /** Not saved: only the best crystal settings did. */
-    storyNotSaved:
-      "Talking made every round winnable. No plan could replace talking. The best crystal settings beat every plan without carrying a single message; yours didn't get there this time.",
+    storyNotSaved: `With the radio, every round was winnable. Without it, no plan beat ${LIMIT}. The best crystal settings beat it without sending a message; yours didn't get there this time.`,
     noJam: "That's why the storm couldn't jam them: there was no signal to jam.",
   },
 
@@ -429,33 +462,20 @@ export const S = {
     home: "Home",
     steps: [
       {
-        title: "No plan beats 75%",
-        body: [
-          "The wall you hit in Act II is a Bell inequality. Two players who can't talk, with any plan agreed in advance (even a random one), win at most 75% of rounds.",
-          "Physicists call a plan agreed in advance a local hidden-variable theory.",
-          "John Clauser, the C in CHSH, shared the 2022 Nobel Prize in Physics with Alain Aspect and Anton Zeilinger for experiments with entangled photons that broke this inequality.",
-          "Mixing plans at random doesn't help: a random mix only averages cells on the plan board, so it can never beat the best cell.",
-        ],
-        /** Small print, last: the CHSH mapping. */
-        foot: "Under the station is the CHSH game (Clauser, Horne, Shimony and Holt, 1969). The sensors are its random input bits x, y (COOL = 0, HOT = 1), the pumps its output bits a, b (CLOCKWISE = 0, ANTICLOCKWISE = 1), and “match unless both HOT” is its rule: a ⊕ b = x ∧ y. The vent is the story for the flipped case.",
+        title: REPORT.title1,
+        body: [REPORT.bell, REPORT.clauser],
+        /** Small print, last. */
+        foot: REPORT.foot,
         stat: (pct: string) => `Your Act II rounds: ${pct}`,
       },
       {
-        title: "Entanglement broke through",
-        body: [
-          "The two crystals were a pair of entangled qubits. When the gap between their settings is g, they give the same direction cos²(g) of the time: that's the gap table you played with.",
-          `Crystals measured at the same setting always agree, like perfectly correlated coins, and that alone scores exactly ${SAME_SETTING_RATE}, no better than a plan. The advantage comes from settings that differ.`,
-          BEST_SPREAD,
-        ],
+        title: REPORT.title2,
+        body: REPORT.body2,
         stat: (pct: string) => `Your crystal plan's true rate: ${pct}`,
       },
       {
-        title: "But no messages",
-        body: [
-          "Your own pump ran clockwise about half the time, whether your crewmate's section was COOL or HOT. So you can't read their sensor from your result, and the crystals can't carry a message.",
-          "What the crystals changed is only how often your two results matched. That is what no-signalling means.",
-        "What the crystals gave you is shared randomness, not a message. That is how quantum key distribution works: entangled pairs give two distant stations the same secret key, and the message itself still travels the ordinary way.",
-        ],
+        title: REPORT.title3,
+        body: REPORT.body3,
       },
       {
         title: "Credits",
@@ -467,12 +487,23 @@ export const S = {
       plan: `Best plan: you and ${CREW_NAME} both always clockwise`,
       /** `best` = the best crystal plan's settings at your table (computed), e.g. "0° / 45°". */
       dials: (yours: boolean, best: string) => (yours ? "Your crystal plan" : `The best crystal plan (${best})`),
-      why: "A plan has to give up one case completely. The crystals spread a small loss across all four.",
+      why: REPORT.why2,
     },
+    /** "More detail" (closed by default) at the bottom of report pages 1–3: the lines cut from the screen. */
+    moreHead: "More detail",
+    more: [
+      REPORT.more1,
+      REPORT.more2,
+      [
+        "If your pump's clockwise rate changed with CORA's sensor, you could read her sensor from your own results. That would be a message, and the crystals would be a secret radio.",
+        REPORT.faster,
+        "Twelve-round waves are noisy: over many rounds every row settles at half.",
+      ],
+    ],
     panel: {
       head: "Each pump's clockwise rate, exactly",
       yourRounds: (n: number, cool: string, hot: string) =>
-        `In your ${n} real Act III rounds your pump ran clockwise ${cool} of the time when CORA's section was COOL, and ${hot} when it was HOT. Twelve-round batches are noisy.`,
+        `Your ${n} rounds: clockwise ${cool} when CORA's side was COOL, ${hot} when HOT.`,
       row: (who: string, light: string) => `${who}: clockwise when partner's side was ${light}`,
       you: "You",
       crewmate: CREW_NAME,
@@ -758,52 +789,36 @@ export const S = {
     /** The incident report on the TV: solo's report in the crew's words. */
     report: {
       three: {
-        act1Yours: (pct: string) => `possible · the crew held ${pct}`,
-        act3Note: "the crew's crystal plans, exactly",
-        act3Yours: (pct: string) => `the crew's crystal plans, ${pct}`,
-        story:
-          "Talking made every round winnable. No plan could replace talking. The crew's crystals beat every plan without carrying a single message.",
-        storyNotSaved:
-          "Talking made every round winnable. No plan could replace talking. The best crystal settings beat every plan without carrying a single message; the crew's didn't get there this time.",
+        act1Yours: (pct: string) => `the crew: ${pct}`,
+        act3Note: "the crew's crystal plans",
+        act3Yours: (pct: string) => `the crew: ${pct}`,
+        story: `With the radio, every round was winnable. Without it, no plan beat ${LIMIT}. The crystals did, without sending a message.`,
+        storyNotSaved: `With the radio, every round was winnable. Without it, no plan beat ${LIMIT}. The best crystal settings beat it without sending a message; the crew's didn't get there this time.`,
       },
       pairDials: (pair: number, a: string, b: string) => `Pair ${pair}'s crystal plans (${a} & ${b})`,
       /** Both tables' best settings, computed (the answer's rows). */
       bestPlans: `The best crystal plans (A: ${BEST_PLAN("A")} · B: ${BEST_PLAN("B")})`,
       /** The report's steps in the crew's words (solo keeps S.debrief.steps). */
       steps: [
-        {
-          title: "No plan beats 75%",
-          body: [
-            "The wall you hit in Act II is a Bell inequality. Two players who can't talk, with any plan agreed in advance (even a random one), win at most 75% of rounds.",
-            "Physicists call a plan agreed in advance a local hidden-variable theory.",
-            "John Clauser, the C in CHSH, shared the 2022 Nobel Prize in Physics with Alain Aspect and Anton Zeilinger for experiments with entangled photons that broke this inequality.",
-            "Mixing plans at random doesn't help: a random mix only averages cells on the plan board, so it can never beat the best cell.",
-          ],
-          /** Small print, last: the CHSH mapping. */
-          foot: "Under the station is the CHSH game (Clauser, Horne, Shimony and Holt, 1969). The sensors are its random input bits x, y (COOL = 0, HOT = 1), the pumps its output bits a, b (CLOCKWISE = 0, ANTICLOCKWISE = 1), and “match unless both HOT” is its rule: a ⊕ b = x ∧ y. The vent is the story for the flipped case.",
-        },
-        {
-          title: "Entanglement broke through",
-          body: [
-            "The two crystals were a pair of entangled qubits. When the gap between their settings is g, they give the same direction cos²(g) of the time: that's the gap table you played with.",
-            `Crystals measured at the same setting always agree, like perfectly correlated coins, and that alone scores exactly ${SAME_SETTING_RATE}, no better than a plan. The advantage comes from settings that differ.`,
-            BEST_SPREAD,
-          ],
-        },
-        {
-          title: "But no messages",
-          body: [
-            "Your own pump ran clockwise about half the time, whether your partner's section was COOL or HOT. So you can't read their sensor from your result, and the crystals can't carry a message.",
-            "What the crystals changed is only how often your two results matched. That is what no-signalling means.",
-            "What the crystals gave you is shared randomness, not a message. That is how quantum key distribution works: entangled pairs give two distant stations the same secret key, and the message itself still travels the ordinary way.",
-          ],
-        },
+        { title: REPORT.title1, body: [REPORT.bell, REPORT.clauser], /** Small print, last. */ foot: REPORT.foot },
+        { title: REPORT.title2, body: REPORT.body2 },
+        { title: REPORT.title3, body: REPORT.body3 },
         { title: "Credits", body: [] as string[] },
       ],
       compare: {
         plan: "Best plan: both always clockwise",
-        why: "A plan has to give up one case completely. A crystal plan spreads a small loss across all four.",
+        why: REPORT.why2,
       },
+      /** The lines cut from report pages 1–3: the remote's talking points at each step (and docs/facilitator.md). */
+      more: [
+        REPORT.more1,
+        REPORT.more2,
+        [
+          "If a pump's clockwise rate changed with the partner's sensor, a player could read the other table's sensor from their own results. That would be a message, and the crystals would be a secret radio.",
+          REPORT.faster,
+          "A few rounds each makes the numbers wobble. Over many rounds every row settles at half, whatever the partner's sensor read.",
+        ],
+      ],
       /** On a phone: the pair's own three numbers. */
       phoneHead: (name: string) => `You and ${name}`,
       phoneAct1: "Act I · radio",
@@ -814,7 +829,7 @@ export const S = {
       phoneAct3Note: "true rate, exactly",
       notPlayed: "not played",
       crewRounds: (n: number, cool: string, hot: string) =>
-        `In the crew's ${n} real Act III pump choices, a pump ran clockwise ${cool} of the time when the partner's section was COOL, and ${hot} when it was HOT.`,
+        `The crew's ${n} pump choices: clockwise ${cool} when the partner's side was COOL, ${hot} when HOT.`,
     },
     /** The storm in event mode. With a human partner the radio's last words come from the station log. */
     storm: {
@@ -955,7 +970,6 @@ export const S = {
     nextClue: (notYet: number, line: string) =>
       `Next clue: the answer (${notYet === 0 ? `every pair at ${line}+` : `${notYet} ${notYet === 1 ? "pair" : "pairs"} not yet at ${line}`})`,
     wholeCrew: "Whole crew",
-    wobble: "A few rounds each makes the numbers wobble. Over many rounds every row settles at 50%, whatever the partner's sensor read.",
     marginalHead: {
       player: "Crew member",
       cool: "Clockwise when partner's side was COOL",
@@ -1040,9 +1054,6 @@ export const S = {
       toolCoins: "Compare the crystals to entangled coins: random on their own, linked as a pair.",
       /** The first Act III lull (no Act III wave yet): `pct` = the starting plans' rate, computed. */
       firstLull: (pct: string) => `Ask: if the crystals always agree at the same setting, why does that only score ${pct}?`,
-      /** The incident report's no-signalling step. */
-      noSignal:
-        "Entanglement shares randomness, not messages. Quantum key distribution uses that randomness as a secret key; the message still travels normally.",
       /** The tool reveal: the crystals' rule, read aloud (numbers from the maths). */
       rule: (k: ClueTalk): string[] => [
         "Read the crystals' rule aloud: each crystal alone is a coin flip, whatever its setting.",

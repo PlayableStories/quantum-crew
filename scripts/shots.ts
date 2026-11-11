@@ -56,7 +56,7 @@ const ROOT = resolve(import.meta.dirname, "..");
 const SHOTS = join(ROOT, "shots");
 const SEED = 20261016;
 /** The screens the saved run captures (the main run, never tuned, is the not-saved path and captures the rest). */
-const SAVED_SHOTS = new Set(["resolution-saved", "debrief-1-saved"]);
+const SAVED_SHOTS = new Set(["resolution-saved", "debrief-1-saved", "debrief-2-saved", "debrief-3-saved"]);
 
 const EVENT_SIZES = [
   { name: "tv-1920x1080", width: 1920, height: 1080 },
@@ -348,13 +348,24 @@ async function playThrough(browser: Browser, base: string, size: Size, dir: stri
   await shot(saved ? "resolution-saved" : "resolution-not-saved");
   await click(S.resolution.go);
   if (saved) {
-    await shot("debrief-1-saved");
+    // R2: the report's pages 1–3 in the saved ending (page 1's summary and page 2's crystal plan differ).
+    for (let step = 1; step <= 3; step++) {
+      await shot(`debrief-${step}-saved`);
+      if (step < 3) await click(S.debrief.next);
+    }
     await context.close();
     if (errors.length) throw new Error(`page errors at ${size.name} (saved run):\n${errors.join("\n")}`);
     return rows;
   }
   for (let step = 0; step < S.debrief.steps.length; step++) {
     await shot(step === 0 ? "debrief-1-not-saved" : `debrief-${step + 1}`);
+    // R2: "More detail" opened on page 1 (Next must stay on screen), then closed again.
+    const more = page.locator(".debrief__more > summary");
+    if (step === 0 && (await more.count())) {
+      await more.click();
+      await shot("debrief-1-more");
+      await more.click();
+    }
     if (step < S.debrief.steps.length - 1) await click(S.debrief.next);
   }
   await checkSheet(page, S.credits.how, "debrief-art", shot);
@@ -811,6 +822,37 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
       if (await next.isDisabled()) break;
       if (!(await ready(`report Next after step ${step}`, next.click({ timeout: 5000 })))) break;
     }
+
+  // R2: the not-saved ending's report too (as pnpm session does): Reset (players stay; plans go back to 0°), the
+  // debug jump to Act III, one untuned wave (exactly 75%), the storm passes, then the report's pages 1–3 on the TV.
+  if (remote) {
+    await ready("reset", remote.page.getByRole("button", { name: S.remote.reset, exact: true }).click({ timeout: 5000 }));
+    await ready(
+      "reset confirm",
+      remote.page.locator("dialog[open]").getByRole("button", { name: S.remote.resetConfirm, exact: true }).click({ timeout: 5000 }),
+    );
+  }
+  if (await ready("lobby after reset", banner("lobby").waitFor({ timeout: 5000 }))) {
+    await tv.page.keyboard.press("d");
+    const jump = tv.page.locator("dialog[open]").getByRole("button", { name: /Act III/ }).first();
+    if (await ready("debug jump", jump.click({ timeout: 5000 }))) {
+      await banner("tool").waitFor({ timeout: 5000 }).catch(() => {});
+      // Through the lull and one wave: the primary button each time (Start the wave asks to confirm; that's a second press).
+      for (let i = 0; i < 80 && !(await banner("batchDone").isVisible()); i++) {
+        await controls().locator(".btn--primary").first().click({ timeout: 2000 }).catch(() => {});
+        await tv.page.waitForTimeout(150);
+      }
+      if (stormPasses) await host(stormPasses).catch(() => {});
+      await host(S.tv.cmd.debrief).catch(() => {});
+      if (await ready("the not-saved report", tv.page.locator(".tv__debrief").waitFor({ timeout: 5000 })))
+        for (let step = 1; step <= 3; step++) {
+          if (!(await ready(`not-saved step ${step}`, tv.page.locator(".tv__debrief .steps .on").nth(step - 1).waitFor({ timeout: 5000 }))))
+            break;
+          await shot(`debrief-${step}-not-saved`, [[tv, "", null]], true);
+          if (step < 3) await ready(`not-saved Next ${step}`, tv.page.locator(".tv__debrief-nav .btn--primary").click({ timeout: 5000 }));
+        }
+    }
+  }
 
   for (const ws of crowd) ws.close();
   for (const v of [tv, a, b, ...(remote ? [remote] : [])]) await v.context.close();

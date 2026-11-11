@@ -138,11 +138,10 @@ describe("the event report's physics and the briefing (E3g)", () => {
     expect(S.event.report.steps[1]!.body.join(" ")).toContain("they give the same direction cos²(g) of the time");
     expect(S.event.report.steps[1]!.body.join(" ")).not.toMatch(/Nobel/); // step 1 covers it
     const one = S.event.report.steps[0]!.body;
-    const bell = one.findIndex((l) => l.startsWith("The wall you hit in Act II"));
-    expect(one[bell + 1]).toBe("Physicists call a plan agreed in advance a local hidden-variable theory.");
+    expect(one[0]).toContain("Physicists call a plan agreed in advance a local hidden-variable theory.");
     const two = S.event.report.steps[1]!.body;
-    const same = two.find((l) => l.startsWith("Crystals measured at the same setting"))!;
-    expect(same).toContain(`exactly ${CLASSICAL_LIMIT * 100}%`);
+    const same = two.find((l) => l.startsWith("At the same setting"))!;
+    expect(same).toContain(`only ${CLASSICAL_LIMIT * 100}%`);
     expect(two[two.findIndex((l) => l.includes("Tsirelson")) - 1]).toBe(same);
     expect(S.event.report.crewRounds(24, "50.0%", "48.0%")).toContain("pump choices");
   });

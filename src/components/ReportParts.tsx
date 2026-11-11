@@ -7,6 +7,7 @@ import { LightIcon } from "./SensorLight.tsx";
 import { pct } from "./StabilityMeter.tsx";
 import { DEFAULT_CREW_PLAN } from "../config.ts";
 import {
+  CLASSICAL_LIMIT,
   OPTIMAL_TUNING,
   classicalCases,
   quantumCases,
@@ -156,7 +157,7 @@ export function ThreeNumbers({
         </li>
         <li>
           <span className="kicker">{R.act2}</span>
-          <b className="three__big">75%</b>
+          <b className="three__big">{`${Math.round(CLASSICAL_LIMIT * 100)}%`}</b>
           <span className="muted small">{R.act2Note}</span>
         </li>
         <li>

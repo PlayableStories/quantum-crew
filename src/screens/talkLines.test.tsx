@@ -61,7 +61,7 @@ describe("the first Act III lull: perfect agreement scores only what a plan does
 describe("the incident report: who tested it, and no messages but a shared key", () => {
   const report = (step: number): RoomState => ({ ...room("debrief", false, 3), debriefStep: step });
 
-  it("step 1 names Clauser, Aspect and Zeilinger; step 3 explains shared randomness and key distribution", () => {
+  it("step 1 names Clauser, Aspect and Zeilinger; step 3 explains a shared pattern and key distribution", () => {
     const one = renderToString(<TvDebrief state={report(0)} onCommand={() => {}} />);
     const clauser = (body: readonly string[]) => body.find((l) => l.startsWith("John Clauser"));
     expect(one).toContain(esc(clauser(S.event.report.steps[0]!.body)!));
@@ -69,18 +69,19 @@ describe("the incident report: who tested it, and no messages but a shared key",
     const three = renderToString(<TvDebrief state={report(2)} onCommand={() => {}} />);
     expect(three).toContain(esc(S.event.report.steps[2]!.body[2]!));
     expect(S.event.report.steps[2]!.body[2]).toBe(S.debrief.steps[2]!.body[2]);
-    expect(S.event.report.steps[2]!.body[2]).toMatch(/shared randomness, not a message/);
+    expect(S.event.report.steps[2]!.body[2]).toMatch(/Quantum key distribution/);
+    expect(S.event.report.steps[2]!.body[1]).toMatch(/a shared pattern, not a message/);
   });
 });
 
 describe("the remote's talking points", () => {
-  it("the tool reveal: entangled coins; the first lull: why 75%; the no-signalling step: a shared key", () => {
+  it("the tool reveal: entangled coins; the first lull: why 75%; the report's pages: the lines cut from the screen", () => {
     expect(talkingPoints(act3("tool", 0))).toContain(S.remote.talk.toolCoins);
     const first = talkingPoints(act3("strategy", 1));
     expect(first[0]).toBe(S.remote.talk.firstLull("75%"));
     expect(clueTalk().sameRate).toBe("75%");
     expect(talkingPoints(act3("strategy", 1, 1))).not.toContain(S.remote.talk.firstLull("75%"));
-    expect(talkingPoints({ ...room("debrief", false, 3), debriefStep: 2 })).toEqual([S.remote.talk.noSignal]);
-    expect(talkingPoints({ ...room("debrief", false, 3), debriefStep: 1 })).not.toContain(S.remote.talk.noSignal);
+    for (const step of [0, 1, 2])
+      expect(talkingPoints({ ...room("debrief", false, 3), debriefStep: step })).toEqual(S.event.report.more[step]);
   });
 });

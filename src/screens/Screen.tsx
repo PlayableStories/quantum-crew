@@ -682,7 +682,6 @@ export function TvDebrief({ state, onCommand }: { state: RoomState; onCommand: (
                 {p}
               </p>
             ))}
-            {step === 2 && state.marginals && <p className="muted">{S.tv.wobble}</p>}
             {"foot" in content && <p className="muted small tv__debrief-foot">{content.foot}</p>}
           </div>
         )}
