@@ -18,7 +18,7 @@ import { pathToFileURL } from "node:url";
 import { chromium, type Browser, type Page } from "playwright";
 import { build, preview } from "vite";
 import { WebSocket } from "ws";
-import { ACT1_ROUNDS, BATCH_SIZE, LEAD_MS, RESULT_AUTO_MS, ROUND_MS } from "../src/config.ts";
+import { ACT1_ROUNDS, BATCH_SIZE, MAX_PAIRS, LEAD_MS, RESULT_AUTO_MS, ROUND_MS } from "../src/config.ts";
 import { OPTIMAL_TUNING } from "../src/shared/chsh.ts";
 import { S } from "../src/strings.ts";
 
@@ -102,7 +102,7 @@ const GAUGE_OVERLAPS = `(() => {
 const TV_CLIPPED = `(() => {
   const hits = [];
   const regions = [["main", ".tv__main"], ["side", ".tv__side"], ["briefing", ".tv__briefing"], ["report", ".tv__ceiling"],
-    ["tool", ".tv__main > .reveal"], ["debrief", ".tv__debrief"]];
+    ["tool", ".tv__main > .reveal"], ["debrief", ".tv__debrief"], ["debrief body", ".tv__debrief-body"]];
   for (const [name, sel] of regions) {
     const el = document.querySelector(sel);
     if (!el) continue;
@@ -616,10 +616,10 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
     await v.page.getByRole("button", { name: S.phone.join }).click();
     await v.page.locator(".phone-head__status").getByText(S.phone.phase.lobby).waitFor();
   }
-  // Six more players over plain WebSockets, so the TV shows a full room of four pairs. They answer every round at
-  // once (Acts I and II: clockwise; Act III: measure) and are never screenshotted.
+  // Ten more players over plain WebSockets, so the TV shows a full room (MAX_PAIRS = 6 pairs, P6). They answer every
+  // round at once (Acts I and II: clockwise; Act III: follow the crystal) and are never screenshotted.
   const crowd = joinCrowd(base.replace(/^http/, "ws") + "/ws", code);
-  await tv.page.locator(".pair").nth(3).waitFor();
+  await tv.page.locator(".pair").nth(MAX_PAIRS - 1).waitFor();
   await shot("lobby", all(), true);
 
   // The phone remote (since E3b): the TV's pairing dialog, then a phone opens its link (on this test server's origin).
@@ -818,12 +818,14 @@ async function eventSession(browser: Browser, base: string, tvSize: Size, phoneS
   return rows.sort((p, q) => p.shot.localeCompare(q.shot));
 
   /** Fit's worst case on a wave-done screen: give every pair the optional line `cls` (the luck line, the 80%+ line),
-   *  measure, take the lines out again, and fail if anything is cut off. A TV without case panels is skipped. */
+   *  measure, take the lines out again, and fail if anything is cut off. Covers the full panels (up to four pairs) and
+   *  the compact rows (five or six, P6); a TV with neither is skipped. */
   async function worstCase(cls: string, text: string, what: string) {
     const cut = (await tv.page.evaluate(`(() => {
-      if (!document.querySelector(".tv__pair-cases")) return [];
+      const panels = ".tv__pair-cases, .tv__pair-row";
+      if (!document.querySelector(panels)) return [];
       const added = [];
-      for (const p of document.querySelectorAll(".tv__pair-cases")) {
+      for (const p of document.querySelectorAll(panels)) {
         if (p.querySelector(".${cls}")) continue;
         const l = document.createElement("p");
         l.className = ${JSON.stringify(cls)};
@@ -956,6 +958,10 @@ function joinCrowd(url: string, room: string) {
     ["Flo", "B"],
     ["Gus", "A"],
     ["Hal", "B"],
+    ["Ivy", "A"],
+    ["Jo", "B"],
+    ["Kit", "A"],
+    ["Lu", "B"],
   ] as const;
   return seats.map(([name, table]) => {
     const ws = new WebSocket(url);
