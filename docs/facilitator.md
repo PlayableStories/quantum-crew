@@ -59,7 +59,7 @@ quantum? See [Pairing the game with a talk on quantum](#pairing-the-game-with-a-
 | 0:21 | **Act III waves.** No MEASURE: the station measures each crystal at the player's planned setting when the round starts. Each phone shows one line, *"HOT → your plan: 45° → the crystal says …"*; the player sets the pump, following it or not (Enter follows). The suggested pump is tagged **Crystal**. The first wave is manual, later ones play by themselves. | **Start the wave**; **Next** in the manual wave |
 | 0:23 | **Act III wave passed.** The TV shows every pair's crystal plans case by case (with five or six pairs, one row per pair; each phone shows its pair's four cases): each case's gap and its chance of holding, the true rate, **found it: 80%+** on pairs that got there, and a luck line where the wave and the true rate disagree. The top line says whether the crew's crystal plans average 80% (the station holds) and how often the crew followed the crystal. Pairs below 80% get their weakest case outlined with which way to move. Release **the answer** (Next clue) if pairs are still below 80%, or give a close room another lull first. | **Next clue**; **Use the lull**, then **Start the wave** |
 | 0:28 | **The storm passes.** The station clears: calm if the crew saved it, damaged if not. Phones tell each player to tell their partner what they were thinking during the storm; give the room a minute to talk. | **The storm passes** |
-| 0:30 | **Incident report.** Step through with Back / Next on the TV: the three numbers (with the radio, the best plan, the crystals), the best plan beside the crystals, why the crystals can't send a message (every pump ≈ 50%), then credits. Each phone shows its own pair's three numbers. | **Incident report**, then **Next** |
+| 0:30 | **Incident report.** Step through with Back / Next on the TV, one idea per page (about 20–30 seconds of reading each): the three numbers (no plan beats 75%; the crystals did), the best plan beside the crystals, then *"Did the crystals let you talk through the storm?"* (no: every pump ≈ 50%), then credits. Each phone shows its own pair's three numbers. The remote's **Say** box has each page's extra lines (see "If someone asks" below). | **Incident report**, then **Next** |
 | 0:35 | Done. For a new group, **Reset** clears the scores and keeps the players (and goes back to the lobby, before the night shift); for a new crowd, open a fresh `/screen`. | **Reset** (asks to confirm) |
 
 Short on time? From the lobby, **Use the lull** skips the night shift and the storm and starts Act II.
@@ -124,6 +124,26 @@ the clues so far in their **Clues** sheet.
 
 A double press (or the TV and the remote at once) releases it once. The remote's **Say** box shows the latest clue's talking points in Act III.
 
+### The incident report: if someone asks
+Each page keeps one idea on screen; the lines below were cut from it. The remote's **Say** box shows the same lines on
+each page.
+
+- **Page 1 (No plan beats 75%):**
+  - Two players who can't talk win at most 75% with any plan agreed in advance, even a random one.
+  - Mixing plans at random doesn't help: it only averages cells on the plan board, so it can't beat the best cell.
+  - The full mapping: CHSH is Clauser, Horne, Shimony and Holt (1969). Sensors are the inputs x, y (COOL = 0,
+    HOT = 1), pumps the outputs a, b (CLOCKWISE = 0, ANTICLOCKWISE = 1), and "match unless both HOT" is
+    a ⊕ b = x ∧ y. The vent is the story for the flipped case.
+- **Page 2 (Entanglement broke through):**
+  - The best settings, for example: A: 0° and 45°; B: 22.5° and −22.5°, shown as 157.5°.
+  - At the same setting the crystals are like perfectly correlated coins: each lands at random, but the pair always
+    lands the same way.
+- **Page 3 (Did the crystals let you talk through the storm?):**
+  - If a pump's clockwise rate changed with the partner's sensor, a player could read the other table's sensor from
+    their own results. That would be a message, and the crystals would be a secret radio.
+  - That's why entanglement can't send anything faster than light, despite Einstein's "spooky action at a distance".
+  - A few rounds each makes the numbers wobble; over many rounds every row settles at half.
+
 ## Pairing the game with a talk on quantum
 If the game follows a talk that introduces entanglement as spinning coins with random but perfectly correlated
 outcomes, names the Bell tests (Aspect, Clauser, Zeilinger) and says entangled photons let distant stations "talk",
@@ -139,8 +159,8 @@ The remote's **Say** box has the short versions.
   in the fourth.
 - **The incident report, first step:** *"The inequality you couldn't beat in Act II is the one Clauser tested."* (The
   step names Clauser, Aspect and Zeilinger and their 2022 Nobel Prize.)
-- **If the talk said entangled particles let stations "talk":** bridge it at the no-signalling step ("But no
-  messages"). Entanglement gives both ends the same randomness, like a shared key; that is how quantum key
+- **If the talk said entangled particles let stations "talk":** bridge it at the report's third page ("Did the
+  crystals let you talk through the storm?"). Entanglement gives both ends the same randomness, like a shared key; that is how quantum key
   distribution works, and the message itself still has to be sent the ordinary way. Each player's own pump was
   clockwise about half the time whatever their partner's sensor said, so nothing reached them through the crystals.
 

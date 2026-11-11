@@ -18,6 +18,7 @@ export function Debrief() {
   const steps = S.debrief.steps;
   const content = steps[step]!;
   const last = step === steps.length - 1;
+  const more = S.debrief.more[step];
 
   // The "your numbers" panel for this step: beside the explanation on landscape, under it on a phone.
   const numbers =
@@ -78,6 +79,17 @@ export function Debrief() {
           <p key={p}>{p}</p>
         ))}
         {"foot" in content && <p className="muted small debrief__foot">{content.foot}</p>}
+        {more && (
+          // The lines cut from the page, closed by default.
+          <details className="debrief__more">
+            <summary>{S.debrief.moreHead}</summary>
+            {more.map((p) => (
+              <p key={p} className="small">
+                {p}
+              </p>
+            ))}
+          </details>
+        )}
       </div>
     </ScreenLayout>
   );

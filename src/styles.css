@@ -5078,3 +5078,23 @@ kbd {
     white-space: nowrap;
   }
 }
+
+/* R2: solo report pages' "More detail" (closed by default): the lines cut from the page. */
+.debrief__more {
+  font-size: 0.9em;
+}
+
+.debrief__more summary {
+  cursor: pointer;
+  color: var(--ink-muted);
+}
+
+.debrief__more p {
+  margin: 6px 0 0;
+}
+
+/* More detail's lines follow the page's own (smaller, on phones) size, a step down, not the global .small size. */
+.debrief__more p.small {
+  font-size: 0.95em;
+  line-height: 1.35;
+}
