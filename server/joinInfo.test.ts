@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { pickJoinOrigin, joinUrl } from "../src/net/joinOrigin.ts";
-import { addressRank, joinInfo, rankAddresses } from "./joinInfo.ts";
+import { addressRank, joinInfo, normalizePublicUrl, rankAddresses } from "./joinInfo.ts";
 
 const nic = (address: string, internal = false, family = "IPv4") =>
   ({ address, internal, family, netmask: "", mac: "", cidr: null }) as never;
@@ -56,6 +56,28 @@ describe("ranking the laptop's addresses (server)", () => {
     });
     expect(joinInfo({ publicUrl: "https://crew.example.org/", port: 1, interfaces: {} }).publicUrl).toBe("https://crew.example.org");
     expect(joinInfo({ publicUrl: "  ", port: 1, interfaces: {} }).publicUrl).toBeNull();
+  });
+
+  it("PUBLIC_URL without a scheme gets one, so the QR code opens as a link", () => {
+    const cases: [string, string][] = [
+      ["crew.example.org", "https://crew.example.org"],
+      ["crew.example.org/", "https://crew.example.org"],
+      ["quantum-crew.onrender.com", "https://quantum-crew.onrender.com"],
+      ["192.168.1.20:8787", "http://192.168.1.20:8787"],
+      ["192.168.1.20", "http://192.168.1.20"],
+      ["crew-laptop.local:8787", "http://crew-laptop.local:8787"],
+      ["crew-laptop.local", "http://crew-laptop.local"],
+      ["localhost:8787", "http://localhost:8787"],
+      ["crew.example.org:8443", "http://crew.example.org:8443"],
+    ];
+    for (const [raw, url] of cases) {
+      expect(normalizePublicUrl(raw)).toEqual({ url, fixed: true });
+      expect(joinInfo({ publicUrl: raw, port: 1, interfaces: {} }).publicUrl).toBe(url);
+    }
+    // Given a scheme, it's kept as written (only trailing slashes go).
+    expect(normalizePublicUrl("http://crew.example.org/")).toEqual({ url: "http://crew.example.org", fixed: false });
+    expect(normalizePublicUrl("HTTPS://crew.example.org")).toEqual({ url: "HTTPS://crew.example.org", fixed: false });
+    expect(normalizePublicUrl(undefined)).toEqual({ url: null, fixed: false });
   });
 });
 

@@ -35,11 +35,26 @@ export function rankAddresses(interfaces: Interfaces): { address: string; iface:
     .map(({ address, iface }) => ({ address, iface }));
 }
 
+/**
+ * Pure: PUBLIC_URL as the QR code needs it. A QR code without `http://` or `https://` reads as plain text on many
+ * phones (no tap-to-open), so a missing scheme is added: `http://` for an address on the local network (an IPv4
+ * address, `localhost`, a `.local` name, or anything with a port: no TLS there), else `https://` (a hosted site).
+ * `fixed` says a scheme was added, so the server can warn. Trailing slashes go; blank is null.
+ */
+export function normalizePublicUrl(raw: string | undefined): { url: string | null; fixed: boolean } {
+  const url = raw?.trim().replace(/\/+$/, "") ?? "";
+  if (!url) return { url: null, fixed: false };
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) return { url, fixed: false };
+  const host = url.split("/")[0]!;
+  const local =
+    /:\d+$/.test(host) || /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || /^localhost$/i.test(host) || /\.local$/i.test(host);
+  return { url: `${local ? "http" : "https"}://${url}`, fixed: true };
+}
+
 /** Pure: the join addresses for a server on `port`, given PUBLIC_URL and the machine's network interfaces. */
 export function joinInfo({ publicUrl, port, interfaces }: { publicUrl?: string; port: number; interfaces: Interfaces }): StationInfo {
   const lan: JoinAddress[] = rankAddresses(interfaces).map(({ address, iface }) => ({ url: `http://${address}:${port}`, iface }));
-  const pub = publicUrl?.trim().replace(/\/+$/, "");
-  return { publicUrl: pub || null, lan };
+  return { publicUrl: normalizePublicUrl(publicUrl).url, lan };
 }
 
 /** The live answer for this process. */

@@ -192,6 +192,8 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     best first. `pickJoinOrigin(info, here, chosen)` returns `alternatives` at localhost; the lobby's `JoinPanel` shows
     "Not working? Try:" buttons, and the TV remembers the choice (`loadChosenAddress` / `saveChosenAddress`,
     localStorage). `pnpm start` logs every address, the chosen one first.
+    `normalizePublicUrl` (2026-11-11): a `PUBLIC_URL` without a scheme gets `http://` (an IP, `localhost`, `.local` or
+    a port) or `https://` (else), and `pnpm start` warns; a QR code without a scheme isn't a link on many phones.
   - **Debrief fit:** the TV debrief is full width (`.tv--wide` hides the side) with the explanation beside the
     step's numbers (`.tv__debrief-body`); Back / Next sit at the bottom right. Every step fits 1280×720 with four pairs (six since P6).
   - **Docs:** stale event-mode statements fixed; the README has a Render free-tier section; the facilitator's
