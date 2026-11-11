@@ -9,21 +9,25 @@ import { CrewName } from "./AiBadge.tsx";
 import { PumpIcon } from "./PumpIcon.tsx";
 import { LightIcon } from "./SensorLight.tsx";
 
-/** `order` says whose reading comes first on each card (default "you · CORA"; the TV says "Table A · Table B"). */
+/** `order` says whose reading comes first on each card (default "you · CORA"; the TV says "Table A · Table B").
+ *  `define`: say what the true rate is under the total (the TV says it once, in its head, instead). */
 export function FourCases({
   plan,
   crewPlan,
   order,
+  define = true,
 }: {
   plan: ClassicalStrategy;
   crewPlan: ClassicalStrategy;
   order?: ReactNode;
+  define?: boolean;
 }) {
   const cases = classicalCases(plan, crewPlan);
   const wins = cases.filter((c) => c.win).length;
   return (
     <div className="cases">
-      <p className="kicker">{S.readout.casesHead}</p>
+      {/* The definition below says "equally likely", so the kicker steps aside for it. */}
+      {!define && <p className="kicker">{S.readout.casesHead}</p>}
       <p className="muted small cases__order">
         {order ?? (
           <>
@@ -51,6 +55,7 @@ export function FourCases({
       <p className="cases__total">
         <strong>{S.readout.caseTotal(wins, `${(wins / 4) * 100}%`)}</strong>
       </p>
+      {define && <p className="muted small cases__def">{S.readout.trueRateDef}</p>}
     </div>
   );
 }

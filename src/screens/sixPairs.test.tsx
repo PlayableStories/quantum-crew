@@ -54,7 +54,7 @@ describe("wave done on the TV by room size", () => {
     expect(count(six, "panel tv__pair-row")).toBe(MAX_PAIRS);
     expect(six).not.toContain('class="case ');
     expect(six.split(S.event.wave3.foundIt).length - 1).toBe(1);
-    const hint = S.event.clues.tvHint(`${S.light[1]} · ${S.light[1]}`, "differ");
+    const hint = S.event.clues.tvHint(`A ${S.light[1]} · B ${S.light[1]}`, "differ");
     expect(six.split(esc(hint)).length - 1).toBe(MAX_PAIRS - 1);
   });
 

@@ -5055,3 +5055,26 @@ kbd {
 .remote--many .remote__room {
   padding-block: 8px;
 }
+
+/* Copy review C1: the report's step 1 small print (the CHSH mapping), last and smaller than the body. */
+.debrief__foot {
+  font-size: 0.8em;
+  line-height: 1.35;
+}
+
+.tv__debrief .tv__debrief-foot {
+  font-size: clamp(0.8rem, 0.95vw, 1.15rem);
+  line-height: 1.35;
+}
+
+/* "15% different" kept on its case's line on short phones (the word grew from "differ"). */
+@media (max-height: 700px) {
+  .lull--act3 .fan {
+    grid-template-columns: 80px minmax(0, 1fr);
+  }
+
+  .lull--act3 .fan__gaps {
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+}

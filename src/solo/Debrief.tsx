@@ -77,6 +77,7 @@ export function Debrief() {
         {content.body.map((p) => (
           <p key={p}>{p}</p>
         ))}
+        {"foot" in content && <p className="muted small debrief__foot">{content.foot}</p>}
       </div>
     </ScreenLayout>
   );

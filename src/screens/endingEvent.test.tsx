@@ -135,7 +135,7 @@ describe("the event report's physics and the briefing (E3g)", () => {
 
   it("no report string says the pumps agree with probability cos²; the crystals' rule is about the crystals", () => {
     for (const t of texts(S.event.report)) expect(t).not.toMatch(/pumps agree/);
-    expect(S.event.report.steps[1]!.body.join(" ")).toContain("your two crystals give the same direction with probability cos²(θA − θB)");
+    expect(S.event.report.steps[1]!.body.join(" ")).toContain("they give the same direction cos²(g) of the time");
     expect(S.event.report.steps[1]!.body.join(" ")).not.toMatch(/Nobel/); // step 1 covers it
     const one = S.event.report.steps[0]!.body;
     const bell = one.findIndex((l) => l.startsWith("The wall you hit in Act II"));

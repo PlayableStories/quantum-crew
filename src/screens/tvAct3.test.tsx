@@ -119,7 +119,7 @@ describe("after a wave: clue 1's hint, then the answer", () => {
     s.pairs[0] = { ...s.pairs[0]!, lastWave: { rounds: 8, wins: 6, timeouts: 0 } };
     const markup = renderToString(<CrystalWave state={s} />);
     expect(markup.match(/case--weakest/g)).toHaveLength(1);
-    expect(markup).toContain(esc(S.event.clues.tvHint("HOT · HOT", "differ")));
+    expect(markup).toContain(esc(S.event.clues.tvHint("A HOT · B HOT", "differ")));
   });
 
   it("clue 2: the answer in one line, no per-pair hint", () => {

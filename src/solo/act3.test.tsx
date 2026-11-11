@@ -161,7 +161,7 @@ describe("the incident report's physics lines (S4)", () => {
     const bell = one.findIndex((l) => l.startsWith("The wall you hit in Act II is a Bell inequality"));
     expect(one[bell + 1]).toBe("Physicists call a plan agreed in advance a local hidden-variable theory.");
     const two = S.debrief.steps[1]!.body.join(" ");
-    expect(two).toContain("your two crystals give the same direction with probability cos²(θA − θB)");
+    expect(two).toContain("they give the same direction cos²(g) of the time");
     expect(two).not.toMatch(/pumps agree/);
     expect(two).not.toMatch(/Nobel/); // step 1 covers it
     const same = S.debrief.steps[1]!.body.find((l) => l.startsWith("Crystals measured at the same setting"))!;

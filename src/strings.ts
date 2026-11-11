@@ -3,7 +3,8 @@
 import { ACT1_ROUND_MS, ACT1_ROUNDS, MP_WAVE_SIZE } from "./config.ts";
 import type { ClassicalStrategy, RoundResult } from "./shared/chsh.ts";
 import { HOT, roundCause } from "./shared/fiction.ts";
-import { answerPlanFor, planRate } from "./shared/crystalPlan.ts";
+import { CLUE_SETTINGS, answerPlanFor, clueAnswer, planRate } from "./shared/crystalPlan.ts";
+import { formatDeg } from "./lib/formatDeg.ts";
 import { DEFAULT_TUNING } from "./config.ts";
 
 /** Both sides measured at one setting for COOL and HOT: the crystals always agree, and that scores exactly this
@@ -12,6 +13,15 @@ const SAME_SETTING_RATE = `${Math.round(planRate(DEFAULT_TUNING, DEFAULT_TUNING)
 
 /** A table's best crystal plan (the answer's row), as "0° / 45°" (computed). Used by event mode's report. */
 const BEST_PLAN = (t: "A" | "B") => `${answerPlanFor(t).greenDeg}° / ${answerPlanFor(t).redDeg}°`;
+
+/** The report's step 2: the best four settings and their rate (computed from the answer, like clue 2). */
+const BEST_SPREAD = (() => {
+  const k = clueAnswer();
+  const shown = (d: number) => (d > 90 ? `${formatDeg(d - 180)}, shown as ${formatDeg(d)}` : formatDeg(d));
+  const row = (t: "A" | "B") => `${t}: ${shown(CLUE_SETTINGS[t].greenDeg)} and ${shown(CLUE_SETTINGS[t].redDeg)}`;
+  const rate = `${Math.round(k.rate * 1000) / 10}%`;
+  return `With the four settings spread evenly, ${formatDeg(k.spacing)} apart (${row("A")}; ${row("B")}), a crystal plan wins cos²(${formatDeg(k.matchGap)}) ≈ ${rate} of rounds. No quantum strategy does better: this is the Tsirelson bound.`;
+})();
 
 /** The AI crewmate's name: CORA, the Coolant Ring Assistant. Solo radio lines, and event mode's bot seats (server). */
 export const CREW_NAME = "CORA";
@@ -325,7 +335,7 @@ export const S = {
     cases: "If we both follow the plan perfectly",
     casesHead: "Equally likely",
     casesOrder: "Each card: you · ",
-    caseTotal: (wins: number, pct: string) => `${wins} of 4 cases: ${pct}`,
+    caseTotal: (wins: number, pct: string) => `True rate ${pct}: ${wins} of 4 cases`,
     /** When the batch and the true rate disagree about passing 80% (act 2: the plan; act 3: the crystal plan). */
     luck: (gap: "above" | "below", act: 2 | 3, pct: string) =>
       `${gap === "above" ? "Above" : "Below"} 80% this time, but ${act === 2 ? "this plan's" : "these settings'"} true rate is ${pct}. Twelve rounds is mostly luck.`,
@@ -334,6 +344,8 @@ export const S = {
     crystalCasesHead: "Equally likely · settings: you · ",
     holds: (pct: string) => `holds ${pct}`,
     trueRate: (pct: string) => `True rate: ${pct}`,
+    /** Said once, where true rates first appear (Act II readout / wave done). */
+    trueRateDef: "True rate: what this plan scores with all four cases equally likely, without luck.",
     followed: (n: number, total: number) => `You followed the crystal in ${n} of ${total} rounds.`,
     again2: "Back to the huddle",
     again3: "Change your crystal plan",
@@ -375,14 +387,14 @@ export const S = {
   /** Solo: the tool arrives in a supply pod during a lull. (Event mode's phone uses `tool` below.) */
   pod: {
     kicker: "Supply pod · during the lull",
-    title: "The Entanglement Tool",
+    title: "The crystals",
     lines: [
       `A supply pod docks from engineering with two linked crystals: one at your table, one at ${CREW_NAME}'s at Table B.`,
       "Engineering's note: the crystals carry no messages, so the storm can't jam them.",
       "Think of them as entangled coins: each lands at random, but a linked pair measured at the same setting always lands the same way.",
       "The crystals don't replace your plan. They change what a plan can say.",
     ],
-    go: "Pick up the tool",
+    go: "Pick up the crystals",
   },
 
 
@@ -398,10 +410,10 @@ export const S = {
       `${CREW_NAME} measures at COOL ${cool}, HOT ${hot}. With your plan as it is, you two hold ${pct}. Can you do better?`,
     /** Clue 1's nudge, for you and CORA. */
     nudge:
-      `Going around the four settings, your two and ${CREW_NAME}'s two, the differ gap can never be bigger than the three match gaps added together. You want the match gaps small and the differ gap near 90°. How would you spread them?`,
+      `Going around the four settings, your two and ${CREW_NAME}'s two, the different gap can never be bigger than the three same gaps added together. You want the same gaps small and the different gap near 90°. How would you spread them?`,
     /** The crystals' rule, line 3, with CORA by name. */
     followRule:
-      `Follow your crystal (${CREW_NAME} always follows hers), and your pumps match exactly when your crystals agree. So keep your setting close to hers in the three cases that need matching pumps, and far from hers when both sensors are HOT.`,
+      `Follow your crystal (${CREW_NAME} follows hers) and your pumps match exactly when your crystals give the same direction. Keep your setting close to hers in the three cases that need the same direction, and far from hers when both are HOT (different directions).`,
     /** After a wave that didn't pass: engineering's answer, on request. */
     answerButton: "Ask engineering for the answer",
     answerHead: "Engineering's answer",
@@ -419,28 +431,29 @@ export const S = {
       {
         title: "No plan beats 75%",
         body: [
-          "Under the station is the CHSH game (Clauser, Horne, Shimony and Holt, 1969). The sensors are its random input bits x, y (COOL = 0, HOT = 1), the pumps its output bits a, b (CLOCKWISE = 0, ANTICLOCKWISE = 1), and “match unless both HOT” is its rule: a ⊕ b = x ∧ y. The vent is the story for the flipped case.",
           "The wall you hit in Act II is a Bell inequality. Two players who can't talk, with any plan agreed in advance (even a random one), win at most 75% of rounds.",
           "Physicists call a plan agreed in advance a local hidden-variable theory.",
           "John Clauser, the C in CHSH, shared the 2022 Nobel Prize in Physics with Alain Aspect and Anton Zeilinger for experiments with entangled photons that broke this inequality.",
           "Mixing plans at random doesn't help: a random mix only averages cells on the plan board, so it can never beat the best cell.",
         ],
+        /** Small print, last: the CHSH mapping. */
+        foot: "Under the station is the CHSH game (Clauser, Horne, Shimony and Holt, 1969). The sensors are its random input bits x, y (COOL = 0, HOT = 1), the pumps its output bits a, b (CLOCKWISE = 0, ANTICLOCKWISE = 1), and “match unless both HOT” is its rule: a ⊕ b = x ∧ y. The vent is the story for the flipped case.",
         stat: (pct: string) => `Your Act II rounds: ${pct}`,
       },
       {
         title: "Entanglement broke through",
         body: [
-          "The two crystals were a pair of entangled qubits. Measured at settings θA and θB, your two crystals give the same direction with probability cos²(θA − θB): the crystals' rule.",
+          "The two crystals were a pair of entangled qubits. When the gap between their settings is g, they give the same direction cos²(g) of the time: that's the gap table you played with.",
           `Crystals measured at the same setting always agree, like perfectly correlated coins, and that alone scores exactly ${SAME_SETTING_RATE}, no better than a plan. The advantage comes from settings that differ.`,
-          "With the four settings spread evenly, 22.5° apart (A: 0° and 45°; B: 22.5° and −22.5°, shown as 157.5°), a crystal plan wins cos²(22.5°) ≈ 85.4% of rounds. No quantum strategy does better: this is the Tsirelson bound.",
+          BEST_SPREAD,
         ],
         stat: (pct: string) => `Your crystal plan's true rate: ${pct}`,
       },
       {
         title: "But no messages",
         body: [
-          "Your own pump ran clockwise about half the time, whether your crewmate's section was COOL or HOT. So you can't read their sensor from your result, and the tool can't carry a message.",
-          "Only the correlation between your two results changed. That is what no-signalling means.",
+          "Your own pump ran clockwise about half the time, whether your crewmate's section was COOL or HOT. So you can't read their sensor from your result, and the crystals can't carry a message.",
+          "What the crystals changed is only how often your two results matched. That is what no-signalling means.",
         "What the crystals gave you is shared randomness, not a message. That is how quantum key distribution works: entangled pairs give two distant stations the same secret key, and the message itself still travels the ordinary way.",
         ],
       },
@@ -451,7 +464,7 @@ export const S = {
     ],
     /** Solo, quantum-limit step: the best plan beside the crystals, four cases each. */
     compare: {
-      plan: "Best plan: always clockwise",
+      plan: `Best plan: you and ${CREW_NAME} both always clockwise`,
       /** `best` = the best crystal plan's settings at your table (computed), e.g. "0° / 45°". */
       dials: (yours: boolean, best: string) => (yours ? "Your crystal plan" : `The best crystal plan (${best})`),
       why: "A plan has to give up one case completely. The crystals spread a small loss across all four.",
@@ -553,7 +566,7 @@ export const S = {
     /** The tool reveal, on the TV and phones: the supply pod and engineering's note (names no single partner). */
     pod: {
       kicker: "Supply pod · during the lull",
-      title: "The Entanglement Tool",
+      title: "The crystals",
       lines: [
         "A supply pod docks from engineering: two linked crystals for every pair, one at each table.",
         "Engineering's note: the crystals carry no messages, so the storm can't jam them.",
@@ -585,12 +598,12 @@ export const S = {
       coin: "Each crystal says CLOCKWISE or ANTICLOCKWISE at random, like a coin flip, whatever its setting.",
       closer: "Two linked crystals land the same way more often the closer their settings are:",
       follow:
-        "Follow your crystals, and your pumps match exactly when your crystals agree. So keep settings close in the three cases that need matching pumps, and far apart when both sensors are HOT.",
+        "Follow your crystals, and your pumps match exactly when your crystals give the same direction. So keep settings close in the three cases that need the same direction, and far apart when both sensors are HOT, which needs different directions.",
       gap: "Gap",
       same: "Same direction",
-      /** `half` = 180°, `max` = 90°, then an example pair of settings and their folded gap (all computed). */
-      fold: (half: string, max: string, a: string, b: string, gap: string) =>
-        `A setting and the one ${half} round are the same measurement, so a gap is never more than ${max} (${a} and ${b} are ${gap} apart).`,
+      /** `half` = 180°, `max` = 90°, then a setting over 90° and the same setting below 0° (all computed). */
+      fold: (half: string, max: string, over: string, below: string) =>
+        `Settings repeat every ${half}, so ${over} is the same as ${below}, and two settings are never more than ${max} apart.`,
     },
     /** The read-only fan: the pair's four settings, and the gap in each case. */
     fan: {
@@ -598,9 +611,9 @@ export const S = {
       head: "Gaps",
       caseName: (x: string, y: string) => `A ${x} · B ${y}`,
       needSame: "same",
-      needDiffer: "differ",
+      needDiffer: "different",
       /** From clue 2: each case's chance beside its gap ("85% same"). */
-      chance: (pct: string, need: "same" | "differ") => `${pct} ${need === "same" ? "same" : "differ"}`,
+      chance: (pct: string, need: "same" | "differ") => `${pct} ${need === "same" ? "same" : "different"}`,
     },
     /** The clue ladder, released by the facilitator (TV and remote); every clue so far stays visible. */
     clues: {
@@ -610,25 +623,26 @@ export const S = {
       titles: ["A hint", "The answer"],
       /** Before the hint: what the pair's plans hold right now (live). */
       liveRate: (pct: string) => `Your plans hold ${pct}.`,
-      /** Clue 1, for a pair of two players below 80%: its weakest case, its gap and chance, and which way to move. */
-      hint: (caseName: string, gap: string, pct: string, need: "same" | "differ") =>
+      /** Clue 1, for a pair of two players below 80%: its weakest case, its gap and chance, and which settings to move
+       *  (`a` = Table A's reading in the case, `b` = Table B's; both HOT in the "differ" case). */
+      hint: (caseName: string, gap: string, pct: string, need: "same" | "differ", a: string, b: string) =>
         need === "same"
-          ? `Your weakest case: ${caseName}, gap ${gap}, same only ${pct} of the time. This case needs your settings close: bring them closer.`
-          : `Your weakest case: ${caseName}, gap ${gap}, differ only ${pct} of the time. Both HOT needs your settings far apart: move them further apart.`,
+          ? `Your weakest case: ${caseName}, gap ${gap}, same only ${pct} of the time. This case needs these settings close: bring A's ${a} and B's ${b} closer.`
+          : `Your weakest case: ${caseName}, gap ${gap}, different only ${pct} of the time. Move your ${a} settings further apart.`,
       /** Clue 1 with CORA as partner: her plan is fixed, so only the player's own setting (`mine`: COOL or HOT) moves. */
       coraHint: (caseName: string, gap: string, pct: string, need: "same" | "differ", mine: string) =>
         need === "same"
           ? `Your weakest case: ${caseName}, gap ${gap}, same only ${pct} of the time. ${CREW_NAME}'s plan is fixed: bring your ${mine} setting closer to hers.`
-          : `Your weakest case: ${caseName}, gap ${gap}, differ only ${pct} of the time. ${CREW_NAME}'s plan is fixed: move your ${mine} setting further from hers.`,
-      /** The TV's pair card, beside the true rate: the case as its card reads ("HOT · HOT"; the outlined card shows
-       *  its gap and chance) and which way to move. */
-      tvHint: (cardName: string, need: "same" | "differ") =>
-        need === "same" ? `weakest ${cardName}: bring closer` : `weakest ${cardName}: move further apart`,
+          : `Your weakest case: ${caseName}, gap ${gap}, different only ${pct} of the time. ${CREW_NAME}'s plan is fixed: move your ${mine} setting further from hers.`,
+      /** The TV's pair card, beside the true rate: the case's two settings ("A COOL · B HOT"; the outlined card shows
+       *  its gap and chance) and which way to move them. */
+      tvHint: (caseName: string, need: "same" | "differ") =>
+        need === "same" ? `weakest ${caseName}: bring closer` : `weakest ${caseName}: move further apart`,
       /** The TV's lull list (no case cards there): the case, its gap and chance, and which way to move. */
       listHint: (caseName: string, gap: string, pct: string, need: "same" | "differ") =>
         need === "same"
           ? `${caseName}, gap ${gap}, same ${pct}: bring closer.`
-          : `${caseName}, gap ${gap}, differ ${pct}: move further apart.`,
+          : `${caseName}, gap ${gap}, different ${pct}: move further apart.`,
       /** The TV's lull list with five or six pairs (P6): one line per pair, the case and which way to move. */
       denseHint: (caseName: string, need: "same" | "differ") =>
         need === "same" ? `${caseName}: bring closer` : `${caseName}: move further apart`,
@@ -638,16 +652,16 @@ export const S = {
       coraListHint: (name: string, caseName: string, gap: string, pct: string, need: "same" | "differ", mine: string) =>
         need === "same"
           ? `${caseName}, gap ${gap}, same ${pct}: ${name}, bring your ${mine} setting closer to ${CREW_NAME}'s.`
-          : `${caseName}, gap ${gap}, differ ${pct}: ${name}, move your ${mine} setting further from ${CREW_NAME}'s.`,
+          : `${caseName}, gap ${gap}, different ${pct}: ${name}, move your ${mine} setting further from ${CREW_NAME}'s.`,
       /** The TV's lull list: each pair and its live rate. */
       pairRate: (pair: number, pct: string) => `Pair ${pair} · ${pct}`,
       /** A pair already at 80%+ (`pct` = the 80% line). */
       foundIt: (pct: string) => `Found it: ${pct}+`,
       nudge:
-        "Going around your four settings, the differ gap can never be bigger than the three match gaps added together. You want the match gaps small and the differ gap near 90°. How would you spread them?",
+        "Going around your four settings, the different gap can never be bigger than the three same gaps added together. You want the same gaps small and the different gap near 90°. How would you spread them?",
       /** `fold` names a setting over 90° and the same setting below 0° (computed), or is empty. */
       answer: (spacing: string, a: string, b: string, fold: string, matchGap: string, same: string, differGap: string, differ: string, rate: string) =>
-        `Spread the four settings evenly, ${spacing} apart. For example ${a}; ${b}${fold}. The three match gaps are ${matchGap} (${same} the same) and the differ gap is ${differGap} (${differ} different): ${rate}.`,
+        `Spread the four settings evenly, ${spacing} apart. For example ${a}; ${b}${fold}. The three same gaps are ${matchGap} (${same} the same) and the different gap is ${differGap} (${differ} different): ${rate}.`,
       sameSetting: (a: string, b: string) => ` (${a} is the same setting as ${b})`,
       plan: (table: string, cool: string, hot: string) => `${table}: COOL ${cool}, HOT ${hot}`,
       /** Clue 2 on a phone: the player's own row of the answer, and a button that fills it in. */
@@ -683,7 +697,7 @@ export const S = {
       round: {
         now: "The wave: radio down. The station measures each crystal at your planned setting.",
         can: "Follow your crystal: that's how your plan works. Going against it is a guess.",
-        question: "Does your plan hold in all four cases?",
+        question: "Which case lets you down most often?",
       },
       batchDone: {
         now: "The wave has passed: each pair's crystal plans, case by case.",
@@ -760,33 +774,34 @@ export const S = {
         {
           title: "No plan beats 75%",
           body: [
-            "Under the station is the CHSH game (Clauser, Horne, Shimony and Holt, 1969). The sensors are its random input bits x, y (COOL = 0, HOT = 1), the pumps its output bits a, b (CLOCKWISE = 0, ANTICLOCKWISE = 1), and “match unless both HOT” is its rule: a ⊕ b = x ∧ y. The vent is the story for the flipped case.",
             "The wall you hit in Act II is a Bell inequality. Two players who can't talk, with any plan agreed in advance (even a random one), win at most 75% of rounds.",
             "Physicists call a plan agreed in advance a local hidden-variable theory.",
             "John Clauser, the C in CHSH, shared the 2022 Nobel Prize in Physics with Alain Aspect and Anton Zeilinger for experiments with entangled photons that broke this inequality.",
             "Mixing plans at random doesn't help: a random mix only averages cells on the plan board, so it can never beat the best cell.",
           ],
+          /** Small print, last: the CHSH mapping. */
+          foot: "Under the station is the CHSH game (Clauser, Horne, Shimony and Holt, 1969). The sensors are its random input bits x, y (COOL = 0, HOT = 1), the pumps its output bits a, b (CLOCKWISE = 0, ANTICLOCKWISE = 1), and “match unless both HOT” is its rule: a ⊕ b = x ∧ y. The vent is the story for the flipped case.",
         },
         {
           title: "Entanglement broke through",
           body: [
-            "The two crystals were a pair of entangled qubits. Measured at settings θA and θB, your two crystals give the same direction with probability cos²(θA − θB): the crystals' rule.",
+            "The two crystals were a pair of entangled qubits. When the gap between their settings is g, they give the same direction cos²(g) of the time: that's the gap table you played with.",
             `Crystals measured at the same setting always agree, like perfectly correlated coins, and that alone scores exactly ${SAME_SETTING_RATE}, no better than a plan. The advantage comes from settings that differ.`,
-            "With the four settings spread evenly, 22.5° apart (A: 0° and 45°; B: 22.5° and −22.5°, shown as 157.5°), a crystal plan wins cos²(22.5°) ≈ 85.4% of rounds. No quantum strategy does better: this is the Tsirelson bound.",
+            BEST_SPREAD,
           ],
         },
         {
           title: "But no messages",
           body: [
             "Your own pump ran clockwise about half the time, whether your partner's section was COOL or HOT. So you can't read their sensor from your result, and the crystals can't carry a message.",
-            "Only the correlation between your two results changed. That is what no-signalling means.",
+            "What the crystals changed is only how often your two results matched. That is what no-signalling means.",
             "What the crystals gave you is shared randomness, not a message. That is how quantum key distribution works: entangled pairs give two distant stations the same secret key, and the message itself still travels the ordinary way.",
           ],
         },
         { title: "Credits", body: [] as string[] },
       ],
       compare: {
-        plan: "Best plan: always clockwise",
+        plan: "Best plan: both always clockwise",
         why: "A plan has to give up one case completely. A crystal plan spreads a small loss across all four.",
       },
       /** On a phone: the pair's own three numbers. */
@@ -860,7 +875,7 @@ export const S = {
       roundResult: "Storm wave: radio down, no talking",
       batchDone: "The wave has passed",
       ceiling: "Engineering report",
-      tool: "The Entanglement Tool",
+      tool: "The crystals",
       resolution: "The storm passes",
       debrief: "Debrief",
     },
@@ -1031,7 +1046,7 @@ export const S = {
       /** The tool reveal: the crystals' rule, read aloud (numbers from the maths). */
       rule: (k: ClueTalk): string[] => [
         "Read the crystals' rule aloud: each crystal alone is a coin flip, whatever its setting.",
-        `A gap of ${k.minGap} always lands the same way, ${k.maxGap} never does. Followed crystals make matching pumps exactly when they agree.`,
+        `A gap of ${k.minGap} always lands the same way, ${k.maxGap} never does. Followed crystals make the pumps match exactly when they give the same direction.`,
       ],
       /** Act III: clue 1 in a lull (the hints and the nudge); after a wave with clue 1 (release the answer?); clue 2. */
       clue: (n: number, k: ClueTalk, waveDone = false): string[] =>
@@ -1040,12 +1055,12 @@ export const S = {
             ? [`Pairs still below ${k.line}? Release the answer (Next clue). Close? Give them another lull.`]
             : [
                 "Point the room at each pair's live hint on the TV: it follows their settings as they change.",
-                "And the nudge: the differ gap can never be bigger than the three match gaps added together.",
+                "And the nudge: the different gap can never be bigger than the three same gaps added together.",
               ]
           : n === 2
             ? [
                 `The answer: settings ${k.matchGap} apart. ${k.planA}; ${k.planB}. Each player taps Use these settings.`,
-                `Three match gaps of ${k.matchGap} (${k.same} the same) and a differ gap of ${k.differGap} (${k.differ} different): ${k.rate}.`,
+                `Three same gaps of ${k.matchGap} (${k.same} the same) and a different gap of ${k.differGap} (${k.differ} different): ${k.rate}.`,
               ]
             : [],
       resolution: ["Ask each player to tell their partner what they were thinking during the storm.", "Give it a minute."],
@@ -1099,7 +1114,7 @@ export const S = {
       waveNext: (wave: number) => `Wave ${wave} · waiting for the next round`,
       wavePassed: (wave: number) => `Wave ${wave} · the wave has passed`,
       ceiling: "Engineering report",
-      tool: "The Entanglement Tool",
+      tool: "The crystals",
       resolution: "The storm passes",
       debrief: "Incident report",
     },

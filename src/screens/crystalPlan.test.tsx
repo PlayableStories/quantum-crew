@@ -52,7 +52,7 @@ describe("the crystal plan card", () => {
     expect(markup.match(/<select/g)).toHaveLength(2);
     expect(markup).toContain(esc(S.event.crystalPlan.partnerHead("Bo")));
     expect(markup).toContain(esc(S.event.clues.liveRate("75%")));
-    expect(markup).toContain(esc(S.event.clues.hint("A HOT · B HOT", "0°", "0%", "differ")));
+    expect(markup).toContain(esc(S.event.clues.hint("A HOT · B HOT", "0°", "0%", "differ", "HOT", "HOT")));
     expect(markup).toContain('class="fan"');
     expect(markup).toContain(`>${S.event.clues.chip(1)}</button>`);
   });
@@ -63,7 +63,7 @@ describe("the crystal plan card", () => {
     seat(s);
     const markup = html();
     expect(s.stability.act3.rounds).toBe(0);
-    expect(markup).not.toContain(esc(S.event.clues.hint("A HOT · B HOT", "0°", "0%", "differ")));
+    expect(markup).not.toContain(esc(S.event.clues.hint("A HOT · B HOT", "0°", "0%", "differ", "HOT", "HOT")));
     expect(markup).toContain("Your weakest case: A COOL · B HOT");
   });
 
@@ -106,7 +106,7 @@ describe("the fan, the rule and the clues", () => {
     expect(at(S.event.crystalRule.coin)).toBeLessThan(at(S.event.crystalRule.closer));
     expect(at(S.event.crystalRule.closer)).toBeLessThan(markup.indexOf("<table"));
     expect(markup.indexOf("</table>")).toBeLessThan(at(S.event.crystalRule.follow));
-    expect(markup).toContain(esc(S.event.crystalRule.fold("180°", "90°", "0°", "157.5°", "22.5°")));
+    expect(markup).toContain(esc(S.event.crystalRule.fold("180°", "90°", "157.5°", "−22.5°")));
   });
 
   it("the rule and clue copy has no hard-coded percentages", () => {
@@ -120,7 +120,7 @@ describe("the fan, the rule and the clues", () => {
   it("clue 1 = the hint and the nudge; clue 2 = the answer (computed), its fan and the player's own row", () => {
     const plans = { a: DEFAULT_TUNING, b: DEFAULT_TUNING };
     const one = renderToString(<ClueList clue={1} pairs={[{ id: 1, plans }]} table="A" onUse={() => {}} />);
-    expect(one).toContain(esc(S.event.clues.hint("A HOT · B HOT", "0°", "0%", "differ")));
+    expect(one).toContain(esc(S.event.clues.hint("A HOT · B HOT", "0°", "0%", "differ", "HOT", "HOT")));
     expect(one).toContain(esc(S.event.clues.nudge));
     expect(one).not.toContain(S.event.clues.titles[1]!);
     const two = renderToString(<ClueList clue={2} pairs={[{ id: 1, plans }]} table="B" onUse={() => {}} />);
@@ -131,7 +131,7 @@ describe("the fan, the rule and the clues", () => {
     expect(answerText()).toContain("22.5°");
     expect(answerText()).toContain("67.5°");
     expect(answerText()).toContain("85.4%");
-    expect(answerText()).toContain(S.event.clues.sameSetting("157.5°", "-22.5°"));
+    expect(answerText()).toContain(S.event.clues.sameSetting("157.5°", "−22.5°"));
   });
 });
 
