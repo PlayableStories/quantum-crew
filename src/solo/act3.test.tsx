@@ -147,6 +147,7 @@ describe("debrief", () => {
     toDebrief();
     s().setDebriefStep(S.debrief.steps.length - 1);
     for (const markup of [html(), renderToString(<Credits />)]) {
+      expect(markup).toContain(S.credits.studio);
       expect(markup).toContain(S.credits.lead);
       expect(markup).toContain(S.credits.how);
       expect(markup).not.toContain('class="assets"');

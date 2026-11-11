@@ -523,6 +523,7 @@ export const S = {
 
   credits: {
     title: "Credits",
+    studio: "Designed and Made by Into StoryMode",
     lead: "Made for Moth Hack 2026 (FQxI Challenge) with Moth Quantum Atlas engines.",
     simulated:
       "The entangled pair in the game is simulated in your browser with the exact quantum probabilities. The station art, the tool reveal and the sounds come from Atlas engines.",
