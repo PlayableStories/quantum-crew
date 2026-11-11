@@ -714,8 +714,8 @@ export function TvDebrief({ state, onCommand }: { state: RoomState; onCommand: (
   );
 }
 
-/** The QR code and the printed link come from the same `url`, so they always match. */
-/** The QR code and the printed link come from one `url`. In the lobby (`big`), when the laptop has other addresses,
+/** The QR code and the printed link come from one `url` (the QR has it in full; the printed link, for typing, is its
+ *  address and /play, without the room). In the lobby (`big`), when the laptop has other addresses,
  *  "Not working? Try:" offers each as a button; one click makes it the join address. */
 export function JoinPanel({
   url,
@@ -741,7 +741,9 @@ export function JoinPanel({
         <p className="tv__code">
           <span className="muted">{S.tv.code}</span> {code}
         </p>
-        {big && <p className="muted small tv__join-link">{S.tv.joinAt(url.replace(/^https?:\/\//, ""))}</p>}
+        {/* For typing: the scheme included (without it Safari tries https:// first, which a laptop can't serve), the room
+            left out (/play asks for the code, shown just above). The QR code carries the full link. */}
+        {big && <p className="muted small tv__join-link">{S.tv.joinAt(url.split("?")[0]!)}</p>}
         {big && alternatives.length > 0 && (
           <p className="small tv__join-other">
             <span className="muted">{S.tv.tryOther}</span>{" "}

@@ -591,7 +591,10 @@ during a session, because a restart ends every room. The facilitator's checklist
 [`docs/facilitator.md`](docs/facilitator.md).
 
 **The join address.** The TV's QR code and printed link are built from one address, chosen in this order:
-1. `PUBLIC_URL` on the server, if set (e.g. `PUBLIC_URL=https://crew.example.org`);
+1. `PUBLIC_URL` on the server, if set (e.g. `PUBLIC_URL=https://crew.example.org`). Write it with `http://` or
+   `https://`: a QR code without one reads as plain text on many phones. If it's missing, the server adds `http://`
+   for a local address (an IP, `localhost`, a `.local` name or anything with a port) and `https://` otherwise, and
+   prints a warning saying which;
 2. the address the TV page itself was opened at, unless that is `localhost`, since phones can reach it too;
 3. the laptop's own network (LAN) address, which the server detects, when the TV is open at `localhost`;
 4. otherwise the TV shows a warning: its link only works on this computer.

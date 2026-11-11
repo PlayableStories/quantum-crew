@@ -7,7 +7,7 @@ import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { HEALTH_PATH, STATION_INFO_PATH } from "../src/shared/protocol.ts";
 import { attachStation } from "./attach.ts";
-import { stationInfo } from "./joinInfo.ts";
+import { normalizePublicUrl, stationInfo } from "./joinInfo.ts";
 
 const DIST = fileURLToPath(new URL("../dist/", import.meta.url));
 const PORT = Number(process.env.PORT ?? 8787);
@@ -65,6 +65,9 @@ server.listen(PORT, () => {
   // Every address, the one the TV will use first (see server/joinInfo.ts for the ranking).
   const [best, ...others] = info.lan.map((a) => `${a.url} (${a.iface})`);
   if (info.publicUrl) console.log(`Phones join at: ${info.publicUrl} (PUBLIC_URL)`);
+  // A QR code needs the scheme to open as a link; joinInfo added one, so say which, in case it's the wrong one.
+  if (normalizePublicUrl(process.env.PUBLIC_URL).fixed)
+    console.warn(`PUBLIC_URL has no http:// or https://, so the QR code uses ${info.publicUrl}. Write it in full if that's wrong.`);
   else if (best) console.log(`Phones join at: ${best}`);
   else console.log("No network address found: phones can't reach this laptop.");
   if (others.length) console.log(`Also on: ${others.join("  ·  ")}`);
