@@ -266,13 +266,18 @@ export function humanWithCora(pair: Pick<PairInfo, "a" | "b">): HumanWithCora {
 
 /** Clue 1 for one pair, in words: found it, or its weakest case and which way to move. `tv` = the TV lull's list form
  *  (the wave done's cards use `tvHint`). */
-export function hintText(plans: LockedPlans, tv = false, human: HumanWithCora = null): string {
+/** `dense` (the TV's lull with five or six pairs): one short line, the case and which way to move. */
+export function hintText(plans: LockedPlans, tv = false, human: HumanWithCora = null, dense = false): string {
   const h = clueHint(plans);
   const C = S.event.clues;
   if (h.kind === "none") return "";
   if (h.kind === "found") return C.foundIt(whole(SURVIVAL_THRESHOLD));
   const w = h.weakest;
   const args = [caseName(w), formatDeg(w.gap), whole(w.pWin), w.need] as const;
+  if (dense)
+    return human
+      ? C.denseCoraHint(human.name, caseName(w), w.need, S.light[moverFor(w, human.table)])
+      : C.denseHint(caseName(w), w.need);
   if (human) {
     const mine = S.light[moverFor(w, human.table)];
     return tv ? C.coraListHint(human.name, ...args, mine) : C.coraHint(...args, mine);
@@ -334,6 +339,7 @@ export function ClueList({
   className = "",
   titlesInline = false,
   tv = false,
+  dense = false,
   table,
   onUse,
 }: {
@@ -344,6 +350,8 @@ export function ClueList({
   /** The TV: every clue's title on one line (the latest marked), then the latest clue in full. */
   titlesInline?: boolean;
   tv?: boolean;
+  /** The TV with five or six pairs: one short hint line per pair. */
+  dense?: boolean;
   /** A phone: the player's table (their row of the answer) and the button's action. */
   table?: Table;
   onUse?: (t: TuningConfig) => void;
@@ -371,7 +379,7 @@ export function ClueList({
                     )}
                     <strong>: </strong>
                     {h.kind === "found" && "✓ "}
-                    {hintText(p.plans, true, p.human ?? null)}
+                    {hintText(p.plans, true, p.human ?? null, dense)}
                   </li>
                 );
               })}

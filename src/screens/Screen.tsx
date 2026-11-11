@@ -23,6 +23,7 @@ import { RingDiagram } from "../components/RingDiagram.tsx";
 import {
   OPTIMAL_TUNING,
   SURVIVAL_THRESHOLD,
+  classicalCases,
   classicalExpectedWinRate,
   exactOpenRates,
   quantumExpectedWinRate,
@@ -52,6 +53,7 @@ import { DEFAULT_TUNING } from "../config.ts";
 import { fetchStationInfo, joinUrl, remoteUrl, loadChosenAddress, pickJoinOrigin, saveChosenAddress } from "../net/joinOrigin.ts";
 import { roundIdOf, type Speed, type HostCommand, type PairInfo, type RateSummary, type RoomState, type RoundOutcome, type StationInfo, type JoinAddress } from "../shared/protocol.ts";
 import { S } from "../strings.ts";
+import { casesClass, casesView, pairDensity, pairsClass } from "./tvDensity.ts";
 
 const rate = (r: RateSummary) => (r.rounds ? r.wins / r.rounds : null);
 
@@ -366,10 +368,11 @@ function StormPanel({ localDeadline, rate: value }: { localDeadline: number | nu
 /** After an Act II wave: each pair's locked plans, case by case (exact), with the true rate, this wave's score and,
  *  when the wave beat 80% but the plan can't, the luck line. */
 export function WaveCases({ state }: { state: RoomState }) {
+  const compact = casesView(state.pairs.length) === "compact";
   return (
-    <div className={`tv__cases tv__cases--${Math.min(state.pairs.length, 4)}`}>
+    <div className={`tv__cases ${casesClass(state.pairs.length)}`}>
       <p className="muted tv__cases-head">
-        {S.readout.casesHead} · {S.event.casesOrder}
+        {compact ? S.event.compact.head : `${S.readout.casesHead} · ${S.event.casesOrder}`}
       </p>
       {state.pairs.map((pair) => {
         if (!pair.locked) return null;
@@ -377,6 +380,31 @@ export function WaveCases({ state }: { state: RoomState }) {
         const waveRate = wave && wave.rounds ? wave.wins / wave.rounds : null;
         const trueRate = classicalExpectedWinRate(pair.locked.a, pair.locked.b);
         const lucky = waveRate !== null && waveRate >= SURVIVAL_THRESHOLD && trueRate < SURVIVAL_THRESHOLD;
+        // Five or six pairs: one compact row (the plans, the true rate, the case(s) the plans lose, the wave).
+        if (compact) {
+          const loses = classicalCases(pair.locked.a, pair.locked.b)
+            .filter((c) => !c.win)
+            .map((c) => caseName(c.x, c.y));
+          return (
+            <div key={pair.id} className="panel tv__pair-row">
+              <p className="kicker">
+                {S.tv.pair(pair.id)} ·{" "}
+                {S.event.pairPlans(
+                  pair.a.name,
+                  S.plans.short[planId(pair.locked.a)]!,
+                  pair.b.name,
+                  S.plans.short[planId(pair.locked.b)]!,
+                )}
+              </p>
+              <p className="tv__pair-total">
+                <strong>{S.readout.caseTotal(Math.round(trueRate * 4), whole(trueRate))}</strong>
+                {loses.length > 0 && <span className="tv__pair-hint"> · {S.event.compact.loses(loses.join(", "))}</span>}
+                {wave && <span className="muted"> · {S.event.waveHeld(wave.wins, wave.rounds)}</span>}
+              </p>
+              {lucky && <p className="tv__luck">{S.event.lucky(whole(trueRate))}</p>}
+            </div>
+          );
+        }
         return (
           <div key={pair.id} className="panel stack tv__pair-cases">
             <p className="kicker">
@@ -403,6 +431,9 @@ export function WaveCases({ state }: { state: RoomState }) {
 
 /** Exact rates are whole numbers (25%, 50%, 75%, 100%). */
 const whole = (r: number) => `${Math.round(r * 100)}%`;
+
+/** A case as its card reads: "HOT · HOT" (Table A's sensor first). */
+const caseName = (x: 0 | 1, y: 0 | 1) => `${S.light[x]} · ${S.light[y]}`;
 
 /** The engineering report: the 4×4 board at exact rates, every pairing the crew played marked as tried and
  *  engineering's corner mark on the rest. The same copy as solo, which reads as plural for a crew. */
@@ -515,7 +546,8 @@ export function CrystalLull({ state }: { state: RoomState }) {
           <ClueList
             clue={state.clue}
             pairs={state.pairs.map((p) => ({ id: p.id, plans: p.dials, human: humanWithCora(p), ready: p }))}
-            className="clues--tv"
+            className={`clues--tv ${pairDensity(state.pairs.length) === "dense" ? "clues--dense" : ""}`}
+            dense={pairDensity(state.pairs.length) === "dense"}
             titlesInline
             tv
           />
@@ -533,8 +565,9 @@ export function CrystalWave({ state }: { state: RoomState }) {
   const dials = (t: TuningConfig) => W.plan(formatDeg(t.greenDeg), formatDeg(t.redDeg));
   const crew = state.crewDialsRate;
   const followed = state.act3Followed;
+  const compact = casesView(state.pairs.length) === "compact";
   return (
-    <div className={`tv__cases tv__cases--${Math.min(state.pairs.length, 4)}`}>
+    <div className={`tv__cases ${casesClass(state.pairs.length)}`}>
       <p className={`tv__crew-line ${state.stationSaved ? "tv__crew-line--saved" : ""}`}>
         {crew !== null && <strong>{crew >= SURVIVAL_THRESHOLD ? W.saved(pct(crew)) : W.notSaved(pct(crew))}</strong>}
         {followed && followed.of > 0 && <span className="muted"> · {W.crewFollowed(followed.n, followed.of)}</span>}
@@ -543,6 +576,7 @@ export function CrystalWave({ state }: { state: RoomState }) {
       {state.clue >= 2 && <p className="tv__answer-out">{answerOutText()}</p>}
       {/* What players can do now and the question, in one line (the full width belongs to the pairs' cases). */}
       <Explainer state={state} compact />
+      {compact && <p className="muted tv__cases-head">{S.event.compact.head}</p>}
       {state.pairs.map((pair) => {
         if (!pair.lockedDials) return null;
         const { a, b } = pair.lockedDials;
@@ -551,6 +585,23 @@ export function CrystalWave({ state }: { state: RoomState }) {
         const wave = pair.lastWave;
         // Clue 1 (before the answer): a pair below 80% gets its weakest case outlined and which way to move.
         const hint = state.clue === 1 && !holds ? weakestCase(a, b) : null;
+        const luck = wave && wave.rounds > 0 && wave.wins / wave.rounds >= SURVIVAL_THRESHOLD !== holds;
+        // Five or six pairs: one compact row (the settings, the true rate, found it or which way to move, the wave).
+        if (compact)
+          return (
+            <div key={pair.id} className={`panel tv__pair-row ${holds ? "tv__pair-cases--holds" : ""}`}>
+              <p className="kicker">
+                {S.tv.pair(pair.id)} · {W.pairPlans(pair.a.name, dials(a), pair.b.name, dials(b))}
+              </p>
+              <p className="tv__pair-total">
+                <strong>{S.readout.trueRate(pct(trueRate))}</strong>
+                {holds && <span className="tv__found"> · ✓ {W.foundIt}</span>}
+                {hint && <span className="tv__pair-hint"> · {S.event.clues.tvHint(caseName(hint.x, hint.y), hint.need)}</span>}
+                {wave && <span className="muted"> · {W.wave(wave.wins, wave.rounds)}</span>}
+              </p>
+              {luck && <p className="tv__luck">{holds ? W.luckyBelow(pct(trueRate)) : W.luckyAbove(pct(trueRate))}</p>}
+            </div>
+          );
         return (
           <div key={pair.id} className={`panel stack tv__pair-cases ${holds ? "tv__pair-cases--holds" : ""}`}>
             <p className="kicker">
@@ -561,11 +612,11 @@ export function CrystalWave({ state }: { state: RoomState }) {
               <strong>{S.readout.trueRate(pct(trueRate))}</strong>
               {holds && <span className="tv__found"> · ✓ {W.foundIt}</span>}
               {/* Clue 1: a pair not yet at 80% gets which way to move (its weakest case is outlined). */}
-              {hint && <span className="tv__pair-hint"> · {S.event.clues.tvHint(`${S.light[hint.x]} · ${S.light[hint.y]}`, hint.need)}</span>}
+              {hint && <span className="tv__pair-hint"> · {S.event.clues.tvHint(caseName(hint.x, hint.y), hint.need)}</span>}
               {wave && <span className="muted"> · {W.wave(wave.wins, wave.rounds)}</span>}
             </p>
             {/* The wave and the true rate disagree about 80%: luck, either way. */}
-            {wave && wave.rounds > 0 && wave.wins / wave.rounds >= SURVIVAL_THRESHOLD !== holds && (
+            {luck && (
               <p className="tv__luck">{holds ? W.luckyBelow(pct(trueRate)) : W.luckyAbove(pct(trueRate))}</p>
             )}
           </div>
@@ -757,9 +808,9 @@ function useQr(text: string): string | null {
 function Pairs({ state, lastResults }: { state: RoomState; lastResults: RoundOutcome[] | null }) {
   const unseated = state.players.filter((p) => p.pairId === null);
   if (state.pairs.length === 0 && unseated.length === 0) return <p className="muted">{S.tv.noPlayers}</p>;
-  // Three or four pairs: compact cards, two to a row, so the side column never scrolls.
+  // Three or more pairs: compact cards, two to a row (tighter from five), so the side column never scrolls.
   return (
-    <div className={`stack pairs ${state.pairs.length >= 3 ? "pairs--crowded" : ""}`}>
+    <div className={`stack pairs ${pairsClass(state.pairs.length)}`}>
       {state.pairs.map((pair) => (
         <PairCard key={pair.id} pair={pair} state={state} result={lastResults?.find((r) => r.pairId === pair.id) ?? null} />
       ))}
@@ -781,7 +832,7 @@ function PairCard({ pair, state, result }: { pair: PairInfo; state: RoomState; r
     const answered = state.phase === "round" && pair.answered[side];
     return (
       <span className={`seat ${connected(s.playerId) ? "" : "seat--off"} ${s.playerId === null ? "seat--bot" : ""}`}>
-        <CrewIcon table={side === "a" ? "A" : "B"} bot={s.playerId === null} size={28} />
+        <CrewIcon table={side === "a" ? "A" : "B"} bot={s.playerId === null} size={pairDensity(state.pairs.length) === "dense" ? 20 : 28} />
         <b>{side.toUpperCase()}</b>{" "}
         {/* An away player: CORA covers their seat until they rejoin. */}
         {s.playerId !== null && !connected(s.playerId) ? (

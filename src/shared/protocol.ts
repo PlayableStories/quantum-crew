@@ -130,7 +130,7 @@ export type RoomState = {
   players: PlayerInfo[];
   pairs: PairInfo[];
   stability: {
-    /** Win rate of the last ROLLING_WINDOW rounds across all pairs (null before any round). */
+    /** Win rate of the last MP_WAVE_SIZE rounds of every pair (null before any wave round). */
     rolling: number | null;
     act1: RateSummary;
     act2: RateSummary;

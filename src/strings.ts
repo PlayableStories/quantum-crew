@@ -1,6 +1,6 @@
 // All player-facing text in one place. Edit freely.
 // In-world copy only, up to the debrief: physics words (qubit, Bell, CHSH…) appear only in `debrief`.
-import { ACT1_ROUND_MS, ACT1_ROUNDS } from "./config.ts";
+import { ACT1_ROUND_MS, ACT1_ROUNDS, MP_WAVE_SIZE } from "./config.ts";
 import type { ClassicalStrategy, RoundResult } from "./shared/chsh.ts";
 import { HOT, roundCause } from "./shared/fiction.ts";
 import { answerPlanFor, planRate } from "./shared/crystalPlan.ts";
@@ -533,6 +533,17 @@ export const S = {
     waveHeld: (wins: number, total: number) => `This wave: ${wins} of ${total} held`,
     /** The TV's luck line, one line per pair: the wave beat 80%, the plan can't. */
     lucky: (pct: string) => `Above 80% by luck: this plan's true rate is ${pct}.`,
+    /** The TV after a wave with five or six pairs: one compact row per pair (each phone shows its pair's four cases). */
+    compact: {
+      head: "Each pair's four cases are on its phones.",
+      /** Act II: the case(s) the locked plans lose, as the cards read them ("HOT · HOT"). */
+      loses: (cases: string) => `loses ${cases}`,
+    },
+    /** A phone after a wave: its own pair's four cases (`a` reads first on each card). */
+    phoneCases: {
+      head: "Your pair, case by case",
+      order: (a: string, b: string) => `Each card: ${a} · ${b}`,
+    },
     /** The engineering report's board: Table A's plan (rows) × Table B's (columns). */
     board: {
       rows: "Table A",
@@ -618,6 +629,11 @@ export const S = {
         need === "same"
           ? `${caseName}, gap ${gap}, same ${pct}: bring closer.`
           : `${caseName}, gap ${gap}, differ ${pct}: move further apart.`,
+      /** The TV's lull list with five or six pairs (P6): one line per pair, the case and which way to move. */
+      denseHint: (caseName: string, need: "same" | "differ") =>
+        need === "same" ? `${caseName}: bring closer` : `${caseName}: move further apart`,
+      denseCoraHint: (name: string, caseName: string, need: "same" | "differ", mine: string) =>
+        need === "same" ? `${caseName}: ${name}, bring ${mine} closer` : `${caseName}: ${name}, move ${mine} further`,
       /** The TV's lull list for a pair with CORA: the player (`name`) moves their own setting. */
       coraListHint: (name: string, caseName: string, gap: string, pct: string, need: "same" | "differ", mine: string) =>
         need === "same"
@@ -853,7 +869,7 @@ export const S = {
     act1RoundOf: (round: number) => `Night shift · round ${round}/${ACT1_ROUNDS}`,
     batchHeld: (pct: string) => `${pct} of rounds held`,
     roundOf: (batch: number, round: number, size: number) => `Wave ${batch} · round ${round}/${size}`,
-    pooled: "Station stability · last 48 rounds",
+    pooled: `Station stability · last ${MP_WAVE_SIZE} rounds`,
     act1Pooled: "Night shift · every round so far",
     allTime: (act: number, pct: string, n: number) => `Act ${ROMAN[act]} so far: ${pct} of ${n} rounds`,
     timeouts: (n: number) => `${n} too slow`,

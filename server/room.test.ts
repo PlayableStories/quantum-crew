@@ -7,7 +7,7 @@ import {
   MP_ACT1_ROUND_MS,
   MP_RESULT_MS,
   MP_ROUND_MS,
-  ROLLING_WINDOW,
+  MAX_PAIRS,
   STORM_STATIC_MS,
   CORA_DELAY_MS,
   RELAXED_ACT1_ROUND_MS,
@@ -99,9 +99,39 @@ describe("rooms and pairing", () => {
     const t = setup();
     t.send("x", { type: "player:join", room: "ZZZZ", name: "Q", table: "A" });
     expect(t.last("x", "error")!.code).toBe("no-room");
-    for (let i = 0; i < 4; i++) t.join(`a${i}`, `A${i}`, "A");
-    t.join("a4", "A4", "A");
-    expect(t.last("a4", "error")!.code).toBe("table-full");
+    for (let i = 0; i < MAX_PAIRS; i++) t.join(`a${i}`, `A${i}`, "A");
+    t.join("a6", "A6", "A");
+    expect(t.last("a6", "error")!.code).toBe("table-full");
+    for (let i = 0; i < MAX_PAIRS; i++) t.join(`b${i}`, `B${i}`, "B");
+    t.join("b6", "B6", "B");
+    expect(t.last("b6", "error")!.code).toBe("table-full");
+    expect(t.roomState("tv").players).toHaveLength(2 * MAX_PAIRS);
+  });
+
+  it("seats up to six pairs, A1↔B1 … A6↔B6", () => {
+    expect(MAX_PAIRS).toBe(6);
+    const t = setup();
+    for (let i = 1; i <= MAX_PAIRS; i++) {
+      t.join(`a${i}`, `A${i}`, "A");
+      t.join(`b${i}`, `B${i}`, "B");
+    }
+    const { pairs } = t.roomState("tv");
+    expect(pairs.map((p) => [p.id, p.a.name, p.b.name])).toEqual(
+      Array.from({ length: MAX_PAIRS }, (_, i) => [i + 1, `A${i + 1}`, `B${i + 1}`]),
+    );
+    expect(pairs.every((p) => p.a.playerId !== null && p.b.playerId !== null)).toBe(true);
+  });
+
+  it("CORA fills the empty seat at every pair count", () => {
+    for (let n = 1; n <= MAX_PAIRS; n++) {
+      const t = setup();
+      for (let i = 1; i <= n; i++) t.join(`a${i}`, `A${i}`, "A");
+      for (let i = 1; i < n; i++) t.join(`b${i}`, `B${i}`, "B");
+      const { pairs } = t.roomState("tv");
+      expect(pairs).toHaveLength(n);
+      expect(pairs[n - 1]!.b).toEqual({ playerId: null, name: BOT_NAME });
+      expect(pairs.slice(0, -1).every((p) => p.b.playerId !== null)).toBe(true);
+    }
   });
 
   it("only the host can run the session", () => {
@@ -190,18 +220,24 @@ describe("Act II rounds", () => {
     expect(t.roomState("tv").stability.act2).toEqual({ rounds: 1, wins: 0, timeouts: 1 });
   });
 
-  it("pooled stability is a rolling window; ceiling and reset work", () => {
+  it("pooled stability is the last wave's worth of rounds for every pair; ceiling and reset work", () => {
     const t = setup();
     t.join("a1", "Ada", "A");
-    for (let b = 0; b < 7; b++) {
-      t.startWave();
-      t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
+    t.join("a2", "Cy", "A");
+    // Wave 1: Ada and Cy play clockwise (CORA too), so some rounds hold.
+    t.startWave();
+    for (let r = 0; r < MP_WAVE_SIZE; r++) {
+      for (const conn of ["a1", "a2"]) t.send(conn, { type: "player:valve", roundId: t.last(conn, "round:start")!.roundId, valve: 0 });
+      t.advance(MP_ROUND_MS + MP_RESULT_MS);
     }
+    expect(t.roomState("tv").stability.act2.wins).toBeGreaterThan(0);
+    // Wave 2: nobody answers. The gauge covers the last MP_WAVE_SIZE rounds of both pairs, so wave 1 has left it.
+    t.startWave();
+    t.advance((MP_ROUND_MS + MP_RESULT_MS) * MP_WAVE_SIZE);
     const s = t.roomState("tv");
-    expect(s.stability.act2.rounds).toBe(7 * MP_WAVE_SIZE);
-    expect(s.stability.rolling).toBe(0); // Ada never answered
-    expect(s.batchNo).toBe(7);
-    expect(7 * MP_WAVE_SIZE).toBeGreaterThan(ROLLING_WINDOW);
+    expect(s.stability.act2.rounds).toBe(2 * 2 * MP_WAVE_SIZE);
+    expect(s.stability.rolling).toBe(0);
+    expect(s.batchNo).toBe(2);
     t.host("revealCeiling");
     expect(t.roomState("tv")).toMatchObject({ phase: "ceiling", ceilingRevealed: true });
     t.startWave();
@@ -209,7 +245,7 @@ describe("Act II rounds", () => {
     t.host("reset");
     expect(t.roomState("tv")).toMatchObject({ phase: "lobby", batchNo: 0, ceilingRevealed: false });
     expect(t.roomState("tv").stability.act2.rounds).toBe(0);
-    expect(t.roomState("tv").players).toHaveLength(1);
+    expect(t.roomState("tv").players).toHaveLength(2);
   });
 
   it("players joining mid-batch are seated after it", () => {

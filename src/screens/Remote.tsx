@@ -16,6 +16,7 @@ import { S, type ClueTalk } from "../strings.ts";
 import { AutoToggle, enabledSteps, keyStep, stepLabel, stepWarn } from "./hostSteps.tsx";
 import { lullText } from "../components/ReadyTag.tsx";
 import { pairReady, readyPairs } from "../shared/ready.ts";
+import { pairDensity } from "./tvDensity.ts";
 
 export function Remote() {
   const { status, link, state, localDeadline, results, error, start, command } = useRemote();
@@ -77,7 +78,8 @@ export function RemotePanel({
   const title = act1 ? S.tv.act1Banner : S.tv.phase[state.phase];
 
   return (
-    <main className="remote">
+    // Five or six pairs (P6): the tighter spacing short phones use, so the room's list fits under the controls.
+    <main className={`remote ${pairDensity(state.pairs.length) === "dense" ? "remote--many" : ""}`}>
       <header className="remote__head">
         <p className="kicker">
           {S.remote.station(state.room)} {offline && `· ${S.event.reconnecting}`}
@@ -263,7 +265,7 @@ function RoomList({ state, lastResults }: { state: RoomState; lastResults: Round
     lines.push({ key: "aboard", text: S.remote.aboard(state.players.length, state.pairs.length) });
   } else if (state.phase === "strategy") {
     // R1: the talking clock beside the heading, then each pair's state (planning, one ready, both) as wrapping chips,
-    // so four pairs fit on a phone.
+    // so six pairs fit on a phone (two to a line).
     return (
       <section className="panel remote__room" aria-live="polite">
         <div className="remote__room-head">

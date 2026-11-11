@@ -107,7 +107,7 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   Event: facilitator-paced (see "Pacing" below): manual rounds have no timer; auto at Relaxed uses `RELAXED_*`, at
   Brisk the original `MP_ACT1_ROUND_MS` 8 s / `MP_ROUND_MS` 3.5 s (Act III too since E3c; `MP_ACT3_ROUND_MS` is gone). Lulls are untimed (the facilitator
   starts the wave); waves are `MP_WAVE_SIZE` 8 rounds; a round resolves early once every seat answered; joiners
-  mid-wave are seated after it; max 4 per table; empty or away seat = CORA. The join address follows E0's order and Phase F's
+  mid-wave are seated after it; max 6 per table (`MAX_PAIRS`, since P6); empty or away seat = CORA. The join address follows E0's order and Phase F's
   ranking. Act III: the room measures every crystal at round start (since E3c); tunings snap to the 8 settings; the tool
   unlocks only after the ceiling reveal; the debrief step (E3a) and the clue level (E3c) are the room's;
   per-seat marginals are sent only in the debrief phase (plus a pooled "whole crew" row).
@@ -159,11 +159,11 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   - **Phones:** the lull shows the partner's choice (`S.event.partnerPlan`); a wave shows the plan badge (U1;
     `S.event.agreed` is gone); Results show the cause, `S.event.why` (the why line; "too slow" names whose pump) and the ring.
   - **TV:** pair cards show the cause in every act (in place of the mini-meter while it shows; no meter before a
-    round); three or four pairs are compact, two to a row (`.pairs--crowded`). Wave done (Act II) is `WaveCases`:
+    round); three or four pairs are compact, two to a row (`.pairs--crowded`; P6 adds `.pairs--dense` from five). Wave done (Act II) is `WaveCases`:
     full width (`.tv--cases` hides the side), each pair's `FourCases` in one row, the total and wave score on one
     line, `S.event.lucky` when the wave beat 80% and the plan can't (above only). The report is `CeilingPanel`:
     big 75%, `S.ceiling.engineering` for the crew, `S.ceiling.truth`, `PlanBoard` with `labels` (`S.event.board`).
-  - **Shots:** six crowd players over WebSockets make four pairs; a worst-case check (every pair lucky) after wave
+  - **Shots:** crowd players over WebSockets fill the room (four pairs then; six since P6); a worst-case check (every pair lucky) after wave
     done. Still cut at 1280×720, for E2b: the tool and debrief steps 1–3.
 - **Event E2b (2026-11-01, Act III at parity; MEASURE, the dials and the hint were replaced in E3c):**
   - **Room:** MEASURE reads the crystal (`PairRound.crystal`) and sends `round:measured { crystal }`; the pump is a
@@ -193,7 +193,7 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     "Not working? Try:" buttons, and the TV remembers the choice (`loadChosenAddress` / `saveChosenAddress`,
     localStorage). `pnpm start` logs every address, the chosen one first.
   - **Debrief fit:** the TV debrief is full width (`.tv--wide` hides the side) with the explanation beside the
-    step's numbers (`.tv__debrief-body`); Back / Next sit at the bottom right. Every step fits 1280×720 with four pairs.
+    step's numbers (`.tv__debrief-body`); Back / Next sit at the bottom right. Every step fits 1280×720 with four pairs (six since P6).
   - **Docs:** stale event-mode statements fixed; the README has a Render free-tier section; the facilitator's
     pre-flight has "No deploys on event days".
 - **Event E3a (2026-11-02, the ending and the incident report):**
@@ -416,6 +416,32 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     while the row is hidden.
   - **Shots:** once the remote pairs, `shots.ts` presses the remote's buttons (`controls()`); the speed menu is captured
     on the remote; new `join-sheet` capture.
+- **P6 (2026-11-11, up to six pairs; event mode only, solo unchanged):** `MAX_PAIRS = 6` (12 players; a 7th at a
+  table gets `table-full`). No maths, scoring, flow or pacing change.
+  - **Gauge:** `ROLLING_WINDOW` is gone; the room keeps the last `pairs × MP_WAVE_SIZE` pair-rounds (= the last 8 rounds
+    of every pair), and `S.tv.pooled` says "last 8 rounds" from `MP_WAVE_SIZE`. Chosen over "this wave", which would
+    blank at each wave start and swing (and fire the alarm cue) on its first rounds.
+  - **`src/screens/tvDensity.ts`** (tested): `pairDensity` roomy 1–2 / crowded 3–4 / dense 5–6 (`pairsClass`), and
+    `casesView` full up to 4 / compact from 5 (`casesClass`). Dense pair cards: tighter, a 20px icon, a smaller join
+    panel in the lobby (`.tv__side:has(.pairs--dense)`). Widening the side column was tried and dropped: it shrank the
+    briefing's ring text under 12px.
+  - **Wave done, compact (5–6):** `.tv__cases--compact`, one `.tv__pair-row` per pair, two to a row: Act II the true
+    rate + `S.event.compact.loses` (the case(s) the plans lose, from `classicalCases`); Act III the true rate + found
+    it or `tvHint` (clue 1); wave and luck lines in both; `S.event.compact.head`. Parts wrap whole (flex row).
+  - **Phones:** after every wave (any room size) a phone shows its pair's four cases (`.phone-cases`: `FourCases` /
+    `CrystalCases gaps` with `S.event.phoneCases.order(a, b)`); in Act III the cases' total is hidden (the hint carries
+    the rate) and on short phones the title too.
+  - **Act III lull, 5–6 pairs:** `ClueList dense` → `hintText(…, dense)` = `S.event.clues.denseHint` /
+    `denseCoraHint` (the case and which way to move, one line each; `.clues--dense`).
+  - **Remote:** `.remote--many` from five pairs (the short-phone spacing); every remote screen fits 390×844 with six
+    pairs. At 375×667 several still scroll (up to 1.21; up to 1.18 on main with four), not required.
+  - **Report:** step 1 was clipped at 1280×720 (also before P6): at `max-height: 800px` the body is 1.4fr | 1fr with
+    tighter lines. `pnpm shots` now checks `.tv__debrief-body` for clipping, and its worst case covers compact rows.
+  - **Scripts:** `pnpm session` seats 12 (`PAIRS = MAX_PAIRS`) and turns the 13th away; `pnpm shots --event`'s crowd is
+    10 players (6 pairs). Tests: `server/room.test.ts` (A6↔B6, CORA at every count, table-full on both tables, the
+    derived window), `src/screens/sixPairs.test.tsx`, `tvDensity.test.ts`.
+  - **Docs:** session length about 60 minutes for 12 (an estimate, to confirm in a playtest); larger groups talk
+    longer in the lulls; watch the ready count.
 - **Responsive solo (2026-10-17, Phase 1 of 4):**
   - Every solo screen renders through `components/ScreenLayout.tsx`, which has four slots: `header`, main
     (children), `side` and `actions`.

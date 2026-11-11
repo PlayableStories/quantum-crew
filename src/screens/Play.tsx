@@ -22,6 +22,8 @@ import { RadioLine } from "../components/RadioLine.tsx";
 import { RingDiagram } from "../components/RingDiagram.tsx";
 import { PlanBadge } from "../components/PlanBadge.tsx";
 import { PlanBox } from "../components/PlanBox.tsx";
+import { FourCases } from "../components/FourCases.tsx";
+import { CrystalCases } from "../components/CrystalCases.tsx";
 import { RuleChip } from "../components/RuleChip.tsx";
 import { Rule } from "../components/Rule.tsx";
 import {
@@ -280,7 +282,7 @@ function InRoom() {
     !round &&
     !showsResult &&
     !["briefing", "storm", "tool", "strategy"].includes(state.phase) &&
-    !(state.phase === "batchDone" && state.act === 3) &&
+    !(state.phase === "batchDone" && (state.act === 3 || !!pair?.locked)) &&
     !(["ceiling", "resolution"].includes(state.phase) && partner) &&
     !(state.phase === "debrief" && pair && partner);
 
@@ -449,8 +451,26 @@ function InRoom() {
       {/* The incident report: this pair's own numbers to take away. */}
       {!round && state.phase === "debrief" && pair && partner && <PairNumbers pair={pair} partner={partner.name} />}
 
+      {/* After an Act II wave: the pair's locked plans, case by case (the TV shows them too up to four pairs; from five
+          it shows one compact row per pair, so each pair reads its own cases here). */}
+      {!round && state.phase === "batchDone" && state.act === 2 && pair?.locked && (
+        <div className="panel phone-cases">
+          <FourCases plan={pair.locked.a} crewPlan={pair.locked.b} order={S.event.phoneCases.order(pair.a.name, pair.b.name)} />
+        </div>
+      )}
       {!round && state.phase === "batchDone" && state.act === 3 && (
         <>
+          {pair?.lockedDials && (
+            <div className="panel phone-cases">
+              <CrystalCases
+                title={S.event.phoneCases.head}
+                tuning={pair.lockedDials.a}
+                crew={pair.lockedDials.b}
+                order={S.event.phoneCases.order(pair.a.name, pair.b.name)}
+                gaps
+              />
+            </div>
+          )}
           {act3Chips}
           {hint && <ClueHint plans={livePlans} human={human} />}
           {answerRow}

@@ -4904,3 +4904,154 @@ kbd {
 .remote__room-head .kicker {
   margin: 0;
 }
+
+/* ---------- P6: five or six pairs (src/screens/tvDensity.ts) ---------- */
+
+.pairs--dense {
+  gap: 6px 8px;
+}
+
+.pairs--dense .pair {
+  gap: 2px;
+  padding: 6px 8px;
+  font-size: 0.8em;
+}
+
+.pairs--dense .pair__cause,
+.pairs--dense .pair__waiting,
+.pairs--dense .pair__ready {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The lobby with five or six pairs: a smaller QR, code and padding, so three rows of pair cards fit beside it. */
+.tv__side:has(.pairs--dense) .tv__join--big .tv__qr {
+  width: clamp(110px, 9vw, 200px);
+}
+
+.tv__side:has(.pairs--dense) .tv__join--big {
+  padding-block: 12px;
+}
+
+.tv__side:has(.pairs--dense) .tv__join--big .stack {
+  gap: 4px;
+}
+
+.tv__side:has(.pairs--dense) .tv__join--big .tv__code {
+  font-size: clamp(1.6rem, 3vw, 3.6rem);
+}
+
+/* Wave done with five or six pairs: one compact row per pair, two to a row. */
+.tv__cases--compact {
+  grid-template-columns: 1fr 1fr;
+}
+
+.tv__pair-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 14px;
+  font-size: 1.15em;
+}
+
+/* Wave done's compact rows have the room: the hint reads at the row's size. */
+.tv__pair-row .tv__pair-total,
+.tv__pair-row .tv__pair-hint {
+  font-size: 1em;
+}
+
+.tv__pair-row p {
+  margin: 0;
+}
+
+.tv__pair-row .kicker {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The Act III lull with five or six pairs: one line per pair's hint. */
+.clues--dense .clues__pairs {
+  gap: 2px;
+  font-size: 0.85em;
+}
+
+.clues--dense .clues__pairs li {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A phone after a wave: its pair's four cases (P6). In Act III the hint below leads with the pair's rate, so the
+   cases' own total line is left out (one place for each fact). */
+.phone-cases {
+  padding: 10px 12px;
+}
+
+.phone-cases .cases {
+  gap: 6px;
+}
+
+.phone-cases .cases--crystal .cases__total {
+  display: none;
+}
+
+.phone-cases .case {
+  padding: 4px 8px;
+}
+
+/* Short phones (375×667): the title steps aside; "Each card: Ada · Bo" still says what the cards are. */
+@media (max-height: 700px) {
+  .phone-cases .cases--crystal > .kicker {
+    display: none;
+  }
+}
+
+/* Each part of a compact row (the rate, the hint, the wave) wraps as a whole, between parts. */
+.tv__pair-row .tv__pair-total {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.35em;
+}
+
+.tv__pair-row .tv__pair-total > * {
+  white-space: nowrap;
+}
+
+/* The incident report at 1280×720: the explanation column a little wider and tighter, so step 1's last paragraph
+   isn't clipped (the body clips to keep Back / Next clear). */
+@media (max-height: 800px) {
+  .tv__debrief-body {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  }
+
+  .tv__debrief .tv__line {
+    font-size: clamp(0.95rem, 1.2vw, 1.55rem);
+    line-height: 1.3;
+  }
+}
+
+/* 1280×720: compact rows at the TV's own size, so each stays at two or three lines. */
+@media (max-height: 800px) {
+  .tv__pair-row {
+    font-size: 1em;
+    padding: 8px 12px;
+  }
+}
+
+/* The remote with five or six pairs: the short-phone spacing at every height, so six pairs fit under the controls. */
+.remote--many {
+  gap: 8px;
+}
+
+.remote--many .remote__talk ul,
+.remote--many .remote__room ul {
+  gap: 3px;
+}
+
+.remote--many .remote__talk,
+.remote--many .remote__room {
+  padding-block: 8px;
+}

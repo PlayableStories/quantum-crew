@@ -11,7 +11,6 @@ import {
   DEFAULT_TUNING,
   MAX_PAIRS,
   MP_WAVE_SIZE,
-  ROLLING_WINDOW,
   START_CONFIRM_MS,
   STORM_STATIC_MS,
 } from "../src/config.ts";
@@ -634,7 +633,10 @@ export function createRoom(code: string, deps: RoomDeps) {
       toPlayer(pair.a, msg);
       toPlayer(pair.b, msg);
     }
-    rolling = rolling.slice(-ROLLING_WINDOW);
+    // DECISION (P6): the station gauge is the last MP_WAVE_SIZE rounds of every pair (pairs × wave size pair-rounds),
+    // so its label holds at any pair count and it moves smoothly across waves (a "this wave" gauge would blank at
+    // each wave start and swing on its first rounds).
+    rolling = rolling.slice(-Math.max(1, pairs.length) * MP_WAVE_SIZE);
     toHost({ type: "round:results", roundId: live.id, results });
     phase = "roundResult";
     // Manual: the result stays until the facilitator presses Next. Auto: the speed's timer moves on.

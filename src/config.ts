@@ -62,7 +62,6 @@ export const CORA_DELAY_MS: readonly [number, number] = [1200, 2600];
 export const START_CONFIRM_MS = 5000;
 /** No longer used by the room: the lull lasts until the facilitator starts the wave (the TV shows how long). */
 export const STRATEGY_MS = 45_000;
-/** Pooled stability on the TV is the win rate of the last this-many rounds across all pairs. */
-export const ROLLING_WINDOW = 48;
-/** Up to 4 pairs: at most 4 players per table. */
-export const MAX_PAIRS = 4;
+/** Up to 6 pairs (12 players): at most 6 players per table. (The TV's station gauge covers the last MP_WAVE_SIZE
+ *  rounds of every pair, so it means the same at any pair count: see server/room.ts.) */
+export const MAX_PAIRS = 6;
