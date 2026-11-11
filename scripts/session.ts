@@ -3,17 +3,17 @@
 // and the same every run. `pnpm smoke` covers the real WebSocket; this covers the session from lobby to debrief.
 // Pacing: Act I and each act's first wave are manual (the script presses Next on each result; it closes one round
 // early with Next and double-presses Next once, which must advance once); later waves run in auto at Relaxed.
-//   four pairs join and a 9th player is turned away; the night shift (briefing, Act I by the rule over the radio, with
+//   six pairs (MAX_PAIRS) join and a 13th player is turned away; the night shift (briefing, Act I by the rule over the radio, with
 //   one player changing their mind; every round held) and the storm; a player drops out mid-wave and rejoins their seat; the TV
 //   disconnects and resumes with its token; the lull's ready step (R1: everyone ready, one plan change clears it,
 //   the remote starts with one pair planning through "Start anyway?", a same-step press ignored); one Act II wave; the engineering report; the tool (the rule, no clue);
 //   Act III (the room measures every crystal at round start, so no phone ever sends player:measure; each sets the
 //   pump its crystal suggests; E3e's rhythm): the first lull opens with clue 1 (each pair's live hint: both HOT at 0°;
 //   Ada's pair moves to the answer and gets "found it" before any wave; the answer is refused before a wave), wave 1
-//   (every pair ready first, so one press starts it; 77.6%, not saved), the remote releases the answer (Next clue: 3 pairs not yet; a double press moves once), every
+//   (every pair ready first, so one press starts it; 76.7%, not saved), the remote releases the answer (Next clue: 5 pairs not yet; a double press moves once), every
 //   player uses their own row, and wave 2 averages 85.4%, which saves the
 //   station; the storm passes (saved) and the incident report. Then a reset and a short not-saved session (75%).
-import { ACT1_ROUNDS, MP_WAVE_SIZE, MP_RESULT_MS, MP_ROUND_MS, RELAXED_RESULT_MS, STORM_STATIC_MS } from "../src/config.ts";
+import { ACT1_ROUNDS, MAX_PAIRS, MP_WAVE_SIZE, MP_RESULT_MS, MP_ROUND_MS, RELAXED_RESULT_MS, STORM_STATIC_MS } from "../src/config.ts";
 import { QUANTUM_LIMIT } from "../src/shared/chsh.ts";
 import { answerPlanFor, clueHint, pairsNotYet } from "../src/shared/crystalPlan.ts";
 import { S } from "../src/strings.ts";
@@ -91,17 +91,23 @@ const seats = [
   ["Flo", "B"],
   ["Gus", "A"],
   ["Hal", "B"],
+  ["Ivy", "A"],
+  ["Jo", "B"],
+  ["Kit", "A"],
+  ["Lu", "B"],
 ] as const;
+/** A full room: every seat taken (MAX_PAIRS pairs). */
+const PAIRS = MAX_PAIRS;
 const phones = new Map<string, { name: string; table: "A" | "B"; online: boolean }>();
 for (const [i, [name, table]] of seats.entries()) {
   const conn = `phone${i}`;
   send(conn, { type: "player:join", room, name, table });
   phones.set(conn, { name, table, online: true });
 }
-check(state().pairs.length === 4 && state().players.length === 8, `four pairs seated (${state().pairs.length} pairs)`);
+check(state().pairs.length === PAIRS && state().players.length === 2 * PAIRS, `${PAIRS} pairs seated (${state().pairs.length} pairs)`);
 
-send("late", { type: "player:join", room, name: "Ivy", table: "A" });
-check(last("late", "error")?.code === "table-full", "a 9th player is turned away (table full)");
+send("late", { type: "player:join", room, name: "Max", table: "A" });
+check(last("late", "error")?.code === "table-full", `player ${2 * PAIRS + 1} is turned away (table full)`);
 
 const answered = new Set<string>();
 /** Act I: the pump each phone last sent per round. */
@@ -179,7 +185,7 @@ const heard = msgs("phone1").filter((m) => m.type === "round:partner" && m.round
 check(heard.length === 2 && sent.get("phone1:act1-2") !== undefined, "Bo heard Ada's change over the radio and followed");
 check(nightOk && changed, `Act I: ${ACT1_ROUNDS} rounds with the radio working, and Ada changed her mind once`);
 const act1 = state().stability.act1;
-check(act1.rounds === 4 * ACT1_ROUNDS && act1.wins === act1.rounds, `Act I held every round (${act1.wins}/${act1.rounds})`);
+check(act1.rounds === PAIRS * ACT1_ROUNDS && act1.wins === act1.rounds, `Act I held every round (${act1.wins}/${act1.rounds})`);
 check(state().stability.rolling === null, "the station gauge waits for the first storm wave");
 check(state().deadline! - state().serverNow === STORM_STATIC_MS, "the storm: static, then the storm log");
 advance(STORM_STATIC_MS);
@@ -195,10 +201,10 @@ check(boSees.onGreen === 0 && boSees.onRed === 1, "Bo sees Ada's plan live in th
 // readiness (and only theirs): pair 2 is planning again.
 check(readyPairs(state()).ready === 0, "nobody is ready when the lull opens");
 for (const conn of phones.keys()) send(conn, { type: "player:ready", ready: true });
-check(readyPairs(state()).ready === 4, "every player said ready: 4 of 4 pairs");
+check(readyPairs(state()).ready === PAIRS, `every player said ready: ${PAIRS} of ${PAIRS} pairs`);
 send("phone2", { type: "player:strategy", act: 2, classical: { onGreen: 1, onRed: 0 } });
 const pair2 = state().pairs[1]!;
-check(!pair2.ready.a && pair2.ready.b && readyPairs(state()).ready === 3, "Cy changed their plan: their readiness cleared, 3 of 4 pairs");
+check(!pair2.ready.a && pair2.ready.b && readyPairs(state()).ready === PAIRS - 1, `Cy changed their plan: their readiness cleared, ${PAIRS - 1} of ${PAIRS} pairs`);
 // The facilitator's remote (E3b) pairs with the TV's key and starts the wave with pair 2 still planning: the first
 // press asks "Start anyway?" (the TV pressing at the same moment is stale), the confirmed press starts one wave.
 const remote = "remote";
@@ -254,7 +260,7 @@ check(paces.has("2:1:manual"), "the first wave was manual (no countdown; Next by
 check(closed, "Next ended a manual round early");
 check(doubled, "a double Next round from the same step advanced once");
 check(both, "the remote and the TV pressed Next together: it advanced once");
-check(state().lastBatch?.rounds === 4 * MP_WAVE_SIZE, `the wave scored ${state().lastBatch?.rounds} pair-rounds`);
+check(state().lastBatch?.rounds === PAIRS * MP_WAVE_SIZE, `the wave scored ${state().lastBatch?.rounds} pair-rounds`);
 const tried = [...state().triedPlans].sort().join(" ");
 check(tried === "0-0 1-0 2-0", `the plans locked at the wave start are recorded as tried (${tried})`);
 check(
@@ -304,18 +310,18 @@ for (const [conn, phone] of phones) {
   const h = clueHint(pair.dials);
   check(ada ? h.kind === "found" : bothHot(h, 0), `${phone.name} (pair ${pair.id}) sees ${ada ? "found it" : "the both-HOT hint"}, live`);
 }
-check(pairsNotYet(state().pairs) === 3, `three pairs not yet at 80% (${pairsNotYet(state().pairs)})`);
+check(pairsNotYet(state().pairs) === PAIRS - 1, `${PAIRS - 1} pairs not yet at 80% (${pairsNotYet(state().pairs)})`);
 send(remote, { type: "host:command", cmd: "nextClue", step: last(remote, "room:state")!.state.step });
 check(state().clue === 1 && last(remote, "error")?.code === "not-now", "the answer isn't released before an Act III wave");
 
-// Act III, wave 1: each pair's own attempt (Ada's pair at 85.4%, three at 75%): under 80%, not saved. This time every
+// Act III, wave 1: each pair's own attempt (Ada's pair at 85.4%, the rest at 75%): under 80%, not saved. This time every
 // player says ready first (R1), so one press starts the wave.
 for (const [conn, phone] of phones) if (phone.online) send(conn, { type: "player:ready", ready: true });
-check(readyPairs(state()).ready === 4 && !state().startConfirm, "every pair ready in the Act III lull");
+check(readyPairs(state()).ready === PAIRS && !state().startConfirm, "every pair ready in the Act III lull");
 host("startBatch");
 check(state().phase === "round" && state().act === 3, "with every pair ready, one press started the wave");
 check(playUntil("batchDone"), "Act III wave 1 (each pair's own attempt)");
-const wave1 = (QUANTUM_LIMIT + 3 * 0.75) / 4;
+const wave1 = (QUANTUM_LIMIT + (PAIRS - 1) * 0.75) / PAIRS;
 check(
   Math.abs((state().crewDialsRate ?? 0) - wave1) < 1e-9 && !state().stationSaved,
   `the crew's plans average ${((state().crewDialsRate ?? 0) * 100).toFixed(1)}%: not saved`,
@@ -323,7 +329,7 @@ check(
 
 // Clue 2, the answer, from the remote; the label says who still needs it. A double press moves once.
 const label = S.tv.nextClue(pairsNotYet(state().pairs), "80%");
-check(label === "Next clue: the answer (3 pairs not yet at 80%)", label);
+check(label === `Next clue: the answer (${PAIRS - 1} pairs not yet at 80%)`, label);
 const step = last(remote, "room:state")!.state.step;
 send(remote, { type: "host:command", cmd: "nextClue", step });
 send(tv, { type: "host:command", cmd: "nextClue", step });
@@ -339,7 +345,7 @@ check(pairsNotYet(state().pairs) === 0, "with both rows applied, every pair is a
 host("startBatch");
 check(playUntil("batchDone"), "Act III wave 2 (the answer)");
 const act3 = state().stability.act3;
-check(act3.rounds === 2 * 4 * MP_WAVE_SIZE, `Act III scored ${act3.rounds} pair-rounds`);
+check(act3.rounds === 2 * PAIRS * MP_WAVE_SIZE, `Act III scored ${act3.rounds} pair-rounds`);
 check(
   paces.has("3:2:manual") && paces.has("3:3:auto"),
   `Act III: the first wave manual, the next auto (by its own timers) [${[...paces].filter((p) => p.startsWith("3:")).join(" ")}]`,
@@ -348,7 +354,7 @@ const crew = state().crewDialsRate ?? 0;
 check(Math.abs(crew - QUANTUM_LIMIT) < 1e-9 && state().stationSaved, `the crew's crystal plans average ${(crew * 100).toFixed(1)}%: saved`);
 check(!sentTypes.has("player:measure"), "no phone sent player:measure (the room measures)");
 const followed = state().act3Followed;
-check(!!followed && followed.of === 8 * MP_WAVE_SIZE && followed.n === followed.of, "every player followed their crystal (latest wave)");
+check(!!followed && followed.of === 2 * PAIRS * MP_WAVE_SIZE && followed.n === followed.of, "every player followed their crystal (latest wave)");
 
 // The saved ending: the storm passes (the crew's dials saved the station), then the incident report.
 host("stormPasses");

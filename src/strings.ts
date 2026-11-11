@@ -1,6 +1,6 @@
 // All player-facing text in one place. Edit freely.
 // In-world copy only, up to the debrief: physics words (qubit, Bell, CHSH…) appear only in `debrief`.
-import { ACT1_ROUND_MS, ACT1_ROUNDS } from "./config.ts";
+import { ACT1_ROUND_MS, ACT1_ROUNDS, MP_WAVE_SIZE } from "./config.ts";
 import type { ClassicalStrategy, RoundResult } from "./shared/chsh.ts";
 import { HOT, roundCause } from "./shared/fiction.ts";
 import { answerPlanFor, planRate } from "./shared/crystalPlan.ts";
@@ -853,7 +853,7 @@ export const S = {
     act1RoundOf: (round: number) => `Night shift · round ${round}/${ACT1_ROUNDS}`,
     batchHeld: (pct: string) => `${pct} of rounds held`,
     roundOf: (batch: number, round: number, size: number) => `Wave ${batch} · round ${round}/${size}`,
-    pooled: "Station stability · last 48 rounds",
+    pooled: `Station stability · last ${MP_WAVE_SIZE} rounds`,
     act1Pooled: "Night shift · every round so far",
     allTime: (act: number, pct: string, n: number) => `Act ${ROMAN[act]} so far: ${pct} of ${n} rounds`,
     timeouts: (n: number) => `${n} too slow`,
