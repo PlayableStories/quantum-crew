@@ -655,8 +655,10 @@ Render's own docs for the current options.
 - **Auto-deploy: off.** A deploy restarts the server, and a restart ends every room. Deploy by hand, never on an
   event day.
 - **The free service sleeps after 15 minutes without traffic,** and the first visit after that wakes it (it can take
-  up to a minute). Open the site about 10 minutes before the session, and don't leave a room idle in the lobby that
-  long: a sleeping service loses its rooms like a restart does.
+  up to a minute). A sleeping service loses its rooms like a restart does. **While the TV (`/screen`) is open it keeps
+  the service awake:** it requests `/healthz` every 30 s (`KEEP_AWAKE_MS`, `src/net/keepAwake.ts`). Open the site
+  about 10 minutes before the session to wake it, then leave the TV open; keep its tab in front (a hidden tab may
+  slow its timers to about once a minute, still well within the 15 minutes). Closing the TV lets it sleep again.
 - **Upgrade path:** switching the same service to a paid instance type stops the sleeping; nothing else changes.
 - **A custom subdomain** (e.g. `crew.example.org`): add it under the service's custom domains and point a `CNAME`
   record at the service's `onrender.com` address. Open the TV at that subdomain; the QR code uses it, so

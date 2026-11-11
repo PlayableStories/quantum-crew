@@ -65,3 +65,6 @@ export const STRATEGY_MS = 45_000;
 /** Up to 6 pairs (12 players): at most 6 players per table. (The TV's station gauge covers the last MP_WAVE_SIZE
  *  rounds of every pair, so it means the same at any pair count: see server/room.ts.) */
 export const MAX_PAIRS = 6;
+/** Event, the TV (/screen): how often it requests /healthz so a host that sleeps when idle (Render's free tier) stays
+ *  awake while a session is set up. Well inside any idle limit; one tiny request each time. */
+export const KEEP_AWAKE_MS = 30_000;

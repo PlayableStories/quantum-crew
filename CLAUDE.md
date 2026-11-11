@@ -111,6 +111,9 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   ranking. Act III: the room measures every crystal at round start (since E3c); tunings snap to the 8 settings; the tool
   unlocks only after the ceiling reveal; the debrief step (E3a) and the clue level (E3c) are the room's;
   per-seat marginals are sent only in the debrief phase (plus a pooled "whole crew" row).
+- **Keep awake (2026-11-11):** the TV (`Screen`) runs `startKeepAwake()` (`src/net/keepAwake.ts`): GET `/healthz`
+  every `KEEP_AWAKE_MS` (30 s) while `/screen` is open, so Render's free tier doesn't sleep (and lose the rooms)
+  mid-session. TV only, so the service never stays awake overnight; the server's WS pings may not count as inbound.
 - **Deploy:** solo = static build on Vercel (PlayableStories team); event mode needs one Node process with WebSockets: a
   venue laptop is the documented default, and the README also documents Docker, Fly.io and Render (docs only; nothing
   is deployed).
