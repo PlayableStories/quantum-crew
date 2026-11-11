@@ -44,6 +44,7 @@ import { useElapsedMs, useRemainingMs } from "../net/useCountdown.ts";
 import { decisionMs, resultMs } from "../shared/pace.ts";
 import { Sheet } from "../components/Sheet.tsx";
 import { toggleFullscreen } from "../lib/fullscreen.ts";
+import { startKeepAwake } from "../net/keepAwake.ts";
 import { keyAction, keyTarget, useKeySheet } from "../lib/keys.ts";
 import { DebugJumpPanel } from "../components/DebugJumpPanel.tsx";
 import { KeysSheet } from "../components/KeysSheet.tsx";
@@ -66,6 +67,8 @@ export function Screen() {
   const closeJoin = useCallback(() => setJoinOpen(false), []);
   const openKeys = useKeySheet((st) => st.set);
   useEffect(() => start(), [start]);
+  // Keeps a host that sleeps when idle (Render's free tier) awake while this TV is open.
+  useEffect(() => startKeepAwake(), []);
   useTvSounds(state, results);
   // Where phones join: asked from the server once (see net/joinOrigin.ts for the order).
   const [info, setInfo] = useState<StationInfo | null>(null);

@@ -17,7 +17,8 @@ Setting up the server: see [Run event mode at a venue](../README.md#run-event-mo
 ## Pre-flight checklist (30 minutes before)
 
 - [ ] **No deploys on event days.** On a hosted server (Render, Fly…) a deploy restarts it and ends every room; turn
-      auto-deploy off. On the free Render tier, open the site about 10 minutes early (it sleeps when idle).
+      auto-deploy off. On the free Render tier, open the site about 10 minutes early (it sleeps when idle), then keep
+      the TV's `/screen` open and in front: while it's open it keeps the service awake.
 - [ ] **Power** for the laptop, the router and the TV, and a charger for your own phone.
 - [ ] **Network:** the laptop and the router are on, and the laptop is on the router's Wi-Fi (or cable). Venue Wi-Fi
       often stops phones reaching the laptop; your own travel router avoids that.
