@@ -77,7 +77,7 @@ flowchart TD
     read2 -- "Back to the huddle" --> plan
   end
   read2 -- "Call engineering<br/>(after 1 batch)" --> ceiling["Engineering report: 75%<br/>fills the rest of the board"]
-  ceiling --> tool["The Entanglement Tool arrives"]
+  ceiling --> tool["The crystals arrive"]
   tool --> tune
   subgraph act3 ["Act III: the tool"]
     tune["Crystal plan: your settings, CORA's fixed plan, a live hint<br/>(engineering's answer after a wave under 80%)"] --> batch3["Wave: 12 rounds; the crystal is measured<br/>at round start, you set the pump"]
@@ -154,10 +154,10 @@ flowchart TD
      two hold 67.7%. Can you do better?"*;
    - **clue 1** from the first visit: the live hint for your weakest case, which only ever moves your own setting
      (*"CORA's plan is fixed: move your HOT setting further from hers."*), or **Found it: 80%+**, and the nudge (the
-     differ gap can never be bigger than the three match gaps added together);
+     different gap can never be bigger than the three same gaps added together);
    - the read-only **fan**: the four settings, each case's gap and its chance;
    - **the crystals' rule** (each crystal is a coin flip; linked crystals land the same way more often the closer
-     their settings, with the gap table; follow your crystal and your pumps match exactly when the crystals agree),
+     their settings, with the gap table; follow your crystal and your pumps match exactly when the crystals give the same direction),
      in full on the first visit, then behind a **Crystal rule** chip;
    - after a wave that didn't pass, **Ask engineering for the answer**: the settings spread 22.5° apart, your row
      (COOL 0°, HOT 45°) and **Use these settings**, which completes CORA's plan to 85.4%.
@@ -198,10 +198,10 @@ flowchart TD
    yours underneath (e.g. "your crystal plan, 67.7%"), and the summary says the best crystal settings beat every plan, while
    yours didn't get there this time. Step 2's side-by-side views also show the best crystal plan unless yours saved
    the station.
-   - **No plan beats 75%:** the fiction mapped back to the game (sensors = input bits, pumps = output bits, "match
-     unless both HOT" = the CHSH rule), and the wall was a Bell inequality, with your Act II rate. Mixing plans at
-     random only averages cells on the plan board, so it can never beat the best cell.
-   - **Entanglement broke through:** the crystals agree with probability cos²(θA − θB), up to 85.4% (the Tsirelson
+   - **No plan beats 75%:** the wall was a Bell inequality, with your Act II rate. Mixing plans at random only
+     averages cells on the plan board, so it can never beat the best cell. Last, in small print: the fiction mapped back
+     to the game (sensors = input bits, pumps = output bits, "match unless both HOT" = the CHSH rule).
+   - **Entanglement broke through:** with a gap g between their settings the crystals give the same direction cos²(g) of the time (the gap table), up to 85.4% (the Tsirelson
      bound), with your crystal plan's true rate. Two four-case views sit side by side: the best plan (three cases
      always held, one always lost: 75%) and your crystal plan (or the best one, if yours didn't pass), where every case holds
      about 85%. *A plan has to give up one case completely; the crystals spread a small loss across all four.*
@@ -232,7 +232,7 @@ iPad the type, plan board, crystal plan and ring scale up with the screen, and e
    pair beats 75%.
 4. **Engineering report.** After the first batch you can call engineering (or try more plans first): they fill in
    every pair you didn't try, and none beats 75%.
-5. **Act III: the Entanglement Tool.** You plan a crystal setting for COOL and one for HOT; CORA's plan is fixed. A
+5. **Act III: the crystals.** You plan a crystal setting for COOL and one for HOT; CORA's plan is fixed. A
    live hint points at your weakest case. In each round the station has already measured your crystal: it suggests
    a pump, and you set it (follow it or not). Find a crystal plan whose exact rate passes 80%; after a wave that
    doesn't, you can ask engineering for the answer, and after two waves the debrief opens either way.
@@ -310,8 +310,8 @@ the facilitator when to start (see [docs/facilitator.md](docs/facilitator.md)).
    not a clue; since E3e): each crystal alone says CLOCKWISE or ANTICLOCKWISE at random, like a coin flip, whatever its
    setting; two linked crystals land the same way more often the closer their settings (the gap table: 0° 100%,
    22.5° 85%, 45° 50%, 67.5° 15%, 90° 0%, from `matchProbability`); and followed crystals make the pumps match
-   exactly when the crystals agree, so keep settings close in the three cases that need matching pumps and far apart
-   when both sensors are HOT. The TV shows the rule on the tool reveal and in every Act III lull; phones have it and
+   exactly when the crystals give the same direction, so keep settings close in the three cases that need the same
+   direction and far apart when both sensors are HOT, which needs different directions. The TV shows the rule on the tool reveal and in every Act III lull; phones have it and
    the clues in sheets (**Crystal rule**, **Clues (n)**, counting 0–2) from here on.
 11. **The Act III lull: a crystal plan.** Each player's card has the same shape as an Act II plan: *"When your sensor
    reads COOL or HOT, the station measures your crystal at:"* COOL [0° ▾] and HOT [0° ▾], each picked from the 8
@@ -336,15 +336,15 @@ the facilitator when to start (see [docs/facilitator.md](docs/facilitator.md)).
 14. **The clue ladder** (two steps since E3e; it only rises, until Reset, and the room keeps it):
    1. **The hint and the nudge**, automatically when the first Act III lull opens (or with a wave started straight
       from the tool). Each pair's hint is computed from its **current** crystal plans and follows every setting
-      change, live: at the start (0° everywhere) every pair's weakest case is both HOT, gap 0°, differ 0% of the time:
-      move those settings further apart. Phones show their own pair's hint (with CORA as partner, it only asks the
+      change, live: at the start (0° everywhere) every pair's weakest case is both HOT, gap 0°, different 0% of the time:
+      move your HOT settings further apart. Phones show their own pair's hint (with CORA as partner, it only asks the
       player to move their own setting); the TV lists every pair's; pairs at 80%+ see **Found it: 80%+**, live. The
-      nudge (*"the differ gap can never be bigger than the three match gaps added together…"*, true for every plan;
+      nudge (*"the different gap can never be bigger than the three same gaps added together…"*, true for every plan;
       a test checks all 4,096 combinations) is on the TV and in the phones' Clues sheet. After a wave, a pair below 80%
       gets its weakest case outlined on the TV with which way to move.
    2. **The answer**, released by the facilitator with **Next clue** (TV or remote) once an Act III wave has been
       played: *"Next clue: the answer (2 pairs not yet at 80%)"*. Spread the four settings 22.5° apart (A: COOL 0°,
-      HOT 45°; B: COOL 22.5°, HOT 157.5°): three match gaps of 22.5° (85% the same), a differ gap of 67.5° (85%
+      HOT 45°; B: COOL 22.5°, HOT 157.5°): three same gaps of 22.5° (85% the same), a different gap of 67.5° (85%
       different), 85.4%. The TV shows it in one line on the wave done and in full with its fan in the lull; each phone
       shows its own row, and pairs still below 80% get **Use these settings** (each partner applies their own row;
       with CORA, the player's row completes her fixed plan).

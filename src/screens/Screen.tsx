@@ -375,7 +375,7 @@ export function WaveCases({ state }: { state: RoomState }) {
   return (
     <div className={`tv__cases ${casesClass(state.pairs.length)}`}>
       <p className="muted tv__cases-head">
-        {compact ? S.event.compact.head : `${S.readout.casesHead} · ${S.event.casesOrder}`}
+        {compact ? `${S.event.compact.head} ${S.readout.trueRateDef}` : `${S.readout.trueRateDef} ${S.event.casesOrder}`}
       </p>
       {state.pairs.map((pair) => {
         if (!pair.locked) return null;
@@ -419,7 +419,7 @@ export function WaveCases({ state }: { state: RoomState }) {
                 S.plans.short[planId(pair.locked.b)]!,
               )}
             </p>
-            <FourCases plan={pair.locked.a} crewPlan={pair.locked.b} order={S.event.casesOrder} />
+            <FourCases plan={pair.locked.a} crewPlan={pair.locked.b} order={S.event.casesOrder} define={false} />
             <p className="tv__pair-total">
               <strong>{S.readout.caseTotal(Math.round(trueRate * 4), whole(trueRate))}</strong>
               {wave && <span className="muted"> · {S.event.waveHeld(wave.wins, wave.rounds)}</span>}
@@ -437,6 +437,8 @@ const whole = (r: number) => `${Math.round(r * 100)}%`;
 
 /** A case as its card reads: "HOT · HOT" (Table A's sensor first). */
 const caseName = (x: 0 | 1, y: 0 | 1) => `${S.light[x]} · ${S.light[y]}`;
+/** A case with its tables, as the hints name the settings: "A COOL · B HOT". */
+const tableCaseName = (x: 0 | 1, y: 0 | 1) => S.event.fan.caseName(S.light[x], S.light[y]);
 
 /** The engineering report: the 4×4 board at exact rates, every pairing the crew played marked as tried and
  *  engineering's corner mark on the rest. The same copy as solo, which reads as plural for a crew. */
@@ -599,7 +601,7 @@ export function CrystalWave({ state }: { state: RoomState }) {
               <p className="tv__pair-total">
                 <strong>{S.readout.trueRate(pct(trueRate))}</strong>
                 {holds && <span className="tv__found"> · ✓ {W.foundIt}</span>}
-                {hint && <span className="tv__pair-hint"> · {S.event.clues.tvHint(caseName(hint.x, hint.y), hint.need)}</span>}
+                {hint && <span className="tv__pair-hint"> · {S.event.clues.tvHint(tableCaseName(hint.x, hint.y), hint.need)}</span>}
                 {wave && <span className="muted"> · {W.wave(wave.wins, wave.rounds)}</span>}
               </p>
               {luck && <p className="tv__luck">{holds ? W.luckyBelow(pct(trueRate)) : W.luckyAbove(pct(trueRate))}</p>}
@@ -615,7 +617,7 @@ export function CrystalWave({ state }: { state: RoomState }) {
               <strong>{S.readout.trueRate(pct(trueRate))}</strong>
               {holds && <span className="tv__found"> · ✓ {W.foundIt}</span>}
               {/* Clue 1: a pair not yet at 80% gets which way to move (its weakest case is outlined). */}
-              {hint && <span className="tv__pair-hint"> · {S.event.clues.tvHint(caseName(hint.x, hint.y), hint.need)}</span>}
+              {hint && <span className="tv__pair-hint"> · {S.event.clues.tvHint(tableCaseName(hint.x, hint.y), hint.need)}</span>}
               {wave && <span className="muted"> · {W.wave(wave.wins, wave.rounds)}</span>}
             </p>
             {/* The wave and the true rate disagree about 80%: luck, either way. */}
@@ -681,6 +683,7 @@ export function TvDebrief({ state, onCommand }: { state: RoomState; onCommand: (
               </p>
             ))}
             {step === 2 && state.marginals && <p className="muted">{S.tv.wobble}</p>}
+            {"foot" in content && <p className="muted small tv__debrief-foot">{content.foot}</p>}
           </div>
         )}
         <div className="stack tv__debrief-numbers">

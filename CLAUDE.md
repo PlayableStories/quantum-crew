@@ -356,6 +356,18 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
   local hidden-variable line; the same-setting line with the computed `SAME_SETTING_RATE`; no repeated Nobel line);
   `S.event.briefing.routine` names no time (the facilitator sets the pace); `bestPlans` shows both tables (`BEST_PLAN`
   from `answerPlanFor`); `crewRounds` says "pump choices". Tests in `endingEvent.test.tsx`.
+- **Copy review C1 (2026-11-11; solo and event, copy only):** crystal directions are "same" / "different" everywhere
+  (fan, rule line 3, hints, nudge, answer, remote, docs; code keeps `need: "same" | "differ"`, `matchGap` /
+  `differGap`). `clues.hint` takes the case's A and B readings and names the settings ("bring A's COOL and B's HOT
+  closer" / "move your HOT settings further apart"); the TV's `tvHint` gets "A COOL · B HOT" (Screen.tsx
+  `tableCaseName`). The fold line: "Settings repeat every 180°, so 157.5° is the same as −22.5°…"; `formatDeg`
+  prints a real minus. The TV round question: "Which case lets you down most often?". Report step 1 leads with the
+  Bell inequality; the CHSH mapping is the step's `foot` (small print, last); step 2 speaks of the gap g (no θ in
+  player copy) and its best-spread line is computed (`BEST_SPREAD`). "The Entanglement Tool" → "The crystals" (titles
+  and phases; facilitator labels keep "tool"). `S.readout.trueRateDef` sits under `FourCases` (solo, phones) and once
+  in the TV's Act II wave-done head (`define={false}` on its cards); `caseTotal` reads "True rate 75%: 3 of 4 cases"; with
+  the definition `FourCases` drops its "Equally likely" kicker. Fit: `.debrief__foot` / `.tv__debrief-foot` sizes,
+  and on short phones the Act III lull's fan keeps "15% different" on one line. Tests: `src/screens/copyReview.test.tsx`.
 - **Debug jump (2026-11-08, user request; testing):** **D** on the TV opens `DebugJump` (a Sheet in `HostControls`):
   host commands `debugAct2` (Act II lull; clears ceiling, tool and clue) and `debugAct3` (Act III tool reveal, as
   Reveal ceiling + Unlock tool: clue 0). TV only (a remote gets `not-host`), refused in a wave or the debrief,

@@ -15,7 +15,6 @@ import {
   clueHint,
   moverFor,
   planCases,
-  settingGap,
   type LockedPlans,
   type PlanCase,
 } from "../shared/crystalPlan.ts";
@@ -174,8 +173,8 @@ export function CrystalRuleTable({
 }) {
   const R = S.event.crystalRule;
   const max = RULE_GAPS.at(-1)!;
-  // An example of folding: the first and last of the eight settings.
-  const [first, last] = [SETTINGS[0]!, SETTINGS.at(-1)!];
+  // An example of folding: the last of the eight settings, past 90°, and the same setting below 0°.
+  const last = SETTINGS.at(-1)!;
   return (
     <div className={`crystal-rule ${className}`}>
       <p>{R.coin}</p>
@@ -202,7 +201,7 @@ export function CrystalRuleTable({
       </table>
       {fold && (
         <p className="muted small">
-          {R.fold(formatDeg(2 * max), formatDeg(max), formatDeg(first), formatDeg(last), formatDeg(settingGap(first, last)))}
+          {R.fold(formatDeg(2 * max), formatDeg(max), formatDeg(last), formatDeg(last - 2 * max))}
         </p>
       )}
       <p>{follow ?? R.follow}</p>
@@ -282,7 +281,7 @@ export function hintText(plans: LockedPlans, tv = false, human: HumanWithCora = 
     const mine = S.light[moverFor(w, human.table)];
     return tv ? C.coraListHint(human.name, ...args, mine) : C.coraHint(...args, mine);
   }
-  return (tv ? C.listHint : C.hint)(...args);
+  return tv ? C.listHint(...args) : C.hint(...args, S.light[w.x], S.light[w.y]);
 }
 
 /** Clue 1 on a phone: the pair's live rate, then its hint (or "Found it"). Follows the plans as they change. */
