@@ -119,7 +119,9 @@ Only `scripts/gen-assets.ts` calls the API, through the vendored client in `pack
     `PUBLIC_URL` and its LAN IPv4 URLs (`server/joinInfo.ts`; also served by the Vite dev plugin). The TV's
     `pickJoinOrigin` (`src/net/joinOrigin.ts`) picks, in order: `PUBLIC_URL`; the TV's own origin unless it's
     localhost (a hosted container's LAN IP is internal); the first LAN URL; else the TV's origin with
-    `S.tv.joinWarning`. `JoinPanel` builds the QR and the printed link from one `url` (`data-join-url`).
+    `S.tv.joinWarning`. `JoinPanel` builds the QR and the printed link from one `url` (`data-join-url`); since 2026-11-11 the printed
+    link is `http(s)://…/play` (scheme kept: typed without it, Safari tries https://; room left out: /play asks for
+    the code shown above it).
   - **`pnpm session`** (`scripts/session.ts`): the whole session in-process with a fake clock; CI runs it after smoke.
   - **`pnpm shots --event`:** a TV and two phones (one pair) against the real station on `vite preview`, with a fixed
     example `/station-info` (192.168.1.20). Two passes: TV 1920×1080 + phones 390×844, TV 1280×720 + phones
