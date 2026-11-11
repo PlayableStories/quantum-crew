@@ -9,6 +9,7 @@ export function CreditsList() {
   const close = useCallback(() => setOpen(false), []);
   return (
     <div className="stack">
+      <p>{S.credits.studio}</p>
       <p>{S.credits.lead}</p>
       <p className="muted">{S.credits.simulated}</p>
       <button className="btn btn--ghost" aria-haspopup="dialog" onClick={() => setOpen(true)}>

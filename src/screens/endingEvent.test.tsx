@@ -79,6 +79,10 @@ describe("the incident report (TV)", () => {
     expect(renderToString(<TvDebrief state={report(0, true)} onCommand={noop} />)).toMatch(/<button class="btn" disabled="">/);
     expect(renderToString(<TvDebrief state={report(3, true)} onCommand={noop} />)).toMatch(/btn--primary" disabled=""/);
   });
+
+  it("the credits name who designed and made the game", () => {
+    expect(renderToString(<TvDebrief state={report(3, true)} onCommand={noop} />)).toContain(S.credits.studio);
+  });
 });
 
 describe("the ending on a phone", () => {
