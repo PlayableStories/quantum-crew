@@ -5040,3 +5040,18 @@ kbd {
     padding: 8px 12px;
   }
 }
+
+/* The remote with five or six pairs: the short-phone spacing at every height, so six pairs fit under the controls. */
+.remote--many {
+  gap: 8px;
+}
+
+.remote--many .remote__talk ul,
+.remote--many .remote__room ul {
+  gap: 3px;
+}
+
+.remote--many .remote__talk,
+.remote--many .remote__room {
+  padding-block: 8px;
+}
